@@ -64,7 +64,7 @@
 ---
 
 📌 **开源信息**  
-项目由 [EzStars团队](https://ezstars.github.io/DocCollab/about.html) 维护，采用 MIT 许可证  
+项目由 [byteGanYue团队](https://byteGanYue.github.io/DocCollab/about.html) 维护，采用 MIT 许可证  
 📧 反馈建议：contact@DocCollab.com  
 🐞 Issue提交：GitHub Issues  
-📚 完整文档：https://ezstars.github.io/DocCollab/docs
+📚 完整文档：https://byteGanYue.github.io/DocCollab/docs

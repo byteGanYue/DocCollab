@@ -16,7 +16,7 @@ export default defineConfig({
     logo: '/logo.png',
     footer: {
       message: 'Released under the MIT License.',
-      copyright: 'Copyright © 2025-present EzStars',
+      copyright: 'Copyright © 2025-present byteGanYue',
     },
     // 是否启动搜索功能
     search: {
@@ -24,7 +24,7 @@ export default defineConfig({
     },
     sidebar: generateSidebar(),
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/EzStars/DocCollab' },
+      { icon: 'github', link: 'https://github.com/byteGanYue/DocCollab' },
     ],
   },
   base: '/DocCollab/',
