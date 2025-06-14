@@ -1,6 +1,6 @@
 ## 如何联系我们：
 
-[EzStars团队](https://ezstars.github.io/EzMonitor/about.html)
+[EzStars团队](https://ezstars.github.io/DocCollab/about.html)
 
 ## PR提交规范
 

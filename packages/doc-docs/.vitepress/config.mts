@@ -2,9 +2,9 @@ import { defineConfig } from 'vitepress';
 import { generateSidebar } from './utils/gennerateSidebar';
 
 export default defineConfig({
-  title: 'EzMonitor',
+  title: 'DocCollab',
   description: '一个开源开箱即用的前端监控SDK',
-  head: [['link', { rel: 'icon', href: '/EzMonitor/logo.png' }]],
+  head: [['link', { rel: 'icon', href: '/DocCollab/logo.png' }]],
   themeConfig: {
     nav: [
       { text: '💭 首页', link: '/' },
@@ -24,10 +24,10 @@ export default defineConfig({
     },
     sidebar: generateSidebar(),
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/EzStars/EzMonitor' },
+      { icon: 'github', link: 'https://github.com/EzStars/DocCollab' },
     ],
   },
-  base: '/EzMonitor/',
+  base: '/DocCollab/',
   // 自定义主题颜色
   appearance: true,
 });

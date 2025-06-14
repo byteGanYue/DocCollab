@@ -60,7 +60,7 @@ const members = [
       关于EzStars团队
     </template>
     <template #lead>
-      EzMonitor 由一群充满热情的在读大学生开发者构建，以下是我们的核心团队成员。
+      DocCollab 由一群充满热情的在读大学生开发者构建，以下是我们的核心团队成员。
     </template>
   </VPTeamPageTitle>
   <VPTeamMembers

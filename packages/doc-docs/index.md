@@ -3,7 +3,7 @@
 layout: home
 
 hero:
-  name: "EzMonitor"
+  name: "DocCollab"
   text: "一个开源开箱即用的前端监控SDK"
   tagline: My great project tagline
   actions:
