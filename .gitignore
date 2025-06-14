@@ -28,8 +28,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # VitePress cache
-.vitepress/cache
-.vitepress/dist
+packages/doc-docs/.vitepress/cache
+packages/doc-docs/.vitepress/dist
 
 # Environment variables
 .env
