@@ -1,0 +1,5 @@
+* text=auto
+*.{cmd,[cC][mM][dD]} text eol=crlf
+*.{bat,[bB][aA][tT]} text eol=crlf
+*.{js,jsx,ts,tsx,json,yml,yaml,md,html,css,scss} text eol=lf
+pnpm-lock.yaml text eol=lf 

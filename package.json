@@ -7,7 +7,9 @@
     "commit": "git add . && git-cz",
     "dev:doc-web": "pnpm --filter doc-web dev",
     "start:doc-server": "pnpm --filter doc-server start:dev",
-    "dev:docs": "vitepress dev docs",
+    "docs:dev": "vitepress dev ./packages/doc-docs",
+    "docs:build": "vitepress build ./packages/doc-docs",
+    "docs:preview": "vitepress preview ./packages/doc-docs",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "prepare": "husky"
@@ -40,6 +42,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.0.0",
     "prettier": "^3.5.3",
-    "typescript-eslint": "^8.24.1"
+    "typescript-eslint": "^8.24.1",
+    "vitepress": "^1.6.3"
   }
 }
