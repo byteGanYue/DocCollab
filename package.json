@@ -5,6 +5,9 @@
   "main": "index.js",
   "scripts": {
     "commit": "git add . && git-cz",
+    "dev:doc-web": "pnpm --filter doc-web dev",
+    "start:doc-server": "pnpm --filter doc-server start:dev",
+    "dev:docs": "vitepress dev docs",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "prepare": "husky"
