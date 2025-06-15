@@ -1,5 +1,13 @@
+# 设置所有文本文件的默认行为
 * text=auto
+
+# Windows 命令行脚本文件使用 CRLF 换行符
 *.{cmd,[cC][mM][dD]} text eol=crlf
 *.{bat,[bB][aA][tT]} text eol=crlf
+
+# 前端相关文件使用 LF 换行符
 *.{js,jsx,ts,tsx,json,yml,yaml,md,html,css,scss} text eol=lf
-pnpm-lock.yaml text eol=lf 
+
+# pnpm 相关配置文件使用 CRLF 换行符
+pnpm-lock.yaml text eol=lf
+pnpm-workspace.yaml text eol=lf
