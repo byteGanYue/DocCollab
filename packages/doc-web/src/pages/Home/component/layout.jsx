@@ -1,32 +1,29 @@
 import React from 'react';
-import {
-  LaptopOutlined,
-  NotificationOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
+import { FolderOpenOutlined } from '@ant-design/icons';
 import { Breadcrumb, Layout, Menu, theme } from 'antd';
 const { Header, Content, Sider } = Layout;
-const items1 = ['1', '2', '3'].map(key => ({
+// TODO: mock数据来的
+const EditorList = ['1', '2', '3'].map(key => ({
   key,
-  label: `nav ${key}`,
+  label: `当前编辑用户名 ${key}`,
 }));
-const items2 = [UserOutlined, LaptopOutlined, NotificationOutlined].map(
-  (icon, index) => {
-    const key = String(index + 1);
-    return {
-      key: `sub${key}`,
-      icon: React.createElement(icon),
-      label: `subnav ${key}`,
-      children: Array.from({ length: 4 }).map((_, j) => {
-        const subKey = index * 4 + j + 1;
-        return {
-          key: subKey,
-          label: `option${subKey}`,
-        };
-      }),
-    };
-  },
-);
+
+// TODO: mock数据来的
+const FolderList = [FolderOpenOutlined].map((icon, index) => {
+  const key = String(index + 1);
+  return {
+    key: `sub${key}`,
+    icon: React.createElement(icon),
+    label: `文件夹 ${key}`,
+    children: Array.from({ length: 4 }).map((_, j) => {
+      const subKey = index * 4 + j + 1;
+      return {
+        key: subKey,
+        label: `文档${subKey}`,
+      };
+    }),
+  };
+});
 const LayoutComponent = () => {
   const {
     token: { colorBgContainer, borderRadiusLG },
@@ -38,8 +35,7 @@ const LayoutComponent = () => {
         <Menu
           theme="dark"
           mode="horizontal"
-          defaultSelectedKeys={['2']}
-          items={items1}
+          items={EditorList}
           style={{ flex: 1, minWidth: 0 }}
         />
       </Header>
@@ -50,11 +46,12 @@ const LayoutComponent = () => {
             defaultSelectedKeys={['1']}
             defaultOpenKeys={['sub1']}
             style={{ height: '100%', borderRight: 0 }}
-            items={items2}
+            items={FolderList}
           />
         </Sider>
         <Layout style={{ padding: '0 24px 24px' }}>
           <Breadcrumb
+            // TODO: 需要根据路由来设置
             items={[{ title: 'Home' }, { title: 'List' }, { title: 'App' }]}
             style={{ margin: '16px 0' }}
           />
@@ -62,11 +59,23 @@ const LayoutComponent = () => {
             style={{
               padding: 24,
               margin: 0,
-              minHeight: 280,
+              minHeight: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
               background: colorBgContainer,
               borderRadius: borderRadiusLG,
             }}
           >
+            <Header
+              style={{
+                display: 'flex',
+                height: '50px',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+              }}
+            >
+              <button>保存</button>
+            </Header>
             Content
           </Content>
         </Layout>
