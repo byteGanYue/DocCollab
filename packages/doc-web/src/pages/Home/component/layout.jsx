@@ -214,7 +214,7 @@ const LayoutComponent = () => {
       </Header>
       <Layout style={{ height: 'calc(100vh - 64px)' }}>
         <FolderMenu />
-        <Layout style={{ padding: '0 24px 24px' }}>
+        <Layout style={{ padding: '0 24px 24px', marginLeft: '200px' }}>
           <Breadcrumb
             items={[
               { title: '首页' },

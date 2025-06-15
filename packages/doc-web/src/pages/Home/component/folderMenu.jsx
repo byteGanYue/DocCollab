@@ -294,6 +294,11 @@ const FolderMenu = () => {
         background: colorBgContainer,
         display: 'flex',
         flexDirection: 'column',
+        height: '100%',
+        position: 'fixed',
+        left: 0,
+        top: '64px', // 距离顶部导航栏下方
+        bottom: 0,
       }}
     >
       <div
