@@ -26,7 +26,6 @@
 ├── commitlint.config.js # Commitlint 配置
 ├── eslint.config.mjs  # ESLint 配置
 ├── .prettierrc        # Prettier 配置
-├── tsconfig.json      # TypeScript 配置
 ├── package.json       # 项目依赖配置
 └── README.md          # 项目说明文档
 ```
