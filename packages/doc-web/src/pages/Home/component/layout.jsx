@@ -1,11 +1,13 @@
 import React from 'react';
 import { FolderOpenOutlined } from '@ant-design/icons';
-import { Breadcrumb, Layout, Menu, theme } from 'antd';
+import { Breadcrumb, Layout, Menu, theme, Button } from 'antd';
+import DocEditor from '../../DocEditor';
+import 'quill/dist/quill.snow.css';
 const { Header, Content, Sider } = Layout;
 // TODO: mock数据来的
 const EditorList = ['1', '2', '3'].map(key => ({
   key,
-  label: `当前编辑用户名 ${key}`,
+  label: `最近访问文档 ${key}`,
 }));
 
 // TODO: mock数据来的
@@ -29,7 +31,7 @@ const LayoutComponent = () => {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
   return (
-    <Layout>
+    <Layout style={{ height: '100vh' }}>
       <Header style={{ display: 'flex', alignItems: 'center' }}>
         <div className="demo-logo" />
         <Menu
@@ -39,7 +41,7 @@ const LayoutComponent = () => {
           style={{ flex: 1, minWidth: 0 }}
         />
       </Header>
-      <Layout>
+      <Layout style={{ height: 'calc(100vh - 64px)' }}>
         <Sider width={200} style={{ background: colorBgContainer }}>
           <Menu
             mode="inline"
@@ -59,11 +61,12 @@ const LayoutComponent = () => {
             style={{
               padding: 24,
               margin: 0,
-              minHeight: '100vh',
+              height: 'calc(100vh - 64px - 24px - 16px - 24px)',
               display: 'flex',
               flexDirection: 'column',
               background: colorBgContainer,
               borderRadius: borderRadiusLG,
+              overflow: 'hidden',
             }}
           >
             <Header
@@ -72,11 +75,15 @@ const LayoutComponent = () => {
                 height: '50px',
                 alignItems: 'center',
                 justifyContent: 'flex-end',
+                padding: '0 16px',
+                background: 'transparent',
               }}
             >
-              <button>保存</button>
+              <Button type="primary">保存</Button>
             </Header>
-            Content
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <DocEditor />
+            </div>
           </Content>
         </Layout>
       </Layout>
