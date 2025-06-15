@@ -1,3 +1,5 @@
+import LayoutComponent from './component/layout';
+
 export default function Home() {
-  return <div>Home</div>;
+  return <LayoutComponent />;
 }
