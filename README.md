@@ -76,4 +76,3 @@ chmod +x commit.sh
 
 MIT
 
-11
