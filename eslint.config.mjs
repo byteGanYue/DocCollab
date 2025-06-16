@@ -15,6 +15,7 @@ export default [
       'no-undef': 'off',
       'no-unused-expressions': 'off',
       'no-unused-labels': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
     },
   },
 ];

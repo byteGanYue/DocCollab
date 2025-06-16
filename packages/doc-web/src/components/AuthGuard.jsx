@@ -19,9 +19,13 @@ const AuthGuard = () => {
     } else {
       try {
         // 验证用户信息是否有效
-        JSON.parse(userInfo);
-        // 有效的登录状态，跳转到主页
-        navigate('/home', { replace: true });
+        const parsedUserInfo = JSON.parse(userInfo);
+        if (typeof parsedUserInfo === 'object' && parsedUserInfo !== null) {
+          // 有效的登录状态，跳转到主页
+          navigate('/home', { replace: true });
+        } else {
+          throw new Error('Invalid user info format');
+        }
       } catch {
         // 用户信息解析失败，清除无效数据并跳转到登录页
         localStorage.removeItem('token');
