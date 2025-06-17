@@ -32,6 +32,8 @@ const LoginForm = () => {
   const [loading, setLoading] = useState(false);
   const [thirdPartyLoading, setThirdPartyLoading] = useState(null);
   const navigate = useNavigate();
+  // 消息提示
+  const [messageApi, contextHolder] = message.useMessage();
 
   /**
    * 模拟邮箱登录
@@ -60,14 +62,14 @@ const LoginForm = () => {
       localStorage.setItem('token', mockToken);
       localStorage.setItem('user', JSON.stringify(mockUser));
 
-      message.success(`欢迎回来，${mockUser.username}！`);
+      messageApi.success(`欢迎回来，${mockUser.username}！`);
 
       // 延迟跳转，让用户看到成功消息
       setTimeout(() => {
         navigate('/home');
       }, 800);
     } catch {
-      message.error('登录失败，请稍后重试');
+      messageApi.error('登录失败，请稍后重试');
     } finally {
       setLoading(false);
     }
@@ -80,7 +82,7 @@ const LoginForm = () => {
   const handleThirdPartyLogin = async provider => {
     setThirdPartyLoading(provider);
     try {
-      message.info(
+      messageApi.info(
         `正在通过 ${provider === 'google' ? 'Google' : 'GitHub'} 登录...`,
       );
 
@@ -109,14 +111,14 @@ const LoginForm = () => {
       localStorage.setItem('token', mockToken);
       localStorage.setItem('user', JSON.stringify(mockUser));
 
-      message.success(`通过 ${providerNames[provider]} 登录成功！`);
+      messageApi.success(`通过 ${providerNames[provider]} 登录成功！`);
 
       // 延迟跳转
       setTimeout(() => {
         navigate('/home');
       }, 800);
     } catch {
-      message.error(`${provider} 登录失败，请稍后重试`);
+      messageApi.error(`${provider} 登录失败，请稍后重试`);
     } finally {
       setThirdPartyLoading(null);
     }
@@ -126,7 +128,7 @@ const LoginForm = () => {
    * 跳转到注册页面
    */
   const handleGoToRegister = () => {
-    message.info('注册功能正在开发中...');
+    messageApi.info('注册功能正在开发中...');
   };
 
   return (
@@ -161,6 +163,7 @@ const LoginForm = () => {
               size="large"
               className="login-form"
             >
+              {contextHolder}
               <Form.Item
                 name="email"
                 label="邮箱"
@@ -210,6 +213,7 @@ const LoginForm = () => {
             </Divider>
 
             <Space direction="vertical" style={{ width: '100%' }}>
+              {/* google 登录按钮 */}
               <Button
                 icon={<GoogleOutlined />}
                 block
@@ -221,6 +225,7 @@ const LoginForm = () => {
                 使用 Google 登录
               </Button>
 
+              {/* github 登录按钮 */}
               <Button
                 icon={<GithubOutlined />}
                 block
@@ -245,6 +250,7 @@ const LoginForm = () => {
             <div className="login-footer">
               <Text>
                 还没有账号？
+                {contextHolder}
                 <Link onClick={handleGoToRegister}>立即注册</Link>
               </Text>
             </div>
