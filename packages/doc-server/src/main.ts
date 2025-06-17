@@ -1,28 +1,39 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ValidationPipe, Logger } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const logger = new Logger('Bootstrap');
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn', 'debug', 'log', 'verbose'],
+  });
 
-  // 启用全局验证管道
+  // 全局前缀
+  app.setGlobalPrefix('api');
+  // 全局错误处理
   app.useGlobalPipes(
     new ValidationPipe({
-      transform: true, // 自动转换类型
-      whitelist: true, // 过滤掉不在 DTO 中的属性
-      forbidNonWhitelisted: true, // 如果有额外属性则抛出错误
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
     }),
   );
 
-  // 启用 CORS
-  app.enableCors({
-    origin: true,
-    credentials: true,
-  });
+  // Swagger配置
+  const options = new DocumentBuilder()
+    .setTitle('DocCollab API')
+    .setDescription('DocCollab API documentation')
+    .setVersion('1.0')
+    .build();
+  const document = SwaggerModule.createDocument(app, options);
+  SwaggerModule.setup('api/docs', app, document);
 
-  const port = process.env.PORT || 3001;
+  // 启用CORS
+  app.enableCors();
+
+  const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  console.log(`🚀 DocCollab 服务器运行在端口 ${port}`);
-  console.log(`📊 数据库: MongoDB`);
+  logger.log(`Application is running on: http://localhost:${port}`);
 }
 bootstrap();

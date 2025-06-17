@@ -1,70 +1,94 @@
-# DocCollab 前端监控平台
+# DocCollab
 
-## 🌟 核心价值
+一个协同富文本知识库系统。
 
-- 一站式前端监控解决方案，覆盖性能、异常、行为全链路监控
-- 开箱即用的轻量级SDK，接入成本低
-- 面向开发者友好的可视化分析平台
+## ✨ 特性
 
-## 🛠 核心功能
+- **Monorepo 架构**: 使用 pnpm workspace 管理多个包，便于协同开发和代码复用。
+- **强大的工程化工具**:
 
-### 性能监控
+  - **ESLint & Prettier**: 统一代码风格和质量，支持最新的 ESLint 9.x。
+  - **Husky & Lint-staged**: 自动化 Git Hooks，确保提交代码的质量。
+  - **Commitlint & Commitizen**: 规范化 Git 提交信息，提升项目可维护性。
 
-- ⏱️ **关键指标监控**：FP/FCP/LCP/FID/CLS等Web Vitals指标
-- 📊 **资源加载分析**：DNS/TCP/TTFB等详细时序数据
-- 🌐 **API监控**：AJAX/Fetch请求全链路追踪
+- **核心功能**:
+  - **实时协作**: 支持多人同时编辑文档，实时同步变更。
+  - **富文本编辑**: 基于 Quill 编辑器，支持文本格式化、图片插入、表格等富文本功能。
+  - **文档管理**: 支持文档的创建、编辑、删除、移动等基本操作。
+  - **版本历史**: 自动保存文档历史版本，支持版本对比和回滚。
+  - **评论系统**: 支持文档内评论和讨论功能。
+  - **搜索功能**: 全文搜索，支持按标题、内容、标签等多维度搜索。
 
-### 错误监控
+## 🛠️ 技术选型
 
-- 🐞 **JavaScript错误**：运行时错误、语法错误捕获
-- ⚠️ **资源错误**：脚本、图片等加载失败监控
-- 🔄 **Promise异常**：未捕获的Promise rejection
-- ⚪ **智能白屏检测**：基于DOM变化的自动检测算法
+### 前端技术栈
 
-### 用户行为
+- **框架**: React
+- **状态管理**: Zustand
+- **UI 组件库**: Ant Design
+- **富文本编辑器**: Quill
+- **构建工具**: Vite
+- **协同算法**：Yjs
 
-- 👥 **访问统计**：PV/UV统计与分析
-- 🛣️ **路由追踪**：SPA路由跳转记录
-- 🖱️ **行为记录**：用户点击、滚动等交互行为
+### 后端技术栈
 
-## 🚀 技术优势
+- **运行时**: Node.js
+- **框架**: NestJS
+- **数据库**: PostgreSQL
+- **ORM**: Prisma
+- **API 文档**: Swagger
 
-### 架构设计
+### 开发工具
 
-- 🧩 **模块化插件**：各功能独立可插拔
-- 📦 **Monorepo管理**：基于pnpm workspace的多包管理
-- 🔗 **双模块支持**：ESM/CJS双模式输出
+- **版本控制**: Git
+- **CI/CD**: GitHub Actions
 
-### 工程化
+## 📁 项目结构
 
-- ⚡ **高效构建**：Rollup + rsbuild双构建体系
-- 🌳 **Tree Shaking**：按需打包优化体积
-- 🛡️ **类型安全**：完整的TypeScript类型定义
+```
+.
+├── packages/          # 项目包目录
+│   ├── doc-server/    # 服务端
+│   ├── doc-web/       # Web 前端
+│   └── doc-docs/      # 项目文档
+├── .github/           # GitHub 配置
+├── .husky/            # Git Hooks 配置
+├── commitlint.config.js # Commitlint 配置
+├── eslint.config.mjs  # ESLint 配置
+├── .prettierrc        # Prettier 配置
+├── package.json       # 项目依赖配置
+└── README.md          # 项目说明文档
+```
 
-### 性能优化
+## 🚀 快速开始
 
-- 📦 **批量上报**：减少网络请求次数
-- ⏳ **失败重试**：自动重试失败的上报
-- 🔄 **缓存机制**：离线数据本地存储
+### 📦 安装依赖
 
-## ✨ 特色功能
+```bash
+pnpm install
+```
 
-### 操作录屏
+### 🏃‍♂️ 启动项目
 
-- 🎥 **基于rrweb**：完整还原用户操作场景
-- ⏱️ **可配置时长**：灵活设置录屏时间
-- 📁 **分段存储**：优化大数据量处理
+```bash
+# 启动 Web 前端
+pnpm dev:doc-web
 
-### 智能分析
+# 启动服务端
+pnpm start:doc-server
 
-- 📈 **健康评分**：综合性能指标计算应用健康度
-- 🔍 **根因分析**：自动关联异常与性能问题
-- 🛠️ **修复建议**：基于常见问题的解决方案推荐
+# 启动文档站点
+pnpm docs:dev
+```
 
----
+### 💬 Git 提交
 
-📌 **开源信息**  
-项目由 [byteGanYue团队](https://byteGanYue.github.io/DocCollab/about.html) 维护，采用 MIT 许可证  
-📧 反馈建议：contact@DocCollab.com  
-🐞 Issue提交：GitHub Issues  
-📚 完整文档：https://byteGanYue.github.io/DocCollab/docs
+项目提供了跨平台的便捷提交脚本，帮助您规范提交信息：
+
+```
+pnpm commit
+```
+
+## 📄 许可证
+
+MIT

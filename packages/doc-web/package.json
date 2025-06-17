@@ -13,6 +13,7 @@
     "@ant-design/icons": "^6.0.0",
     "ant-design": "^1.0.0",
     "antd": "^5.26.0",
+    "axios": "^1.10.0",
     "do_username": "^1.0.0",
     "quill": "^2.0.3",
     "quill-cursors": "^4.0.4",

@@ -1,24 +1,21 @@
-import {
-  IsEmail,
-  IsNotEmpty,
-  IsString,
-  MinLength,
-  MaxLength,
-} from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsEmail, MinLength } from 'class-validator';
 
 export class CreateUserDto {
-  @IsNotEmpty({ message: '用户名不能为空' })
-  @IsString({ message: '用户名必须是字符串' })
-  @MinLength(3, { message: '用户名至少3个字符' })
-  @MaxLength(50, { message: '用户名最多50个字符' })
+  @ApiProperty({ description: '用户名', example: 'john_doe' })
+  @IsString()
+  @MinLength(2)
   username: string;
 
-  @IsNotEmpty({ message: '邮箱不能为空' })
-  @IsEmail({}, { message: '邮箱格式不正确' })
+  @ApiProperty({ description: '电子邮箱', example: 'john@example.com' })
+  @IsEmail()
   email: string;
 
-  @IsNotEmpty({ message: '密码不能为空' })
-  @IsString({ message: '密码必须是字符串' })
-  @MinLength(6, { message: '密码至少6个字符' })
+  @ApiProperty({ description: '密码', example: 'password123' })
+  @IsString()
+  @MinLength(6)
   password: string;
+
+  @ApiProperty({ description: '文件夹ID', example: 'folder123' })
+  folderId?: string; // 可选字段，假设是字符串类型
 }
