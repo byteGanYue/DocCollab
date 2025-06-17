@@ -17,6 +17,9 @@ importers:
       '@eslint/js':
         specifier: ^9.21.0
         version: 9.29.0
+      '@types/node':
+        specifier: ^22.10.7
+        version: 22.15.31
       commitizen:
         specifier: ^4.3.1
         version: 4.3.1(@types/node@22.15.31)(typescript@5.8.3)
