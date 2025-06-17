@@ -36,6 +36,31 @@ const EllipsisLabel = ({ text }) => (
   </Tooltip>
 );
 
+// 按钮样式
+const buttonStyle = {
+  height: 30,
+  minWidth: 55,
+  background:
+    'linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%)',
+  border: 'none',
+  color: 'white',
+  fontWeight: 500,
+  transition: 'all 0.3s ease',
+  borderRadius: '6px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '4px',
+};
+
+const buttonHoverStyle = {
+  ...buttonStyle,
+  background:
+    'linear-gradient(135deg, var(--color-hover) 0%, var(--color-primary) 100%)',
+  transform: 'translateY(-1px)',
+  boxShadow: '0 4px 12px rgba(24, 144, 255, 0.4)',
+};
+
 // TODO: mock数据来的
 const initialFolderList = [
   {
@@ -111,6 +136,46 @@ const FolderMenu = () => {
     oldName: '',
     newName: '',
   });
+  // 新增：按钮悬停状态
+  const [hoveredButton, setHoveredButton] = useState(null);
+
+  // 注入菜单主题色样式
+  React.useEffect(() => {
+    const styleId = 'folder-menu-theme-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        .folder-menu-theme .ant-menu-item-selected {
+          color: var(--color-primary) !important;
+          background-color: rgba(24, 144, 255, 0.1) !important;
+        }
+        
+        .folder-menu-theme .ant-menu-item:hover {
+          color: var(--color-primary) !important;
+          background-color: rgba(24, 144, 255, 0.05) !important;
+        }
+        
+        .folder-menu-theme .ant-menu-submenu-title:hover {
+          color: var(--color-primary) !important;
+          background-color: rgba(24, 144, 255, 0.05) !important;
+        }
+        
+        .folder-menu-theme .ant-menu-submenu-selected > .ant-menu-submenu-title {
+          color: var(--color-primary) !important;
+        }
+        
+        .folder-menu-theme .ant-menu-item-selected .ant-menu-title-content {
+          color: var(--color-primary) !important;
+        }
+        
+        .folder-menu-theme .ant-menu-submenu-selected .ant-menu-title-content {
+          color: var(--color-primary) !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
 
   const handleMenuSelect = ({ selectedKeys }) => {
     setSelectedKeys(selectedKeys);
@@ -304,24 +369,30 @@ const FolderMenu = () => {
       <div
         style={{
           display: 'flex',
-          gap: 8,
-          padding: '12px 8px',
+          gap: 12,
+          padding: '16px 12px',
           borderBottom: '1px solid #f0f0f0',
           background: colorBgContainer,
         }}
       >
         <Tooltip title="新建文件">
           <Button
-            icon={<PlusSquareOutlined />}
+            icon={<PlusSquareOutlined style={{ fontSize: '20px' }} />}
             onClick={handleAddFile}
-            size="small"
+            size="middle"
+            style={hoveredButton === 'file' ? buttonHoverStyle : buttonStyle}
+            onMouseEnter={() => setHoveredButton('file')}
+            onMouseLeave={() => setHoveredButton(null)}
           />
         </Tooltip>
         <Tooltip title="新建文件夹">
           <Button
-            icon={<FolderAddOutlined />}
+            icon={<FolderAddOutlined style={{ fontSize: '20px' }} />}
             onClick={handleAddFolder}
-            size="small"
+            size="middle"
+            style={hoveredButton === 'folder' ? buttonHoverStyle : buttonStyle}
+            onMouseEnter={() => setHoveredButton('folder')}
+            onMouseLeave={() => setHoveredButton(null)}
           />
         </Tooltip>
       </div>

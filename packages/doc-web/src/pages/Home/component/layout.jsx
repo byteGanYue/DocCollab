@@ -9,7 +9,6 @@ import {
   Breadcrumb,
   Layout,
   Menu,
-  theme,
   Button,
   Avatar,
   Dropdown,
@@ -41,6 +40,29 @@ const addStyles = () => {
       .user-status-info:hover {
         color: #333 !important;
       }
+      
+      /* 顶部导航栏菜单选中项样式 - 使用更强的选择器 */
+      .header-menu.ant-menu-dark .ant-menu-item-selected,
+      .header-menu.ant-menu-dark .ant-menu-item-selected:hover {
+        color: white !important;
+        border-bottom-color: white !important;
+        background-color: transparent !important;
+      }
+      
+      .header-menu.ant-menu-dark .ant-menu-item:hover {
+        color: white !important;
+        border-bottom-color: rgba(255, 255, 255, 0.3) !important;
+        background-color: transparent !important;
+      }
+      
+      /* 确保选中项的文字内容也是白色 */
+      .header-menu.ant-menu-dark .ant-menu-item-selected .ant-menu-title-content {
+        color: white !important;
+      }
+      
+      .header-menu.ant-menu-dark .ant-menu-item:hover .ant-menu-title-content {
+        color: white !important;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -55,10 +77,8 @@ const EditorList = ['1', '2', '3'].map(key => ({
 const LayoutComponent = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedMenuKey, setSelectedMenuKey] = useState(['1']); // 默认选中第一个
   const navigate = useNavigate();
-  const {
-    token: { colorBgContainer, borderRadiusLG },
-  } = theme.useToken();
 
   // 获取用户信息并初始化样式
   useEffect(() => {
@@ -136,7 +156,9 @@ const LayoutComponent = () => {
             theme="dark"
             mode="horizontal"
             items={EditorList}
-            className={styles.menu}
+            className={`${styles.menu} header-menu`}
+            selectedKeys={selectedMenuKey}
+            onSelect={key => setSelectedMenuKey(key.keyPath)}
           />
         </div>
 
@@ -161,14 +183,6 @@ const LayoutComponent = () => {
         <Sider width={280} className={styles.sider}>
           <div className={styles.siderContent}>
             <FolderMenu />
-            <Button
-              type="primary"
-              icon={<FolderOpenOutlined />}
-              className={styles.addButton}
-              onClick={() => message.info('新建文件夹功能开发中...')}
-            >
-              新建文件夹
-            </Button>
           </div>
         </Sider>
         <Content className={styles.content}>

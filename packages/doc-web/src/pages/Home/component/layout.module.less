@@ -53,13 +53,14 @@
                 border-bottom: 2px solid transparent;
 
                 &:hover {
-                    color: white;
-                    border-bottom-color: rgba(255, 255, 255, 0.3);
+                    color: white !important;
+                    border-bottom-color: rgba(255, 255, 255, 0.3) !important;
                 }
 
                 &.ant-menu-item-selected {
-                    color: white;
-                    border-bottom-color: white;
+                    color: white !important;
+                    border-bottom-color: white !important;
+                    background-color: transparent !important;
                 }
             }
         }
@@ -164,26 +165,7 @@
             }
         }
 
-        .addButton {
-            margin: 16px;
-            height: 40px;
-            border-radius: var(--border-radius-base);
-            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
-            border: none;
-            color: white;
-            font-weight: 500;
-            transition: var(--transition);
 
-            &:hover {
-                background: linear-gradient(135deg, var(--color-hover) 0%, var(--color-primary) 100%);
-                transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
-            }
-
-            .icon {
-                margin-right: 8px;
-            }
-        }
     }
 }
 
