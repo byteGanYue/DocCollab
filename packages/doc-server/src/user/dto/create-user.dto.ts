@@ -4,7 +4,7 @@ import { IsString, IsEmail, MinLength } from 'class-validator';
 export class CreateUserDto {
   @ApiProperty({ description: '用户名', example: 'john_doe' })
   @IsString()
-  @MinLength(3)
+  @MinLength(2)
   username: string;
 
   @ApiProperty({ description: '电子邮箱', example: 'john@example.com' })
@@ -15,4 +15,7 @@ export class CreateUserDto {
   @IsString()
   @MinLength(6)
   password: string;
+
+  @ApiProperty({ description: '文件夹ID', example: 'folder123' })
+  folderId?: string; // 可选字段，假设是字符串类型
 }
