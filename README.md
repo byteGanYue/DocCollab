@@ -34,9 +34,9 @@
 
 - **运行时**: Node.js
 - **框架**: NestJS
-- **数据库**: PostgreSQL
-- **ORM**: Prisma
-- **API 文档**: Swagger
+- **数据库**: mongoDB
+- **ORM**: mongoose
+- **API 文档**: Swagger  路径：http://localhost:3000/api/docs
 
 ### 开发工具
 
