@@ -1,0 +1,309 @@
+@import '../../../../styles/global.less';
+
+.layout {
+    height: 100vh;
+    background-color: #f0f2f5;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    background: linear-gradient(135deg, @primary-color 0%, #40a9ff 100%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+    .headerLeft {
+        display: flex;
+        align-items: center;
+        flex: 1;
+
+        .logo {
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            margin-right: 32px;
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+
+            &:hover {
+                color: rgba(255, 255, 255, 0.9);
+            }
+        }
+
+        .menu {
+            flex: 1;
+            min-width: 0;
+            background: transparent;
+            border: none;
+
+            :global(.ant-menu-item) {
+                color: rgba(255, 255, 255, 0.8);
+                border-bottom: 2px solid transparent;
+
+                &:hover {
+                    color: white;
+                    border-bottom-color: rgba(255, 255, 255, 0.3);
+                }
+
+                &.ant-menu-item-selected {
+                    color: white;
+                    border-bottom-color: white;
+                }
+            }
+        }
+    }
+
+    .headerRight {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+
+        .userInfo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: @border-radius-base;
+            cursor: pointer;
+            transition: all 0.3s ease;
+
+            &:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+            }
+
+            .avatar {
+                border: 2px solid rgba(255, 255, 255, 0.3);
+            }
+
+            .userName {
+                color: white;
+                font-weight: 500;
+                margin-left: 8px;
+            }
+        }
+
+        .dropdown {
+            .dropdownItem {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 16px;
+                transition: background-color 0.3s ease;
+
+                &:hover {
+                    background-color: rgba(24, 144, 255, 0.1);
+                }
+
+                .icon {
+                    font-size: 16px;
+                }
+            }
+        }
+    }
+}
+
+.sider {
+    background-color: #fff;
+    border-right: 1px solid @border-color-base;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+
+    .siderContent {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+
+        .folderMenu {
+            flex: 1;
+            border: none;
+            background-color: transparent;
+
+            :global(.ant-menu-item) {
+                margin: 4px 8px;
+                border-radius: @border-radius-base;
+                transition: all 0.3s ease;
+
+                &:hover {
+                    background-color: rgba(24, 144, 255, 0.1);
+                    color: @primary-color;
+                }
+
+                &.ant-menu-item-selected {
+                    background-color: @primary-color;
+                    color: white;
+
+                    &:hover {
+                        background-color: #40a9ff;
+                    }
+                }
+            }
+
+            :global(.ant-menu-submenu) {
+                .ant-menu-submenu-title {
+                    margin: 4px 8px;
+                    border-radius: @border-radius-base;
+                    transition: all 0.3s ease;
+
+                    &:hover {
+                        background-color: rgba(24, 144, 255, 0.1);
+                        color: @primary-color;
+                    }
+                }
+            }
+        }
+
+        .addButton {
+            margin: 16px;
+            height: 40px;
+            border-radius: @border-radius-base;
+            background: linear-gradient(135deg, @primary-color 0%, #40a9ff 100%);
+            border: none;
+            color: white;
+            font-weight: 500;
+            transition: all 0.3s ease;
+
+            &:hover {
+                background: linear-gradient(135deg, #40a9ff 0%, @primary-color 100%);
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+            }
+
+            .icon {
+                margin-right: 8px;
+            }
+        }
+    }
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+    border-radius: @border-radius-base;
+    margin: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+    .contentHeader {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 24px;
+        border-bottom: 1px solid @border-color-base;
+        background-color: #fafafa;
+
+        .breadcrumb {
+            font-size: @font-size-base;
+            color: @text-color;
+
+            :global(.ant-breadcrumb-link) {
+                color: @text-color-secondary;
+
+                &:hover {
+                    color: @primary-color;
+                }
+            }
+
+            :global(.ant-breadcrumb-separator) {
+                color: @text-color-secondary;
+            }
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+
+            .actionButton {
+                height: 32px;
+                border-radius: @border-radius-base;
+                font-weight: 500;
+                transition: all 0.3s ease;
+
+                &.primary {
+                    background: linear-gradient(135deg, @primary-color 0%, #40a9ff 100%);
+                    border: none;
+                    color: white;
+
+                    &:hover {
+                        background: linear-gradient(135deg, #40a9ff 0%, @primary-color 100%);
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+                    }
+                }
+
+                &.default {
+                    border: 1px solid @border-color-base;
+                    background-color: white;
+                    color: @text-color;
+
+                    &:hover {
+                        border-color: @primary-color;
+                        color: @primary-color;
+                    }
+                }
+            }
+        }
+    }
+
+    .contentBody {
+        flex: 1;
+        overflow: hidden;
+        padding: 0;
+    }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+    .header {
+        padding: 0 16px;
+
+        .headerLeft {
+            .logo {
+                font-size: 18px;
+                margin-right: 16px;
+            }
+
+            .menu {
+                display: none;
+            }
+        }
+
+        .headerRight {
+            .userInfo {
+                .userName {
+                    display: none;
+                }
+            }
+        }
+    }
+
+    .sider {
+        .siderContent {
+            .addButton {
+                margin: 12px;
+                height: 36px;
+                font-size: 14px;
+            }
+        }
+    }
+
+    .content {
+        margin: 8px;
+
+        .contentHeader {
+            padding: 12px 16px;
+            flex-direction: column;
+            gap: 12px;
+            align-items: stretch;
+
+            .breadcrumb {
+                font-size: 14px;
+            }
+
+            .actions {
+                justify-content: center;
+            }
+        }
+    }
+}

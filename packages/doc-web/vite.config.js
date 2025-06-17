@@ -19,4 +19,21 @@ export default defineConfig({
       '@assets': path.resolve(__dirname, './src/assets'),
     },
   },
+  css: {
+    modules: {
+      // 启用 CSS Modules
+      localsConvention: 'camelCase', // 支持驼峰命名
+      generateScopedName: '[name]__[local]___[hash:base64:5]', // 自定义类名生成规则
+    },
+    preprocessorOptions: {
+      less: {
+        // Less 配置
+        javascriptEnabled: true, // 支持 JavaScript 表达式
+        modifyVars: {
+          // 可以在这里定义全局 Less 变量
+          'primary-color': '#1890ff',
+        },
+      },
+    },
+  },
 });

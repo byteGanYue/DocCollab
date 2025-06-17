@@ -1,0 +1,141 @@
+@import '../../../styles/global.less';
+
+.editorContainer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: #fff;
+    border-radius: @border-radius-base;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.editorHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid @border-color-base;
+    background-color: #fafafa;
+
+    .usernameInput {
+        width: 200px;
+        padding: 8px 12px;
+        border: 1px solid @border-color-base;
+        border-radius: @border-radius-base;
+        font-size: @font-size-base;
+        transition: border-color 0.3s ease;
+
+        &:focus {
+            outline: none;
+            border-color: @primary-color;
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+
+        &::placeholder {
+            color: @text-color-secondary;
+        }
+    }
+
+    .usersList {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        .userItem {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            background-color: rgba(0, 0, 0, 0.05);
+            font-size: 12px;
+            font-weight: 500;
+
+            &::before {
+                content: '•';
+                font-size: 16px;
+                line-height: 1;
+            }
+        }
+    }
+}
+
+.editorWrapper {
+    flex: 1;
+    padding: 24px;
+    overflow: hidden;
+
+    .quillEditor {
+        height: 100%;
+        border: none;
+        outline: none;
+
+        // 自定义 Quill 编辑器样式
+        :global(.ql-container) {
+            border: none;
+            font-size: @font-size-base;
+            line-height: 1.6;
+        }
+
+        :global(.ql-toolbar) {
+            border: none;
+            border-bottom: 1px solid @border-color-base;
+            background-color: #fafafa;
+            padding: 12px 16px;
+        }
+
+        :global(.ql-editor) {
+            min-height: 400px;
+            padding: 16px;
+            line-height: 1.6;
+
+            &::before {
+                color: @text-color-secondary;
+                font-style: italic;
+            }
+        }
+
+        // 光标样式
+        :global(.ql-cursor) {
+            border-left: 2px solid;
+            border-radius: 0;
+        }
+
+        :global(.ql-cursor-caret) {
+            background-color: transparent;
+        }
+    }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+    .editorHeader {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+
+        .usernameInput {
+            width: 100%;
+        }
+
+        .usersList {
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+    }
+
+    .editorWrapper {
+        padding: 16px;
+
+        .quillEditor {
+            :global(.ql-toolbar) {
+                padding: 8px 12px;
+            }
+
+            :global(.ql-editor) {
+                padding: 12px;
+                min-height: 300px;
+            }
+        }
+    }
+}

@@ -5,6 +5,7 @@ import { QuillBinding } from 'y-quill';
 import Quill from 'quill';
 import QuillCursors from 'quill-cursors';
 import DoUsername from 'do_username';
+import styles from './editor.module.less';
 
 // 注册 Quill 光标模块
 Quill.register('modules/cursors', QuillCursors);
@@ -112,29 +113,29 @@ const Editor = () => {
   };
 
   return (
-    <div className="editor-container">
-      <div className="editor-header">
+    <div className={styles.editorContainer}>
+      <div className={styles.editorHeader}>
         <input
           type="text"
           value={username}
           onChange={handleUsernameChange}
           placeholder="输入用户名"
-          className="username-input"
+          className={styles.usernameInput}
         />
-        <div className="users-list">
+        <div className={styles.usersList}>
           {users.map((user, index) => (
             <div
               key={index}
               style={{ color: user.color }}
-              className="user-item"
+              className={styles.userItem}
             >
               • {user.name}
             </div>
           ))}
         </div>
       </div>
-      <div className="editor-wrapper">
-        <div id="editor" ref={editorRef} className="quill-editor" />
+      <div className={styles.editorWrapper}>
+        <div id="editor" ref={editorRef} className={styles.quillEditor} />
       </div>
     </div>
   );
