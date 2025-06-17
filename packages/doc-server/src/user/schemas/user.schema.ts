@@ -13,6 +13,9 @@ export class User {
 
   @Prop({ required: true })
   password: string;
+
+  @Prop({ default: null, unique: true })
+  folderId: string; // 文件夹ID，假设是字符串类型
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

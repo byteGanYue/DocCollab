@@ -12,6 +12,13 @@ export class UserService {
 
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
+  /**
+   * 创建一个新用户
+   *
+   * @param createUserDto 用户信息对象，包含用户名、邮箱和密码
+   * @returns 创建的用户对象
+   * @throws 如果创建过程中发生错误，将抛出异常
+   */
   async create(createUserDto: CreateUserDto) {
     try {
       const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
@@ -19,6 +26,8 @@ export class UserService {
         username: createUserDto.username,
         email: createUserDto.email,
         password: hashedPassword,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
       this.logger.log(`Created user: ${user.username}`);
       return user;

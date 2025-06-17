@@ -3,4 +3,6 @@ export class User {
   username: string;
   email: string;
   password: string;
+  folderId: number;
+  createdAt: Date;
 }
