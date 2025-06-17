@@ -1,8 +1,18 @@
-@import '../../../../styles/global.less';
+@import '@/styles/global.less';
 
 .layout {
     height: 100vh;
-    background-color: #f0f2f5;
+    background-color: var(--color-background);
+}
+
+.loadingContainer,
+.errorContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-size: 16px;
+    color: var(--color-textSecondary);
 }
 
 .header {
@@ -10,8 +20,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 24px;
-    background: linear-gradient(135deg, @primary-color 0%, #40a9ff 100%);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
+    box-shadow: var(--box-shadow);
 
     .headerLeft {
         display: flex;
@@ -65,9 +75,10 @@
             align-items: center;
             gap: 8px;
             padding: 8px 12px;
-            border-radius: @border-radius-base;
+            border-radius: var(--border-radius-base);
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: var(--transition);
+            color: white;
 
             &:hover {
                 background-color: rgba(255, 255, 255, 0.1);
@@ -106,7 +117,7 @@
 
 .sider {
     background-color: #fff;
-    border-right: 1px solid @border-color-base;
+    border-right: 1px solid var(--color-border);
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
 
     .siderContent {
@@ -121,20 +132,20 @@
 
             :global(.ant-menu-item) {
                 margin: 4px 8px;
-                border-radius: @border-radius-base;
-                transition: all 0.3s ease;
+                border-radius: var(--border-radius-base);
+                transition: var(--transition);
 
                 &:hover {
                     background-color: rgba(24, 144, 255, 0.1);
-                    color: @primary-color;
+                    color: var(--color-primary);
                 }
 
                 &.ant-menu-item-selected {
-                    background-color: @primary-color;
+                    background-color: var(--color-primary);
                     color: white;
 
                     &:hover {
-                        background-color: #40a9ff;
+                        background-color: var(--color-hover);
                     }
                 }
             }
@@ -142,12 +153,12 @@
             :global(.ant-menu-submenu) {
                 .ant-menu-submenu-title {
                     margin: 4px 8px;
-                    border-radius: @border-radius-base;
-                    transition: all 0.3s ease;
+                    border-radius: var(--border-radius-base);
+                    transition: var(--transition);
 
                     &:hover {
                         background-color: rgba(24, 144, 255, 0.1);
-                        color: @primary-color;
+                        color: var(--color-primary);
                     }
                 }
             }
@@ -156,15 +167,15 @@
         .addButton {
             margin: 16px;
             height: 40px;
-            border-radius: @border-radius-base;
-            background: linear-gradient(135deg, @primary-color 0%, #40a9ff 100%);
+            border-radius: var(--border-radius-base);
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
             border: none;
             color: white;
             font-weight: 500;
-            transition: all 0.3s ease;
+            transition: var(--transition);
 
             &:hover {
-                background: linear-gradient(135deg, #40a9ff 0%, @primary-color 100%);
+                background: linear-gradient(135deg, var(--color-hover) 0%, var(--color-primary) 100%);
                 transform: translateY(-1px);
                 box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
             }
@@ -180,33 +191,33 @@
     display: flex;
     flex-direction: column;
     background-color: #fff;
-    border-radius: @border-radius-base;
+    border-radius: var(--border-radius-base);
     margin: 16px;
     overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--box-shadow);
 
     .contentHeader {
         display: flex;
         align-items: center;
         justify-content: space-between;
         padding: 16px 24px;
-        border-bottom: 1px solid @border-color-base;
+        border-bottom: 1px solid var(--color-border);
         background-color: #fafafa;
 
         .breadcrumb {
-            font-size: @font-size-base;
-            color: @text-color;
+            font-size: var(--font-size-base);
+            color: var(--color-text);
 
             :global(.ant-breadcrumb-link) {
-                color: @text-color-secondary;
+                color: var(--color-textSecondary);
 
                 &:hover {
-                    color: @primary-color;
+                    color: var(--color-primary);
                 }
             }
 
             :global(.ant-breadcrumb-separator) {
-                color: @text-color-secondary;
+                color: var(--color-textSecondary);
             }
         }
 
@@ -216,30 +227,30 @@
 
             .actionButton {
                 height: 32px;
-                border-radius: @border-radius-base;
+                border-radius: var(--border-radius-base);
                 font-weight: 500;
-                transition: all 0.3s ease;
+                transition: var(--transition);
 
                 &.primary {
-                    background: linear-gradient(135deg, @primary-color 0%, #40a9ff 100%);
+                    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
                     border: none;
                     color: white;
 
                     &:hover {
-                        background: linear-gradient(135deg, #40a9ff 0%, @primary-color 100%);
+                        background: linear-gradient(135deg, var(--color-hover) 0%, var(--color-primary) 100%);
                         transform: translateY(-1px);
                         box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
                     }
                 }
 
                 &.default {
-                    border: 1px solid @border-color-base;
+                    border: 1px solid var(--color-border);
                     background-color: white;
-                    color: @text-color;
+                    color: var(--color-text);
 
                     &:hover {
-                        border-color: @primary-color;
-                        color: @primary-color;
+                        border-color: var(--color-primary);
+                        color: var(--color-primary);
                     }
                 }
             }

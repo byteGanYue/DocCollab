@@ -1,15 +1,59 @@
-// 全局样式变量
-@primary-color: #1890ff;
-@success-color: #52c41a;
-@warning-color: #faad14;
-@error-color: #f5222d;
-@font-size-base: 14px;
-@heading-color: rgba(0, 0, 0, 0.85);
-@text-color: rgba(0, 0, 0, 0.65);
-@text-color-secondary: rgba(0, 0, 0, 0.45);
-@disabled-color: rgba(0, 0, 0, 0.25);
-@border-radius-base: 6px;
-@border-color-base: #d9d9d9;
+// 全局样式变量 - 使用 CSS 变量实现主题切换
+:root {
+    // 默认主题变量（深空紫）
+    --color-primary: #805AD5;
+    --color-background: #FAF5FF;
+    --color-hover: #6B46C1;
+    --color-text: #2D3748;
+    --color-textSecondary: #4A5568;
+    --color-border: #E2E8F0;
+    --color-success: #48BB78;
+    --color-warning: #ED8936;
+    --color-error: #F56565;
+
+    // 其他设计变量
+    --font-size-base: 14px;
+    --border-radius-base: 6px;
+    --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+// 主题类名样式
+.theme-purple {
+    --color-primary: #805AD5;
+    --color-background: #FAF5FF;
+    --color-hover: #6B46C1;
+    --color-text: #2D3748;
+    --color-textSecondary: #4A5568;
+    --color-border: #E2E8F0;
+    --color-success: #48BB78;
+    --color-warning: #ED8936;
+    --color-error: #F56565;
+}
+
+.theme-blue {
+    --color-primary: #3A86FF;
+    --color-background: #F0F7FF;
+    --color-hover: #1A3A8F;
+    --color-text: #1A202C;
+    --color-textSecondary: #4A5568;
+    --color-border: #E2E8F0;
+    --color-success: #48BB78;
+    --color-warning: #ED8936;
+    --color-error: #F56565;
+}
+
+.theme-green {
+    --color-primary: #48BB78;
+    --color-background: #F0FFF4;
+    --color-hover: #2F855A;
+    --color-text: #2D3748;
+    --color-textSecondary: #4A5568;
+    --color-border: #E2E8F0;
+    --color-success: #38A169;
+    --color-warning: #ED8936;
+    --color-error: #F56565;
+}
 
 // 全局重置样式
 * {
@@ -22,10 +66,11 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
         'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif, 'Apple Color Emoji',
         'Segoe UI Emoji', 'Segoe UI Symbol';
-    font-size: @font-size-base;
+    font-size: var(--font-size-base);
     line-height: 1.5;
-    color: @text-color;
-    background-color: #f0f2f5;
+    color: var(--color-text);
+    background-color: var(--color-background);
+    transition: var(--transition);
 }
 
 // 通用工具类
@@ -55,4 +100,28 @@ body {
 
 .text-right {
     text-align: right;
+}
+
+// 主题切换动画
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+// 滚动条样式
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-textSecondary);
 }

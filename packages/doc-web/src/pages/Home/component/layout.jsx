@@ -19,6 +19,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import DocEditor from '../../DocEditor';
 import FolderMenu from './folderMenu';
+import ThemeSwitcher from '@/components/ThemeSwitcher';
+import styles from './layout.module.less';
 import 'quill/dist/quill.snow.css';
 
 // 添加样式到head
@@ -115,189 +117,80 @@ const LayoutComponent = () => {
 
   // 加载状态
   if (loading) {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-          fontSize: '16px',
-          color: '#666',
-        }}
-      >
-        正在加载...
-      </div>
-    );
+    return <div className={styles.loadingContainer}>正在加载...</div>;
   }
 
   // 如果没有用户信息，显示错误状态
   if (!user) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-          fontSize: '16px',
-          color: '#666',
-        }}
-      >
-        用户信息加载失败，请重新登录
-      </div>
+      <div className={styles.errorContainer}>用户信息加载失败，请重新登录</div>
     );
   }
   return (
-    <Layout style={{ height: '100vh' }}>
-      <Header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 24px',
-        }}
-      >
+    <Layout className={styles.layout}>
+      <Header className={styles.header}>
         {/* 左侧：Logo和菜单 */}
-        <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-          <div
-            style={{
-              color: 'white',
-              fontSize: '20px',
-              fontWeight: 'bold',
-              marginRight: '32px',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            📝 DocCollab
-          </div>
+        <div className={styles.headerLeft}>
+          <div className={styles.logo}>📝 DocCollab</div>
           <Menu
             theme="dark"
             mode="horizontal"
             items={EditorList}
-            style={{ flex: 1, minWidth: 0 }}
+            className={styles.menu}
           />
         </div>
 
-        {/* 右侧：用户信息 */}
-        <div style={{ marginLeft: '16px' }}>
+        {/* 右侧：主题切换器和用户信息 */}
+        <div className={styles.headerRight}>
+          <ThemeSwitcher />
           <Dropdown
             menu={{ items: userMenuItems }}
             placement="bottomRight"
             trigger={['click']}
           >
-            <Space
-              style={{
-                cursor: 'pointer',
-                color: 'white',
-                padding: '8px 12px',
-                borderRadius: '6px',
-                transition: 'background-color 0.3s',
-                alignItems: 'center',
-              }}
-              className="user-info-trigger"
-            >
-              <Avatar src={user.avatar} icon={<UserOutlined />} size="small" />
-              <span
-                style={{
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  marginLeft: '8px',
-                }}
-              >
-                {user.username}
+            <Space className={styles.userInfo}>
+              <Avatar className={styles.avatar} icon={<UserOutlined />} />
+              <span className={styles.userName}>
+                {user.username || user.email}
               </span>
             </Space>
           </Dropdown>
         </div>
       </Header>
-      <Layout style={{ height: 'calc(100vh - 64px)' }}>
-        <FolderMenu />
-        <Layout style={{ padding: '0 24px 24px', marginLeft: '200px' }}>
-          <Breadcrumb
-            items={[
-              { title: '首页' },
-              { title: '我的文档' },
-              { title: `欢迎，${user.username}` },
-            ]}
-            style={{ margin: '16px 0' }}
-          />
-          <Content
-            style={{
-              padding: 24,
-              margin: 0,
-              height: 'calc(100vh - 64px - 24px - 16px - 24px)',
-              display: 'flex',
-              flexDirection: 'column',
-              background: colorBgContainer,
-              borderRadius: borderRadiusLG,
-              overflow: 'hidden',
-            }}
-          >
-            <Header
-              style={{
-                display: 'flex',
-                height: '50px',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0 16px',
-                background: 'transparent',
-                borderBottom: '1px solid #f0f0f0',
-              }}
+      <Layout>
+        <Sider width={280} className={styles.sider}>
+          <div className={styles.siderContent}>
+            <FolderMenu />
+            <Button
+              type="primary"
+              icon={<FolderOpenOutlined />}
+              className={styles.addButton}
+              onClick={() => message.info('新建文件夹功能开发中...')}
             >
-              {/* 左侧：用户状态信息 */}
-              <div
-                className="user-status-info"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  fontSize: '14px',
-                  color: '#666',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                }}
-              >
-                <span style={{ fontWeight: '500', color: '#1890ff' }}>
-                  欢迎回来，{user.username}！
-                </span>
-                <span style={{ margin: '0 12px', color: '#d9d9d9' }}>•</span>
-                {/* <span>
-                  登录方式：
-                  <span style={{ fontWeight: '500' }}>
-                    {user.provider === 'email' ? '邮箱登录' : user.provider.toUpperCase()}
-                  </span>
-                </span> */}
-                {user.loginTime && (
-                  <>
-                    <span style={{ margin: '0 12px', color: '#d9d9d9' }}>
-                      •
-                    </span>
-                    <span>
-                      登录时间：
-                      <span style={{ fontWeight: '500' }}>
-                        {new Date(user.loginTime).toLocaleString('zh-CN', {
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                    </span>
-                  </>
-                )}
-              </div>
+              新建文件夹
+            </Button>
+          </div>
+        </Sider>
+        <Content className={styles.content}>
+          <div className={styles.contentHeader}>
+            <Breadcrumb className={styles.breadcrumb}>
+              <Breadcrumb.Item>首页</Breadcrumb.Item>
+              <Breadcrumb.Item>文档编辑</Breadcrumb.Item>
+            </Breadcrumb>
 
-              {/* 右侧：操作按钮 */}
-              <Space>
-                <Button type="primary">保存</Button>
-              </Space>
-            </Header>
-            <div style={{ flex: 1, overflow: 'hidden' }}>
-              <DocEditor />
+            <div className={styles.actions}>
+              <Button className={`${styles.actionButton} ${styles.default}`}>
+                分享
+              </Button>
+              <Button className={`${styles.actionButton} ${styles.primary}`}>
+                保存
+              </Button>
             </div>
-          </Content>
-        </Layout>
+          </div>
+          <div className={styles.contentBody}>
+            <DocEditor />
+          </div>
+        </Content>
       </Layout>
     </Layout>
   );

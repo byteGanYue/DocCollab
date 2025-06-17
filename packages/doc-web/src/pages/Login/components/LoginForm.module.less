@@ -1,177 +1,232 @@
-@import '../../../../styles/global.less';
+@import '@/styles/global.less';
+
+.loginContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
+    padding: 20px;
+}
 
 .loginCard {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    border-radius: @border-radius-base * 2;
+    width: 100%;
+    max-width: 400px;
+    background: white;
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--box-shadow-lg);
     overflow: hidden;
-    transition: all 0.3s ease;
+    animation: slideIn 0.5s ease-out;
 
-    &:hover {
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
-    }
-}
-
-.loginHeader {
-    text-align: center;
-    margin-bottom: 32px;
-    padding: 24px 0;
-
-    .loginIcon {
-        font-size: 48px;
-        color: @primary-color;
-        margin-bottom: 16px;
-    }
-
-    .loginTitle {
-        color: @heading-color;
-        margin-bottom: 8px;
-        font-weight: 600;
-    }
-
-    .loginSubtitle {
-        color: @text-color-secondary;
-        font-size: 16px;
-    }
-}
-
-.loginForm {
-    .formItem {
-        margin-bottom: 24px;
-
-        .input {
-            height: 44px;
-            border-radius: @border-radius-base;
-            border: 1px solid @border-color-base;
-            transition: all 0.3s ease;
-
-            &:hover {
-                border-color: @primary-color;
-            }
-
-            &:focus {
-                border-color: @primary-color;
-                box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
-            }
-
-            .prefix {
-                color: @text-color-secondary;
-                margin-right: 8px;
-            }
-        }
-
-        .passwordInput {
-            .input();
-        }
-    }
-
-    .loginButton {
-        width: 100%;
-        height: 44px;
-        border-radius: @border-radius-base;
-        font-size: 16px;
-        font-weight: 500;
-        background: linear-gradient(135deg, @primary-color 0%, #40a9ff 100%);
-        border: none;
-        transition: all 0.3s ease;
-
-        &:hover {
-            background: linear-gradient(135deg, #40a9ff 0%, @primary-color 100%);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
-        }
-
-        &:active {
-            transform: translateY(0);
-        }
-    }
-
-    .divider {
-        margin: 24px 0;
-        color: @text-color-secondary;
-        font-size: 14px;
-
-        &::before,
-        &::after {
-            border-top-color: @border-color-base;
-        }
-    }
-
-    .socialLogin {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 24px;
-
-        .socialButton {
-            flex: 1;
-            height: 40px;
-            border-radius: @border-radius-base;
-            border: 1px solid @border-color-base;
-            background-color: #fff;
-            color: @text-color;
-            font-size: 14px;
-            transition: all 0.3s ease;
-
-            &:hover {
-                border-color: @primary-color;
-                color: @primary-color;
-                background-color: rgba(24, 144, 255, 0.05);
-            }
-
-            .icon {
-                margin-right: 8px;
-            }
-        }
-    }
-
-    .registerLink {
+    .cardHeader {
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
+        padding: 32px 24px 24px;
         text-align: center;
-        margin-top: 16px;
 
-        .link {
-            color: @primary-color;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.3s ease;
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 8px;
+            display: block;
+        }
 
-            &:hover {
-                color: #40a9ff;
-                text-decoration: underline;
+        .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            margin: 0;
+        }
+    }
+
+    .cardBody {
+        padding: 32px 24px;
+
+        .form {
+            .formItem {
+                margin-bottom: 20px;
+
+                .label {
+                    display: block;
+                    margin-bottom: 8px;
+                    font-weight: 500;
+                    color: var(--color-text);
+                    font-size: 14px;
+                }
+
+                .input {
+                    width: 100%;
+                    height: 40px;
+                    border: 1px solid var(--color-border);
+                    border-radius: var(--border-radius-base);
+                    padding: 0 12px;
+                    font-size: 14px;
+                    transition: var(--transition);
+
+                    &:focus {
+                        border-color: var(--color-primary);
+                        box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+                        outline: none;
+                    }
+
+                    &::placeholder {
+                        color: var(--color-textSecondary);
+                    }
+                }
+
+                .error {
+                    color: var(--color-error);
+                    font-size: 12px;
+                    margin-top: 4px;
+                    display: block;
+                }
+            }
+
+            .loginButton {
+                width: 100%;
+                height: 44px;
+                background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
+                border: none;
+                border-radius: var(--border-radius-base);
+                color: white;
+                font-size: 16px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: var(--transition);
+                margin-top: 8px;
+
+                &:hover {
+                    background: linear-gradient(135deg, var(--color-hover) 0%, var(--color-primary) 100%);
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+                }
+
+                &:disabled {
+                    background: var(--color-disabled);
+                    cursor: not-allowed;
+                    transform: none;
+                    box-shadow: none;
+                }
+            }
+
+            .divider {
+                margin: 24px 0;
+                text-align: center;
+                position: relative;
+                color: var(--color-textSecondary);
+                font-size: 12px;
+
+                &::before {
+                    content: '';
+                    position: absolute;
+                    top: 50%;
+                    left: 0;
+                    right: 0;
+                    height: 1px;
+                    background: var(--color-border);
+                }
+
+                .dividerText {
+                    background: white;
+                    padding: 0 12px;
+                    position: relative;
+                    z-index: 1;
+                }
+            }
+
+            .socialLogin {
+                display: flex;
+                gap: 12px;
+                margin-bottom: 24px;
+
+                .socialButton {
+                    flex: 1;
+                    height: 40px;
+                    border: 1px solid var(--color-border);
+                    border-radius: var(--border-radius-base);
+                    background: white;
+                    color: var(--color-text);
+                    font-size: 14px;
+                    cursor: pointer;
+                    transition: var(--transition);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+
+                    &:hover {
+                        border-color: var(--color-primary);
+                        color: var(--color-primary);
+                        background-color: rgba(24, 144, 255, 0.05);
+                    }
+
+                    .icon {
+                        font-size: 16px;
+                    }
+                }
+            }
+
+            .registerLink {
+                text-align: center;
+                margin-top: 16px;
+                font-size: 14px;
+                color: var(--color-textSecondary);
+
+                .link {
+                    color: var(--color-primary);
+                    text-decoration: none;
+                    font-weight: 500;
+                    margin-left: 4px;
+
+                    &:hover {
+                        text-decoration: underline;
+                    }
+                }
             }
         }
+    }
+}
+
+// 动画效果
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
 // 响应式设计
-@media (max-width: 768px) {
+@media (max-width: 480px) {
+    .loginContainer {
+        padding: 16px;
+    }
+
     .loginCard {
-        margin: 16px;
-        border-radius: @border-radius-base;
-    }
+        .cardHeader {
+            padding: 24px 20px 20px;
 
-    .loginHeader {
-        margin-bottom: 24px;
-        padding: 16px 0;
-
-        .loginIcon {
-            font-size: 36px;
+            .logo {
+                font-size: 24px;
+            }
         }
 
-        .loginTitle {
-            font-size: 24px;
-        }
+        .cardBody {
+            padding: 24px 20px;
 
-        .loginSubtitle {
-            font-size: 14px;
-        }
-    }
+            .form {
+                .socialLogin {
+                    flex-direction: column;
+                    gap: 8px;
 
-    .loginForm {
-        .socialLogin {
-            flex-direction: column;
-            gap: 8px;
-
-            .socialButton {
-                width: 100%;
+                    .socialButton {
+                        height: 36px;
+                        font-size: 13px;
+                    }
+                }
             }
         }
     }

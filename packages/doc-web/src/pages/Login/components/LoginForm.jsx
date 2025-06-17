@@ -19,7 +19,6 @@ import {
   FileTextOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import './LoginForm.css';
 
 const { Title, Text, Link } = Typography;
 

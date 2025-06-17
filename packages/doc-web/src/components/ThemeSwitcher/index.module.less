@@ -1,0 +1,101 @@
+@import '../../styles/global.less';
+
+.themeButton {
+    color: white;
+    border: none;
+    background: transparent;
+    transition: var(--transition);
+    height: 40px;
+    padding: 0 12px;
+    border-radius: var(--border-radius-base);
+
+    &:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: white;
+    }
+
+    .currentIcon {
+        font-size: 16px;
+        margin-right: 4px;
+    }
+
+    .currentLabel {
+        font-size: 14px;
+        font-weight: 500;
+    }
+}
+
+.menuItem {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    min-width: 200px;
+    transition: var(--transition);
+
+    &:hover {
+        background-color: var(--color-background);
+    }
+
+    .icon {
+        font-size: 20px;
+        margin-right: 12px;
+        width: 24px;
+        text-align: center;
+    }
+
+    .content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        .label {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--color-text);
+        }
+
+        .description {
+            font-size: 12px;
+            color: var(--color-textSecondary);
+        }
+    }
+
+    .activeIndicator {
+        color: var(--color-primary);
+        font-weight: bold;
+        font-size: 16px;
+        margin-left: 8px;
+    }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+    .themeButton {
+        padding: 0 8px;
+
+        .currentLabel {
+            display: none;
+        }
+    }
+
+    .menuItem {
+        min-width: 160px;
+        padding: 10px 12px;
+
+        .icon {
+            font-size: 18px;
+            margin-right: 8px;
+        }
+
+        .content {
+            .label {
+                font-size: 13px;
+            }
+
+            .description {
+                font-size: 11px;
+            }
+        }
+    }
+}
