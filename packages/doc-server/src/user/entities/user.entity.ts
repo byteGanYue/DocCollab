@@ -3,6 +3,6 @@ export class User {
   username: string;
   email: string;
   password: string;
-  folderId: number;
+  folderId: string;
   createdAt: Date;
 }
