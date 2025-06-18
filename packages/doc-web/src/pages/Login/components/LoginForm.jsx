@@ -1,16 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Form,
-  Input,
-  Button,
-  Card,
-  Typography,
-  Space,
-  Divider,
-  message,
-  Row,
-  Col,
-} from 'antd';
+import { Form, Input, Button, Typography, message } from 'antd';
 import {
   UserOutlined,
   LockOutlined,
@@ -19,6 +8,8 @@ import {
   FileTextOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import ThemeSwitcher from '@/components/ThemeSwitcher';
+import styles from './LoginForm.module.less';
 
 const { Title, Text, Link } = Typography;
 
@@ -131,131 +122,133 @@ const LoginForm = () => {
   };
 
   return (
-    <div className="login-container">
+    <div className={styles.loginContainer}>
+      {contextHolder}
+
+      {/* 主题切换器 */}
+      <div className={styles.themeSwitcher}>
+        <ThemeSwitcher />
+      </div>
+
       {/* 背景装饰 */}
-      <div className="login-background">
-        <div className="background-shapes">
-          <div className="shape shape-1"></div>
-          <div className="shape shape-2"></div>
-          <div className="shape shape-3"></div>
+      <div className={styles.loginBackground}>
+        <div className={styles.backgroundShapes}>
+          <div className={`${styles.shape} ${styles.shape1}`}></div>
+          <div className={`${styles.shape} ${styles.shape2}`}></div>
+          <div className={`${styles.shape} ${styles.shape3}`}></div>
         </div>
       </div>
 
-      <Row justify="center" align="middle" style={{ minHeight: '100vh' }}>
-        <Col xs={22} sm={16} md={12} lg={8} xl={6}>
-          <Card className="login-card" bordered={false}>
-            {/* 标题区域 */}
-            <div className="login-header">
-              <FileTextOutlined className="login-icon" />
-              <Title level={2} className="login-title">
-                DocCollab
-              </Title>
-              <Text className="login-subtitle">协同文档编辑平台</Text>
-            </div>
+      {/* 登录卡片 */}
+      <div className={styles.loginCard}>
+        {/* 卡片头部 */}
+        <div className={styles.cardHeader}>
+          <FileTextOutlined className={styles.logo} />
+          <Title level={2} className={styles.subtitle}>
+            DocCollab
+          </Title>
+          <Text className={styles.subtitle}>协同文档编辑平台</Text>
+        </div>
 
-            {/* 登录表单 */}
-            <Form
-              form={form}
-              name="login"
-              onFinish={handleEmailLogin}
-              layout="vertical"
-              size="large"
-              className="login-form"
-            >
-              {contextHolder}
-              <Form.Item
+        {/* 卡片主体 */}
+        <div className={styles.cardBody}>
+          {/* 登录表单 */}
+          <Form
+            form={form}
+            name="login"
+            onFinish={handleEmailLogin}
+            layout="vertical"
+            size="large"
+            className={styles.form}
+          >
+            <div className={styles.formItem}>
+              <label className={styles.label}>邮箱</label>
+              <Input
+                prefix={<UserOutlined />}
+                placeholder="请输入邮箱地址"
+                autoComplete="email"
+                className={styles.input}
                 name="email"
-                label="邮箱"
                 rules={[
                   { required: true, message: '请输入邮箱地址' },
                   { type: 'email', message: '请输入有效的邮箱地址' },
                 ]}
-              >
-                <Input
-                  prefix={<UserOutlined />}
-                  placeholder="请输入邮箱地址"
-                  autoComplete="email"
-                />
-              </Form.Item>
+              />
+            </div>
 
-              <Form.Item
+            <div className={styles.formItem}>
+              <label className={styles.label}>密码</label>
+              <Input.Password
+                prefix={<LockOutlined />}
+                placeholder="请输入密码"
+                autoComplete="current-password"
+                className={styles.input}
                 name="password"
-                label="密码"
                 rules={[
                   { required: true, message: '请输入密码' },
                   { min: 6, message: '密码至少6位字符' },
                 ]}
-              >
-                <Input.Password
-                  prefix={<LockOutlined />}
-                  placeholder="请输入密码"
-                  autoComplete="current-password"
-                />
-              </Form.Item>
+              />
+            </div>
 
-              <Form.Item>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={loading}
-                  block
-                  className="login-button"
-                >
-                  登录
-                </Button>
-              </Form.Item>
-            </Form>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={loading}
+              className={styles.loginButton}
+              block
+            >
+              登录
+            </Button>
+          </Form>
 
-            {/* 第三方登录 */}
-            <Divider>
-              <Text type="secondary">或</Text>
-            </Divider>
+          {/* 分割线 */}
+          {/* <div className={styles.divider}>
+            <span className={styles.dividerText}>或</span>
+          </div> */}
 
-            <Space direction="vertical" style={{ width: '100%' }}>
-              {/* google 登录按钮 */}
+          {/* 第三方登录 */}
+          <div className={styles.socialLogin}>
+            <div className={styles.btn1}>
               <Button
-                icon={<GoogleOutlined />}
-                block
-                size="large"
-                loading={thirdPartyLoading === 'google'}
-                className="third-party-button google-button"
+                className={`${styles.socialButton} ${styles.google}`}
                 onClick={() => handleThirdPartyLogin('google')}
-              >
-                使用 Google 登录
-              </Button>
-
-              {/* github 登录按钮 */}
-              <Button
-                icon={<GithubOutlined />}
+                loading={thirdPartyLoading === 'google'}
                 block
-                size="large"
-                loading={thirdPartyLoading === 'github'}
-                className="third-party-button github-button"
-                onClick={() => handleThirdPartyLogin('github')}
               >
-                使用 GitHub 登录
+                <GoogleOutlined className={styles.icon} />
+                Google
               </Button>
-            </Space>
-
-            {/* 测试提示信息 */}
-            <div className="test-hint">
-              <Text type="secondary">
-                <strong>测试提示：</strong>
-                输入任意邮箱和密码（至少6位）即可模拟登录
-              </Text>
             </div>
-
-            {/* 注册链接 */}
-            <div className="login-footer">
-              <Text>
-                还没有账号？
-                {contextHolder}
-                <Link onClick={handleGoToRegister}>立即注册</Link>
-              </Text>
+            <div>
+              <Button
+                className={`${styles.socialButton} ${styles.github}`}
+                onClick={() => handleThirdPartyLogin('github')}
+                loading={thirdPartyLoading === 'github'}
+                block
+              >
+                <GithubOutlined className={styles.icon} />
+                GitHub
+              </Button>
             </div>
-          </Card>
-        </Col>
-      </Row>
+          </div>
+
+          {/* 注册链接 */}
+          <div className={styles.registerLink}>
+            <Text>
+              还没有账号？
+              <Link onClick={handleGoToRegister} className={styles.link}>
+                立即注册
+              </Link>
+            </Text>
+          </div>
+
+          {/* 测试提示 */}
+          <div className={styles.testHint}>
+            💡 测试账号：任意邮箱 + 任意6位以上密码即可登录
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

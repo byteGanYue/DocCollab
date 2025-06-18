@@ -1,50 +1,175 @@
 @import '@/styles/global.less';
 
 .loginContainer {
+    position: relative;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
+    overflow: hidden;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
-    padding: 20px;
 }
 
-.loginCard {
+// 主题切换器
+.themeSwitcher {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 10;
+
+    // 登录页面专用的主题切换器样式
+    :global(.ant-btn) {
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            color: white;
+        }
+
+        .anticon {
+            color: white;
+        }
+    }
+
+    // 下拉菜单样式
+    :global(.ant-dropdown-menu) {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+}
+
+// 背景装饰元素
+.loginBackground {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
-    max-width: 400px;
-    background: white;
-    border-radius: var(--border-radius-lg);
-    box-shadow: var(--box-shadow-lg);
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.backgroundShapes {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.shape {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    animation: float 6s ease-in-out infinite;
+}
+
+.shape1 {
+    width: 120px;
+    height: 120px;
+    top: 15%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.shape2 {
+    width: 80px;
+    height: 80px;
+    top: 60%;
+    right: 15%;
+    animation-delay: 2s;
+}
+
+.shape3 {
+    width: 60px;
+    height: 60px;
+    bottom: 20%;
+    left: 20%;
+    animation-delay: 4s;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+// 登录卡片
+.loginCard {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    padding: 0;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     overflow: hidden;
-    animation: slideIn 0.5s ease-out;
+    animation: slideIn 0.6s ease-out;
 
     .cardHeader {
         background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
-        padding: 32px 24px 24px;
+        padding: 20px 32px 10px;
         text-align: center;
+        position: relative;
+        overflow: hidden;
+
+        &::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
 
         .logo {
-            font-size: 28px;
+            position: relative;
+            z-index: 1;
+            font-size: 32px;
             font-weight: bold;
             color: white;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             display: block;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .subtitle {
+            position: relative;
+            z-index: 1;
             color: rgba(255, 255, 255, 0.9);
-            font-size: 14px;
+            font-size: 16px;
             margin: 0;
+            font-weight: 400;
         }
     }
 
     .cardBody {
-        padding: 32px 24px;
+        padding: 20px 32px;
+        min-height: 500px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
 
         .form {
             .formItem {
                 margin-bottom: 20px;
-
                 .label {
                     display: block;
                     margin-bottom: 8px;
@@ -55,16 +180,24 @@
 
                 .input {
                     width: 100%;
-                    height: 40px;
-                    border: 1px solid var(--color-border);
-                    border-radius: var(--border-radius-base);
-                    padding: 0 12px;
-                    font-size: 14px;
-                    transition: var(--transition);
+                    height: 48px;
+                    border: 2px solid #f0f0f0;
+                    border-radius: 12px;
+                    padding: 0 16px;
+                    font-size: 15px;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    background: #fafafa;
+
+                    &:hover {
+                        border-color: var(--color-primary);
+                        background: white;
+                        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+                    }
 
                     &:focus {
                         border-color: var(--color-primary);
-                        box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+                        background: white;
+                        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
                         outline: none;
                     }
 
@@ -76,28 +209,33 @@
                 .error {
                     color: var(--color-error);
                     font-size: 12px;
-                    margin-top: 4px;
+                    margin-top: 6px;
                     display: block;
                 }
             }
 
             .loginButton {
                 width: 100%;
-                height: 44px;
+                height: 42px;
                 background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
                 border: none;
-                border-radius: var(--border-radius-base);
+                border-radius: 12px;
                 color: white;
                 font-size: 16px;
-                font-weight: 500;
+                font-weight: 600;
                 cursor: pointer;
-                transition: var(--transition);
-                margin-top: 8px;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                margin-top: 12px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 
                 &:hover {
                     background: linear-gradient(135deg, var(--color-hover) 0%, var(--color-primary) 100%);
-                    transform: translateY(-1px);
-                    box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+                }
+
+                &:active {
+                    transform: translateY(0);
                 }
 
                 &:disabled {
@@ -109,11 +247,12 @@
             }
 
             .divider {
-                margin: 24px 0;
+                margin: 5px 0;
                 text-align: center;
                 position: relative;
                 color: var(--color-textSecondary);
-                font-size: 12px;
+                font-size: 14px;
+                font-weight: 500;
 
                 &::before {
                     content: '';
@@ -122,12 +261,12 @@
                     left: 0;
                     right: 0;
                     height: 1px;
-                    background: var(--color-border);
+                    background: linear-gradient(90deg, transparent 0%, var(--color-border) 50%, transparent 100%);
                 }
 
                 .dividerText {
                     background: white;
-                    padding: 0 12px;
+                    padding: 0 16px;
                     position: relative;
                     z-index: 1;
                 }
@@ -135,74 +274,183 @@
 
             .socialLogin {
                 display: flex;
-                gap: 12px;
-                margin-bottom: 24px;
+                gap: 20px;
+                margin-bottom: 20px;
 
                 .socialButton {
                     flex: 1;
-                    height: 40px;
-                    border: 1px solid var(--color-border);
-                    border-radius: var(--border-radius-base);
+                    height: 42px;
+                    border: 2px solid #f0f0f0;
+                    border-radius: 12px;
                     background: white;
                     color: var(--color-text);
                     font-size: 14px;
+                    font-weight: 500;
                     cursor: pointer;
-                    transition: var(--transition);
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     gap: 8px;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 
                     &:hover {
-                        border-color: var(--color-primary);
-                        color: var(--color-primary);
-                        background-color: rgba(24, 144, 255, 0.05);
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                    }
+
+                    &.google {
+                        border-color: #db4437;
+                        color: #db4437;
+
+                        &:hover {
+                            background-color: #db4437;
+                            color: white;
+                            border-color: #db4437;
+                            box-shadow: 0 4px 12px rgba(219, 68, 55, 0.3);
+                            margin:0;
+                            padding: 0;
+                        }
+                    }
+
+                    &.github {
+                        border-color: #333;
+                        color: #333;
+
+                        &:hover {
+                            background-color: #333;
+                            color: white;
+                            border-color: #333;
+                            box-shadow: 0 4px 12px rgba(51, 51, 51, 0.3);
+                        }
                     }
 
                     .icon {
-                        font-size: 16px;
+                        font-size: 18px;
                     }
                 }
             }
 
             .registerLink {
                 text-align: center;
-                margin-top: 16px;
-                font-size: 14px;
+                margin-top: 12px;
+                font-size: 15px;
                 color: var(--color-textSecondary);
+                font-weight: 400;
 
                 .link {
                     color: var(--color-primary);
                     text-decoration: none;
-                    font-weight: 500;
-                    margin-left: 4px;
+                    font-weight: 600;
+                    margin-left: 6px;
+                    transition: color 0.3s;
+                    font-size: 15px;
 
                     &:hover {
+                        color: var(--color-hover);
                         text-decoration: underline;
                     }
+                }
+            }
+
+            .testHint {
+                margin-top: 14px;
+                padding: 0px;
+                background: linear-gradient(135deg, #f6ffed 0%, #e6f7ff 100%);
+                border: 1px solid #b7eb8f;
+                border-radius: 12px;
+                font-size: 13px;
+                color: #52c41a;
+                text-align: center;
+                font-weight: 500;
+            }
+        }
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+    .loginContainer {
+        padding: 16px;
+    }
+
+    .themeSwitcher {
+        top: 16px;
+        right: 16px;
+    }
+
+    .loginCard {
+        max-width: 100%;
+        .cardHeader {
+            padding: 32px 24px 24px;
+
+            .logo {
+                font-size: 28px;
+            }
+
+            .subtitle {
+                font-size: 14px;
+            }
+        }
+
+        .cardBody {
+            padding: 12px 24px;
+            min-height: 450px;
+
+            .form {
+                .socialLogin {
+                    flex-direction: column;
+                    gap: 20px;
+                    margin-bottom: 32px;
+
+                    .socialButton {
+                        height: 48px;
+                        font-size: 13px;
+                    }
+                }
+
+                .divider {
+                    margin: 32px 0;
+                }
+
+                .registerLink {
+                    margin-top: 24px;
                 }
             }
         }
     }
 }
 
-// 动画效果
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-// 响应式设计
 @media (max-width: 480px) {
     .loginContainer {
-        padding: 16px;
+        padding: 12px;
+    }
+
+    .themeSwitcher {
+        top: 12px;
+        right: 12px;
     }
 
     .loginCard {
@@ -216,18 +464,45 @@
 
         .cardBody {
             padding: 24px 20px;
+            min-height: 400px;
 
             .form {
+                .input {
+                    height: 44px;
+                    font-size: 14px;
+                }
+
+                .loginButton {
+                    height: 48px;
+                    font-size: 15px;
+                }
+
                 .socialLogin {
-                    flex-direction: column;
-                    gap: 8px;
+                    gap: 16px;
+                    margin-bottom: 24px;
 
                     .socialButton {
-                        height: 36px;
+                        height: 44px;
                         font-size: 13px;
                     }
+                }
+
+                .divider {
+                    margin: 24px 0;
+                }
+
+                .registerLink {
+                    margin-top: 20px;
                 }
             }
         }
     }
+
+    .shape {
+        display: none;
+    }
+}
+
+.btn1{
+    margin-bottom: 10px;
 }
