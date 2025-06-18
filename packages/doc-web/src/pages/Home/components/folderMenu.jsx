@@ -17,8 +17,16 @@ import {
   Dropdown,
   Menu as AntdMenu,
 } from 'antd';
+import { folderUtils } from '@/utils';
 
-// 自定义组件：用于菜单项label，超出部分省略号并Tooltip展示全名
+/**
+ * EllipsisLabel 组件
+ *
+ * @param {Object} props - 组件属性
+ * @param {string} props.text - 要显示的文本
+ *
+ * @returns {JSX.Element} 返回 Tooltip 组件包裹的文本元素，文本超出长度将显示省略号
+ */
 const EllipsisLabel = ({ text }) => (
   <Tooltip title={text} placement="right">
     <span
@@ -85,34 +93,13 @@ const initialFolderList = [
   },
 ];
 
-// 递归删除指定key的节点
-function deleteNodeByKey(list, targetKey) {
-  return list.filter(item => {
-    if (item.key === targetKey) return false;
-    if (item.children) {
-      item.children = deleteNodeByKey(item.children, targetKey);
-    }
-    return true;
-  });
-}
-// 递归重命名指定key的节点
-function renameNodeByKey(list, targetKey, newName) {
-  return list.map(item => {
-    if (item.key === targetKey) {
-      return {
-        ...item,
-        label: <EllipsisLabel text={newName} />,
-      };
-    } else if (item.children) {
-      return {
-        ...item,
-        children: renameNodeByKey(item.children, targetKey, newName),
-      };
-    }
-    return item;
-  });
-}
-
+/**
+ * FolderMenu 组件
+ *
+ * 用于显示和管理文件夹和文件的侧边栏菜单组件。
+ *
+ * @returns {JSX.Element} 渲染的组件
+ */
 const FolderMenu = () => {
   const {
     token: { colorBgContainer },
@@ -204,24 +191,6 @@ const FolderMenu = () => {
     }
 
     // 工具函数：递归插入节点到指定key的children
-    function insertToTarget(list, targetKey, newNode) {
-      return list.map(item => {
-        if (item.key === targetKey) {
-          // 找到目标文件夹，插入到children
-          return {
-            ...item,
-            children: [...(item.children || []), newNode],
-          };
-        } else if (item.children) {
-          // 递归子节点
-          return {
-            ...item,
-            children: insertToTarget(item.children, targetKey, newNode),
-          };
-        }
-        return item;
-      });
-    }
 
     // 获取当前选中的文件夹
     const currentKey = selectedKeys[0];
@@ -246,7 +215,9 @@ const FolderMenu = () => {
         label: <EllipsisLabel text={newFolderName} />,
         children: [],
       };
-      setFolderList(prev => insertToTarget(prev, targetKey, newFolder));
+      setFolderList(prev =>
+        folderUtils.insertToTarget(prev, targetKey, newFolder),
+      );
       message.success('新建文件夹成功');
     } else {
       // 新建文件节点
@@ -255,7 +226,9 @@ const FolderMenu = () => {
         key: newFileKey,
         label: <EllipsisLabel text={newFolderName} />,
       };
-      setFolderList(prev => insertToTarget(prev, targetKey, newFile));
+      setFolderList(prev =>
+        folderUtils.insertToTarget(prev, targetKey, newFile),
+      );
       message.success('新建文档成功');
     }
     setIsAddFolderModalOpen(false);
@@ -421,7 +394,9 @@ const FolderMenu = () => {
         title="确认删除"
         open={deleteModal.visible}
         onOk={() => {
-          setFolderList(prev => deleteNodeByKey(prev, deleteModal.key));
+          setFolderList(prev =>
+            folderUtils.deleteNodeByKey(prev, deleteModal.key),
+          );
           setDeleteModal({ visible: false, key: '', name: '' });
           message.success('删除成功');
         }}
@@ -445,7 +420,11 @@ const FolderMenu = () => {
             return;
           }
           setFolderList(prev =>
-            renameNodeByKey(prev, renameModal.key, renameModal.newName),
+            folderUtils.renameNodeByKey(
+              prev,
+              renameModal.key,
+              renameModal.newName,
+            ),
           );
           setRenameModal({ visible: false, key: '', oldName: '', newName: '' });
           message.success('重命名成功');
@@ -467,7 +446,11 @@ const FolderMenu = () => {
               return;
             }
             setFolderList(prev =>
-              renameNodeByKey(prev, renameModal.key, renameModal.newName),
+              folderUtils.renameNodeByKey(
+                prev,
+                renameModal.key,
+                renameModal.newName,
+              ),
             );
             setRenameModal({
               visible: false,
@@ -494,4 +477,4 @@ const FolderMenu = () => {
   );
 };
 
-export default FolderMenu;
+export { FolderMenu, EllipsisLabel };

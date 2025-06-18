@@ -17,7 +17,7 @@ import {
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import DocEditor from '../../DocEditor';
-import FolderMenu from './folderMenu';
+import { FolderMenu } from './folderMenu';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import styles from './layout.module.less';
 import 'quill/dist/quill.snow.css';

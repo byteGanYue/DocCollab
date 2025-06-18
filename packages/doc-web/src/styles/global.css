@@ -1,0 +1,100 @@
+:root {
+  --color-primary: #805AD5;
+  --color-background: #FAF5FF;
+  --color-hover: #6B46C1;
+  --color-text: #2D3748;
+  --color-textSecondary: #4A5568;
+  --color-border: #E2E8F0;
+  --color-success: #48BB78;
+  --color-warning: #ED8936;
+  --color-error: #F56565;
+  --font-size-base: 14px;
+  --border-radius-base: 6px;
+  --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --transition: all 0.3s ease;
+}
+.theme-purple {
+  --color-primary: #805AD5;
+  --color-background: #FAF5FF;
+  --color-hover: #6B46C1;
+  --color-text: #2D3748;
+  --color-textSecondary: #4A5568;
+  --color-border: #E2E8F0;
+  --color-success: #48BB78;
+  --color-warning: #ED8936;
+  --color-error: #F56565;
+}
+.theme-blue {
+  --color-primary: #3A86FF;
+  --color-background: #F0F7FF;
+  --color-hover: #1A3A8F;
+  --color-text: #1A202C;
+  --color-textSecondary: #4A5568;
+  --color-border: #E2E8F0;
+  --color-success: #48BB78;
+  --color-warning: #ED8936;
+  --color-error: #F56565;
+}
+.theme-green {
+  --color-primary: #48BB78;
+  --color-background: #F0FFF4;
+  --color-hover: #2F855A;
+  --color-text: #2D3748;
+  --color-textSecondary: #4A5568;
+  --color-border: #E2E8F0;
+  --color-success: #38A169;
+  --color-warning: #ED8936;
+  --color-error: #F56565;
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  color: var(--color-text);
+  background-color: var(--color-background);
+  transition: var(--transition);
+}
+.flex {
+  display: flex;
+}
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.text-center {
+  text-align: center;
+}
+.text-left {
+  text-align: left;
+}
+.text-right {
+  text-align: right;
+}
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-textSecondary);
+}
