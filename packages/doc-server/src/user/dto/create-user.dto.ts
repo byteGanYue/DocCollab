@@ -15,7 +15,4 @@ export class CreateUserDto {
   @IsString()
   @MinLength(6)
   password: string;
-
-  @ApiProperty({ description: '文件夹ID', example: 'folder123' })
-  folderId?: string; // 可选字段，假设是字符串类型
 }

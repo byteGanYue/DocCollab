@@ -10,6 +10,7 @@ import {
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { LoginUserDto } from './dto/login-user.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('用户管理')
@@ -17,11 +18,18 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Post()
-  @ApiOperation({ summary: '创建用户' })
-  @ApiResponse({ status: 201, description: '用户创建成功' })
+  @Post('/register')
+  @ApiOperation({ summary: '注册新用户' })
+  @ApiResponse({ status: 201, description: '用户注册成功' })
   create(@Body() createUserDto: CreateUserDto) {
     return this.userService.create(createUserDto);
+  }
+
+  @Post('/login')
+  @ApiOperation({ summary: '用户登陆' })
+  @ApiResponse({ status: 200, description: '用户登陆成功' })
+  login(@Body() loginUserDto: LoginUserDto) {
+    return this.userService.login(loginUserDto);
   }
 
   @Get()

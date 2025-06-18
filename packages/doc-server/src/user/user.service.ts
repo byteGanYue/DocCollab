@@ -2,9 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
+import * as uuid from 'uuid';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserDocument } from './schemas/user.schema'; // 引入 Mongoose 模型
+import { LoginUserDto } from './dto/login-user.dto';
 
 @Injectable()
 export class UserService {
@@ -13,7 +15,7 @@ export class UserService {
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
   /**
-   * 创建一个新用户
+   * 注册一个新用户
    *
    * @param createUserDto 用户信息对象，包含用户名、邮箱和密码
    * @returns 创建的用户对象
@@ -26,6 +28,7 @@ export class UserService {
         username: createUserDto.username,
         email: createUserDto.email,
         password: hashedPassword,
+        folderId: uuid.v4(), // 假设初始时没有文件夹ID
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -40,6 +43,31 @@ export class UserService {
     }
   }
 
+  // 用户登陆逻辑
+  async login(loginUserDto: LoginUserDto) {
+    const user = await this.userModel.findOne({ email: loginUserDto.email });
+    if (!user) {
+      throw new Error('User not found');
+    }
+    const isPasswordValid = await bcrypt.compare(
+      loginUserDto.password,
+      user.password,
+    );
+    if (!isPasswordValid) {
+      throw new Error('Invalid password');
+    }
+    return {
+      id: user._id,
+      username: user.username,
+      email: user.email,
+    };
+  }
+
+  /**
+   * 异步查询所有用户信息
+   *
+   * @returns 返回包含用户id、用户名、邮箱、创建时间和更新时间的对象数组
+   */
   async findAll() {
     return this.userModel.find({}, { __v: 0 }).select({
       id: 1,
