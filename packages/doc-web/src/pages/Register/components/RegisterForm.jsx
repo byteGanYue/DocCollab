@@ -263,34 +263,6 @@ const RegisterForm = () => {
               注册
             </Button>
           </Form>
-
-          {/* 分割线 */}
-          <div className={styles.divider}>
-            <span className={styles.dividerText}>或</span>
-          </div>
-
-          {/* 第三方注册 */}
-          <div className={styles.socialRegister}>
-            <Button
-              className={`${styles.socialButton} ${styles.google}`}
-              onClick={() => handleThirdPartyRegister('google')}
-              loading={thirdPartyLoading === 'google'}
-              block
-            >
-              <GoogleOutlined className={styles.icon} />
-              Google
-            </Button>
-            <Button
-              className={`${styles.socialButton} ${styles.github}`}
-              onClick={() => handleThirdPartyRegister('github')}
-              loading={thirdPartyLoading === 'github'}
-              block
-            >
-              <GithubOutlined className={styles.icon} />
-              GitHub
-            </Button>
-          </div>
-
           {/* 登录链接 */}
           <div className={styles.loginLink}>
             <Text>

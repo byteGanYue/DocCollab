@@ -161,15 +161,15 @@
     }
 
     .cardBody {
-        padding: 32px 28px;
-        min-height: 580px;
+        padding: 12px 28px;
+        min-height: 500px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
 
         .form {
             .formItem {
-                margin-bottom: 20px;
+                margin-bottom: 10px;
 
                 .label {
                     display: block;
@@ -181,7 +181,7 @@
 
                 .input {
                     width: 100%;
-                    height: 44px;
+                    height: 40px;
                     border: 2px solid #f0f0f0;
                     border-radius: 12px;
                     padding: 0 16px;
@@ -216,7 +216,7 @@
             }
 
             .agreement {
-                margin: 20px 0;
+                margin: 5px 0;
 
                 .checkbox {
                     font-size: 13px;
@@ -243,7 +243,7 @@
 
             .registerButton {
                 width: 100%;
-                height: 48px;
+                height: 40px;
                 background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
                 border: none;
                 border-radius: 12px;
@@ -273,92 +273,12 @@
                 }
             }
 
-            .divider {
-                margin: 32px 0;
-                text-align: center;
-                position: relative;
-                color: var(--color-textSecondary);
-                font-size: 14px;
-                font-weight: 500;
+           
 
-                &::before {
-                    content: '';
-                    position: absolute;
-                    top: 50%;
-                    left: 0;
-                    right: 0;
-                    height: 1px;
-                    background: linear-gradient(90deg, transparent 0%, var(--color-border) 50%, transparent 100%);
-                }
-
-                .dividerText {
-                    background: white;
-                    padding: 0 16px;
-                    position: relative;
-                    z-index: 1;
-                }
-            }
-
-            .socialRegister {
-                display: flex;
-                gap: 20px;
-                margin-bottom: 32px;
-
-                .socialButton {
-                    flex: 1;
-                    height: 48px;
-                    border: 2px solid #f0f0f0;
-                    border-radius: 12px;
-                    background: white;
-                    color: var(--color-text);
-                    font-size: 13px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 8px;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-
-                    &:hover {
-                        transform: translateY(-1px);
-                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                    }
-
-                    &.google {
-                        border-color: #db4437;
-                        color: #db4437;
-
-                        &:hover {
-                            background-color: #db4437;
-                            color: white;
-                            border-color: #db4437;
-                            box-shadow: 0 4px 12px rgba(219, 68, 55, 0.3);
-                        }
-                    }
-
-                    &.github {
-                        border-color: #333;
-                        color: #333;
-
-                        &:hover {
-                            background-color: #333;
-                            color: white;
-                            border-color: #333;
-                            box-shadow: 0 4px 12px rgba(51, 51, 51, 0.3);
-                        }
-                    }
-
-                    .icon {
-                        font-size: 18px;
-                    }
-                }
-            }
 
             .loginLink {
                 text-align: center;
-                margin-top: 24px;
+                margin-top: 4px;
                 font-size: 15px;
                 color: var(--color-textSecondary);
                 font-weight: 400;
@@ -379,7 +299,7 @@
             }
 
             .testHint {
-                margin-top: 20px;
+                margin-top: 5px;
                 padding: 16px;
                 background: linear-gradient(135deg, #f6ffed 0%, #e6f7ff 100%);
                 border: 1px solid #b7eb8f;
@@ -430,7 +350,7 @@
         max-width: 100%;
 
         .cardHeader {
-            padding: 32px 24px 24px;
+            padding: 22px 24px 14px;
 
             .logo {
                 font-size: 28px;
@@ -442,19 +362,14 @@
         }
 
         .cardBody {
-            padding: 32px 24px;
-            min-height: 550px;
+            padding: 22px 24px;
+            min-height: 450px;
 
             .form {
                 .socialRegister {
                     flex-direction: column;
                     gap: 16px;
-                    margin-bottom: 24px;
-
-                    .socialButton {
-                        height: 48px;
-                        font-size: 13px;
-                    }
+                    margin-bottom: 4px;
                 }
 
                 .divider {
@@ -489,36 +404,21 @@
         }
 
         .cardBody {
-            padding: 24px 20px;
-            min-height: 500px;
+            padding: 4px 20px;
+            min-height: 450px;
 
             .form {
                 .input {
-                    height: 44px;
+                    height: 40px;
                     font-size: 14px;
                 }
 
                 .registerButton {
-                    height: 48px;
+                    height: 40px;
                     font-size: 15px;
                 }
-
-                .socialRegister {
-                    gap: 12px;
-                    margin-bottom: 20px;
-
-                    .socialButton {
-                        height: 44px;
-                        font-size: 13px;
-                    }
-                }
-
-                .divider {
-                    margin: 20px 0;
-                }
-
                 .loginLink {
-                    margin-top: 16px;
+                    margin-top: 6px;
                 }
             }
         }
