@@ -115,13 +115,6 @@ const LoginForm = () => {
     }
   };
 
-  /**
-   * 跳转到注册页面
-   */
-  const handleGoToRegister = () => {
-    messageApi.info('注册功能正在开发中...');
-  };
-
   return (
     <div className={styles.loginContainer}>
       {contextHolder}
@@ -238,7 +231,7 @@ const LoginForm = () => {
           <div className={styles.registerLink}>
             <Text>
               还没有账号？
-              <Link onClick={handleGoToRegister} className={styles.link}>
+              <Link to="/register" className={styles.link}>
                 立即注册
               </Link>
             </Text>

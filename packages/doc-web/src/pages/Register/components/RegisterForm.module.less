@@ -1,6 +1,6 @@
 @import '@/styles/global.less';
 
-.loginContainer {
+.registerContainer {
     position: relative;
     min-height: 100vh;
     background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
@@ -17,7 +17,7 @@
     right: 20px;
     z-index: 10;
 
-    // 登录页面专用的主题切换器样式
+    // 注册页面专用的主题切换器样式
     :global(.ant-btn) {
         color: white;
         border: 1px solid rgba(255, 255, 255, 0.3);
@@ -47,7 +47,7 @@
 }
 
 // 背景装饰元素
-.loginBackground {
+.registerBackground {
     position: absolute;
     top: 0;
     left: 0;
@@ -106,8 +106,8 @@
     }
 }
 
-// 登录卡片
-.loginCard {
+// 注册卡片
+.registerCard {
     position: relative;
     z-index: 2;
     width: 100%;
@@ -162,7 +162,7 @@
 
     .cardBody {
         padding: 32px 28px;
-        min-height: 480px;
+        min-height: 580px;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -215,7 +215,33 @@
                 }
             }
 
-            .loginButton {
+            .agreement {
+                margin: 20px 0;
+
+                .checkbox {
+                    font-size: 13px;
+                    color: var(--color-textSecondary);
+
+                    :global(.ant-checkbox-checked .ant-checkbox-inner) {
+                        background-color: var(--color-primary);
+                        border-color: var(--color-primary);
+                    }
+                }
+
+                .agreementLink {
+                    color: var(--color-primary);
+                    text-decoration: none;
+                    font-weight: 500;
+                    margin: 0 2px;
+
+                    &:hover {
+                        color: var(--color-hover);
+                        text-decoration: underline;
+                    }
+                }
+            }
+
+            .registerButton {
                 width: 100%;
                 height: 48px;
                 background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
@@ -226,6 +252,7 @@
                 font-weight: 600;
                 cursor: pointer;
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                margin-top: 12px;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 
                 &:hover {
@@ -247,7 +274,7 @@
             }
 
             .divider {
-                margin: 5px 0;
+                margin: 32px 0;
                 text-align: center;
                 position: relative;
                 color: var(--color-textSecondary);
@@ -272,10 +299,10 @@
                 }
             }
 
-            .socialLogin {
+            .socialRegister {
                 display: flex;
                 gap: 20px;
-                margin-bottom: 20px;
+                margin-bottom: 32px;
 
                 .socialButton {
                     flex: 1;
@@ -308,8 +335,6 @@
                             color: white;
                             border-color: #db4437;
                             box-shadow: 0 4px 12px rgba(219, 68, 55, 0.3);
-                            margin: 0;
-                            padding: 0;
                         }
                     }
 
@@ -331,9 +356,9 @@
                 }
             }
 
-            .registerLink {
+            .loginLink {
                 text-align: center;
-                margin-top: 12px;
+                margin-top: 24px;
                 font-size: 15px;
                 color: var(--color-textSecondary);
                 font-weight: 400;
@@ -354,8 +379,8 @@
             }
 
             .testHint {
-                margin-top: 14px;
-                padding: 0px;
+                margin-top: 20px;
+                padding: 16px;
                 background: linear-gradient(135deg, #f6ffed 0%, #e6f7ff 100%);
                 border: 1px solid #b7eb8f;
                 border-radius: 12px;
@@ -392,7 +417,7 @@
 
 // 响应式设计
 @media (max-width: 768px) {
-    .loginContainer {
+    .registerContainer {
         padding: 16px;
     }
 
@@ -401,7 +426,7 @@
         right: 16px;
     }
 
-    .loginCard {
+    .registerCard {
         max-width: 100%;
 
         .cardHeader {
@@ -417,14 +442,14 @@
         }
 
         .cardBody {
-            padding: 12px 24px;
-            min-height: 450px;
+            padding: 32px 24px;
+            min-height: 550px;
 
             .form {
-                .socialLogin {
+                .socialRegister {
                     flex-direction: column;
-                    gap: 20px;
-                    margin-bottom: 32px;
+                    gap: 16px;
+                    margin-bottom: 24px;
 
                     .socialButton {
                         height: 48px;
@@ -433,11 +458,11 @@
                 }
 
                 .divider {
-                    margin: 32px 0;
+                    margin: 24px 0;
                 }
 
-                .registerLink {
-                    margin-top: 24px;
+                .loginLink {
+                    margin-top: 20px;
                 }
             }
         }
@@ -445,7 +470,7 @@
 }
 
 @media (max-width: 480px) {
-    .loginContainer {
+    .registerContainer {
         padding: 12px;
     }
 
@@ -454,7 +479,7 @@
         right: 12px;
     }
 
-    .loginCard {
+    .registerCard {
         .cardHeader {
             padding: 24px 20px 20px;
 
@@ -465,7 +490,7 @@
 
         .cardBody {
             padding: 24px 20px;
-            min-height: 400px;
+            min-height: 500px;
 
             .form {
                 .input {
@@ -473,14 +498,14 @@
                     font-size: 14px;
                 }
 
-                .loginButton {
+                .registerButton {
                     height: 48px;
                     font-size: 15px;
                 }
 
-                .socialLogin {
-                    gap: 16px;
-                    margin-bottom: 24px;
+                .socialRegister {
+                    gap: 12px;
+                    margin-bottom: 20px;
 
                     .socialButton {
                         height: 44px;
@@ -489,11 +514,11 @@
                 }
 
                 .divider {
-                    margin: 24px 0;
+                    margin: 20px 0;
                 }
 
-                .registerLink {
-                    margin-top: 20px;
+                .loginLink {
+                    margin-top: 16px;
                 }
             }
         }
@@ -502,8 +527,4 @@
     .shape {
         display: none;
     }
-}
-
-.btn1 {
-    margin-bottom: 10px;
 }
