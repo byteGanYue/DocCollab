@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Dropdown, Space, Tooltip } from 'antd';
 import { BgColorsOutlined } from '@ant-design/icons';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from '@/hooks/useTheme';
 import { themeOptions } from '@/styles/themes';
 import styles from './index.module.less';
 

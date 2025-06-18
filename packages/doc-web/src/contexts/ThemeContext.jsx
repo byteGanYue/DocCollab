@@ -1,11 +1,17 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import { themes, defaultTheme } from '@/styles/themes';
 
 // 创建主题 Context
 const ThemeContext = createContext();
 
-// 主题 Provider 组件
-export const ThemeProvider = ({ children }) => {
+/**
+ * ThemeProvider 组件，用于提供主题上下文。
+ *
+ * @param {Object} props 组件的属性
+ * @param {ReactNode} props.children 组件的子元素
+ * @returns 返回包含子元素的 ThemeContext.Provider 组件
+ */
+const ThemeProvider = ({ children }) => {
   const [currentTheme, setCurrentTheme] = useState(defaultTheme);
 
   // 应用主题到 CSS 变量
@@ -55,12 +61,5 @@ export const ThemeProvider = ({ children }) => {
     <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
   );
 };
-
-// 自定义 Hook
-export const useTheme = () => {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
-};
+// 导出 ThemeContext，ThemeProvider
+export { ThemeContext, ThemeProvider };
