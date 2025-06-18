@@ -168,50 +168,61 @@
         justify-content: space-between;
 
         .form {
-            .formItem {
+
+            // Form.Item 样式
+            :global(.ant-form-item) {
                 margin-bottom: 10px;
 
-                .label {
-                    display: block;
-                    margin-bottom: 8px;
-                    font-weight: 500;
-                    color: var(--color-text);
-                    font-size: 14px;
-                }
-
-                .input {
-                    width: 100%;
-                    height: 40px;
-                    border: 2px solid #f0f0f0;
-                    border-radius: 12px;
-                    padding: 0 16px;
-                    font-size: 14px;
-                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                    background: #fafafa;
-
-                    &:hover {
-                        border-color: var(--color-primary);
-                        background: white;
-                        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
-                    }
-
-                    &:focus {
-                        border-color: var(--color-primary);
-                        background: white;
-                        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
-                        outline: none;
-                    }
-
-                    &::placeholder {
-                        color: var(--color-textSecondary);
+                .ant-form-item-label {
+                    label {
+                        font-weight: 500;
+                        color: var(--color-text);
+                        font-size: 14px;
                     }
                 }
 
-                .error {
+                .ant-form-item-control {
+
+                    .ant-input,
+                    .ant-input-password {
+                        width: 100%;
+                        height: 40px;
+                        border: 2px solid #f0f0f0;
+                        border-radius: 12px;
+                        padding: 0 16px;
+                        font-size: 14px;
+                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                        background: #fafafa;
+
+                        &:hover {
+                            border-color: var(--color-primary);
+                            background: white;
+                            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+                        }
+
+                        &:focus {
+                            border-color: var(--color-primary);
+                            background: white;
+                            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+                            outline: none;
+                        }
+
+                        &::placeholder {
+                            color: var(--color-textSecondary);
+                        }
+                    }
+
+                    .ant-input-password {
+                        .ant-input-suffix {
+                            color: var(--color-textSecondary);
+                        }
+                    }
+                }
+
+                .ant-form-item-explain-error {
                     color: var(--color-error);
                     font-size: 12px;
-                    margin-top: 6px;
-                    display: block;
+                    margin-top: 4px;
                 }
             }
 
@@ -272,9 +283,6 @@
                     box-shadow: none;
                 }
             }
-
-           
-
 
             .loginLink {
                 text-align: center;
@@ -417,6 +425,7 @@
                     height: 40px;
                     font-size: 15px;
                 }
+
                 .loginLink {
                     margin-top: 6px;
                 }

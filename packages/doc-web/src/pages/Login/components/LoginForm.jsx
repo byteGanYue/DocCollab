@@ -10,9 +10,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import styles from './LoginForm.module.less';
-
 const { Title, Text, Link } = Typography;
-
+import { userAPI } from '@/utils/api';
 /**
  * 登录表单组件
  * 支持邮箱密码登录和第三方登录（模拟）
@@ -21,98 +20,56 @@ const LoginForm = () => {
   const [form] = Form.useForm();
   // 登录加载状态
   const [loading, setLoading] = useState(false);
-  const [thirdPartyLoading, setThirdPartyLoading] = useState(null);
   const navigate = useNavigate();
   // 消息提示
   const [messageApi, contextHolder] = message.useMessage();
 
-  /**
-   * 模拟邮箱登录
-   * @param {Object} values - 表单数据
-   */
-  const handleEmailLogin = async values => {
-    setLoading(true);
+  // 登录逻辑
+  const handleEmailLogin = async () => {
     try {
-      // 模拟API调用延迟
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // 生成模拟用户数据
-      const mockUser = {
-        id: 'user_' + Date.now(),
+      // 校验表单
+      const values = await form.validateFields();
+      setLoading(true);
+      // 调用登录API
+      const res = await userAPI.login({
         email: values.email,
-        username: values.email.split('@')[0],
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${values.email}`,
-        loginTime: new Date().toISOString(),
-        provider: 'email',
-      };
-
-      // 生成模拟JWT token
-      const mockToken = 'mock_jwt_token_' + Date.now();
-
-      // 保存到localStorage（模拟真实登录状态）
-      localStorage.setItem('token', mockToken);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-
-      messageApi.success(`欢迎回来，${mockUser.username}！`);
-
-      // 延迟跳转，让用户看到成功消息
-      setTimeout(() => {
-        navigate('/home');
-      }, 800);
-    } catch {
-      messageApi.error('登录失败，请稍后重试');
+        password: values.password,
+      });
+      console.log(res);
+      if (res.Code == 200) {
+        // localStorage.setItem('token', res.token);
+        // localStorage.setItem('user', JSON.stringify(res.user));
+        messageApi.success(`欢迎回来，${res.user.username || res.user.email}`);
+        setTimeout(() => {
+          navigate('/home');
+        }, 500);
+      } else {
+        messageApi.error('登录失败');
+      }
+    } catch (error) {
+      if (error.errorFields) {
+        // 表单校验错误
+        const firstError = error.errorFields[0];
+        messageApi.error(firstError.errors[0]);
+      } else if (error.response) {
+        // 接口返回错误
+        const { status, data } = error.response;
+        if (status === 401) {
+          messageApi.error('邮箱或密码错误');
+        } else {
+          messageApi.error(data?.message || '登录失败，请稍后重试');
+        }
+      } else {
+        messageApi.error('登录失败，请检查网络或稍后重试');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * 模拟第三方登录
-   * @param {string} provider - 登录提供商 (google/github)
-   */
-  const handleThirdPartyLogin = async provider => {
-    setThirdPartyLoading(provider);
-    try {
-      messageApi.info(
-        `正在通过 ${provider === 'google' ? 'Google' : 'GitHub'} 登录...`,
-      );
-
-      // 模拟第三方登录延迟
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // 生成第三方用户数据
-      const providerNames = {
-        google: 'Google',
-        github: 'GitHub',
-      };
-
-      const mockUser = {
-        id: `${provider}_user_` + Date.now(),
-        email: `user@${provider}.example`,
-        username: `${providerNames[provider]}用户`,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider}user`,
-        provider: provider,
-        loginTime: new Date().toISOString(),
-      };
-
-      // 生成模拟token
-      const mockToken = `mock_${provider}_token_` + Date.now();
-
-      // 保存到localStorage
-      localStorage.setItem('token', mockToken);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-
-      messageApi.success(`通过 ${providerNames[provider]} 登录成功！`);
-
-      // 延迟跳转
-      setTimeout(() => {
-        navigate('/home');
-      }, 800);
-    } catch {
-      messageApi.error(`${provider} 登录失败，请稍后重试`);
-    } finally {
-      setThirdPartyLoading(null);
-    }
+  // 占位：第三方登录逻辑
+  const handleThirdPartyLogin = provider => {
+    messageApi.info(`暂未实现${provider}登录`);
   };
 
   return (
@@ -150,40 +107,42 @@ const LoginForm = () => {
           <Form
             form={form}
             name="login"
-            onFinish={handleEmailLogin}
             layout="vertical"
             size="large"
             className={styles.form}
+            onFinish={handleEmailLogin}
           >
-            <div className={styles.formItem}>
-              <label className={styles.label}>邮箱</label>
+            <Form.Item
+              name="email"
+              label="邮箱"
+              rules={[
+                { required: true, message: '请输入邮箱地址' },
+                { type: 'email', message: '请输入有效的邮箱地址' },
+              ]}
+            >
               <Input
                 prefix={<UserOutlined />}
                 placeholder="请输入邮箱地址"
                 autoComplete="email"
                 className={styles.input}
-                name="email"
-                rules={[
-                  { required: true, message: '请输入邮箱地址' },
-                  { type: 'email', message: '请输入有效的邮箱地址' },
-                ]}
               />
-            </div>
+            </Form.Item>
 
-            <div className={styles.formItem}>
-              <label className={styles.label}>密码</label>
+            <Form.Item
+              name="password"
+              label="密码"
+              rules={[
+                { required: true, message: '请输入密码' },
+                { min: 6, message: '密码至少6位字符' },
+              ]}
+            >
               <Input.Password
                 prefix={<LockOutlined />}
                 placeholder="请输入密码"
                 autoComplete="current-password"
                 className={styles.input}
-                name="password"
-                rules={[
-                  { required: true, message: '请输入密码' },
-                  { min: 6, message: '密码至少6位字符' },
-                ]}
               />
-            </div>
+            </Form.Item>
 
             <Button
               type="primary"
@@ -207,7 +166,6 @@ const LoginForm = () => {
               <Button
                 className={`${styles.socialButton} ${styles.google}`}
                 onClick={() => handleThirdPartyLogin('google')}
-                loading={thirdPartyLoading === 'google'}
                 block
               >
                 <GoogleOutlined className={styles.icon} />
@@ -218,7 +176,6 @@ const LoginForm = () => {
               <Button
                 className={`${styles.socialButton} ${styles.github}`}
                 onClick={() => handleThirdPartyLogin('github')}
-                loading={thirdPartyLoading === 'github'}
                 block
               >
                 <GithubOutlined className={styles.icon} />

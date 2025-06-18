@@ -4,130 +4,156 @@ import {
   UserOutlined,
   LockOutlined,
   MailOutlined,
-  GoogleOutlined,
-  GithubOutlined,
   FileTextOutlined,
 } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
+import { userAPI, authUtils } from '@/utils/api';
 import styles from './RegisterForm.module.less';
-
 const { Title, Text } = Typography;
 
 /**
  * 注册表单组件
  * 支持邮箱注册和第三方注册（模拟）
+ *
+ * 功能说明：
+ * 1. validateForm() - 验证表单填写是否完整
+ *    - 检查所有必填字段
+ *    - 验证邮箱格式
+ *    - 验证密码强度
+ *    - 检查用户协议是否同意
+ *    - 返回 Promise<boolean>
+ *
+ * 2. handleRegisterClick() - 处理注册按钮点击
+ *    - 先调用 validateForm() 验证表单
+ *    - 验证通过后调用后端API
+ *    - 处理注册成功/失败逻辑
+ *    - 自动跳转到主页
+ *
+ * 使用示例：
+ * // 单独验证表单
+ * const isValid = await validateForm();
+ * if (isValid) {
+ *   console.log('表单验证通过');
+ * }
+ *
+ * // 触发注册流程
+ * await handleRegisterClick();
  */
 const RegisterForm = () => {
-  const [form] = Form.useForm();
+  const [form] = Form.useForm(); // 表单实例, 用于表单验证和获取表单数据`
   const [loading, setLoading] = useState(false);
-  const [thirdPartyLoading, setThirdPartyLoading] = useState(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const navigate = useNavigate();
   // 消息提示
   const [messageApi, contextHolder] = message.useMessage();
 
   /**
-   * 模拟邮箱注册
-   * @param {Object} values - 表单数据
+   * 验证表单填写是否完整
+   * @returns {Promise<boolean>} 验证结果
    */
-  const handleEmailRegister = async values => {
-    if (!agreedToTerms) {
-      messageApi.error('请先同意用户协议和隐私政策');
+  const validateForm = async () => {
+    console.log('开始验证表单');
+
+    try {
+      // 验证表单字段（包括用户名、邮箱、密码等）
+      const values = await form.validateFields();
+      console.log('表单验证通过，获取到的值:', values);
+
+      // 检查用户协议是否同意
+      if (!agreedToTerms) {
+        messageApi.error('请先同意用户协议和隐私政策');
+        return false;
+      }
+
+      console.log('所有验证通过');
+      return true;
+    } catch (error) {
+      console.error('表单验证失败:', error);
+      // 表单验证失败
+      if (error.errorFields && error.errorFields.length > 0) {
+        const firstError = error.errorFields[0];
+        console.log('第一个错误字段:', firstError);
+        messageApi.error(firstError.errors[0]);
+      } else {
+        messageApi.error('表单验证失败，请检查输入内容');
+      }
+      return false;
+    }
+  };
+
+  /**
+   * 处理注册按钮点击
+   */
+  const handleRegisterClick = async () => {
+    console.log('注册按钮点击');
+    // 先验证表单
+    const isValid = await validateForm();
+    if (!isValid) {
       return;
     }
-
+    // 开始注册流程
     setLoading(true);
     try {
-      // 模拟API调用延迟
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // 生成模拟用户数据
-      const mockUser = {
-        id: 'user_' + Date.now(),
-        email: values.email,
+      // 获取表单数据
+      const values = await form.getFieldsValue();
+      console.log('表单数据:', values);
+      // 准备注册数据
+      const registerData = {
         username: values.username,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${values.email}`,
-        registerTime: new Date().toISOString(),
-        provider: 'email',
+        email: values.email,
+        password: values.password,
       };
 
-      // 生成模拟JWT token
-      const mockToken = 'mock_jwt_token_' + Date.now();
+      // 调用注册API
+      const response = await userAPI.register(registerData);
+      console.log('注册响应:', response);
+      // 注册成功，保存token和用户信息
+      if (response.Code == 201) {
+        if (response.token) {
+          authUtils.setAuthToken(response.token);
+          localStorage.setItem('user', JSON.stringify(response.user));
+        }
+        messageApi.success(
+          `注册成功！欢迎加入 DocCollab，${response.username}！`,
+        );
 
-      // 保存到localStorage（模拟真实注册状态）
-      localStorage.setItem('token', mockToken);
-      localStorage.setItem('user', JSON.stringify(mockUser));
+        // 延迟跳转，让用户看到成功消息
+        setTimeout(() => {
+          navigate('/login');
+        }, 800);
+      } else {
+        // 如果没有返回token，可能是模拟注册
 
-      messageApi.success(
-        `注册成功！欢迎加入 DocCollab，${mockUser.username}！`,
-      );
+        messageApi.error(`注册失败`);
+      }
+    } catch (error) {
+      console.error('注册失败:', error);
 
-      // 延迟跳转，让用户看到成功消息
-      setTimeout(() => {
-        navigate('/home');
-      }, 800);
-    } catch {
-      messageApi.error('注册失败，请稍后重试');
+      // 根据错误类型显示不同的错误消息
+      if (error.response) {
+        const { status, data } = error.response;
+        switch (status) {
+          case 400:
+            messageApi.error(data?.message || '注册信息有误，请检查输入');
+            break;
+          case 409:
+            messageApi.error('该邮箱或用户名已被注册');
+            break;
+          case 422:
+            messageApi.error('数据验证失败，请检查输入格式');
+            break;
+          default:
+            messageApi.error(data?.message || '注册失败，请稍后重试');
+        }
+      } else if (error.request) {
+        messageApi.error('网络连接失败，请检查网络');
+      } else {
+        messageApi.error('注册失败，请稍后重试');
+      }
     } finally {
       setLoading(false);
     }
-  };
-
-  /**
-   * 模拟第三方注册
-   * @param {string} provider - 注册提供商 (google/github)
-   */
-  const handleThirdPartyRegister = async provider => {
-    setThirdPartyLoading(provider);
-    try {
-      messageApi.info(
-        `正在通过 ${provider === 'google' ? 'Google' : 'GitHub'} 注册...`,
-      );
-
-      // 模拟第三方注册延迟
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // 生成第三方用户数据
-      const providerNames = {
-        google: 'Google',
-        github: 'GitHub',
-      };
-
-      const mockUser = {
-        id: `${provider}_user_` + Date.now(),
-        email: `user@${provider}.example`,
-        username: `${providerNames[provider]}用户`,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${provider}user`,
-        provider: provider,
-        registerTime: new Date().toISOString(),
-      };
-
-      // 生成模拟token
-      const mockToken = `mock_${provider}_token_` + Date.now();
-
-      // 保存到localStorage
-      localStorage.setItem('token', mockToken);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-
-      messageApi.success(`通过 ${providerNames[provider]} 注册成功！`);
-
-      // 延迟跳转
-      setTimeout(() => {
-        navigate('/home');
-      }, 800);
-    } catch {
-      messageApi.error(`${provider} 注册失败，请稍后重试`);
-    } finally {
-      setThirdPartyLoading(null);
-    }
-  };
-
-  /**
-   * 跳转到登录页面
-   */
-  const handleGoToLogin = () => {
-    navigate('/login');
   };
 
   return (
@@ -165,76 +191,79 @@ const RegisterForm = () => {
           <Form
             form={form}
             name="register"
-            onFinish={handleEmailRegister}
             layout="vertical"
             size="large"
             className={styles.form}
           >
-            <div className={styles.formItem}>
-              <label className={styles.label}>用户名</label>
+            <Form.Item
+              name="username"
+              label="用户名"
+              rules={[
+                { required: true, message: '请输入用户名' },
+                { min: 2, message: '用户名至少2位字符' },
+              ]}
+            >
               <Input
                 prefix={<UserOutlined />}
                 placeholder="请输入用户名"
                 className={styles.input}
-                name="username"
-                rules={[
-                  { required: true, message: '请输入用户名' },
-                  { min: 2, message: '用户名至少2位字符' },
-                ]}
               />
-            </div>
+            </Form.Item>
 
-            <div className={styles.formItem}>
-              <label className={styles.label}>邮箱</label>
+            <Form.Item
+              name="email"
+              label="邮箱"
+              rules={[
+                { required: true, message: '请输入邮箱地址' },
+                { type: 'email', message: '请输入有效的邮箱地址' },
+              ]}
+            >
               <Input
                 prefix={<MailOutlined />}
                 placeholder="请输入邮箱地址"
                 autoComplete="email"
                 className={styles.input}
-                name="email"
-                rules={[
-                  { required: true, message: '请输入邮箱地址' },
-                  { type: 'email', message: '请输入有效的邮箱地址' },
-                ]}
               />
-            </div>
+            </Form.Item>
 
-            <div className={styles.formItem}>
-              <label className={styles.label}>密码</label>
+            <Form.Item
+              name="password"
+              label="密码"
+              rules={[
+                { required: true, message: '请输入密码' },
+                { min: 6, message: '密码至少6位字符' },
+              ]}
+            >
               <Input.Password
                 prefix={<LockOutlined />}
                 placeholder="请输入密码"
                 autoComplete="new-password"
                 className={styles.input}
-                name="password"
-                rules={[
-                  { required: true, message: '请输入密码' },
-                  { min: 6, message: '密码至少6位字符' },
-                ]}
               />
-            </div>
+            </Form.Item>
 
-            <div className={styles.formItem}>
-              <label className={styles.label}>确认密码</label>
+            <Form.Item
+              name="confirmPassword"
+              label="确认密码"
+              rules={[
+                { required: true, message: '请确认密码' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('password') === value) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(new Error('两次输入的密码不一致'));
+                  },
+                }),
+              ]}
+            >
               <Input.Password
                 prefix={<LockOutlined />}
                 placeholder="请再次输入密码"
                 autoComplete="new-password"
                 className={styles.input}
-                name="confirmPassword"
-                rules={[
-                  { required: true, message: '请确认密码' },
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (!value || getFieldValue('password') === value) {
-                        return Promise.resolve();
-                      }
-                      return Promise.reject(new Error('两次输入的密码不一致'));
-                    },
-                  }),
-                ]}
               />
-            </div>
+            </Form.Item>
 
             <div className={styles.agreement}>
               <Checkbox
@@ -255,10 +284,10 @@ const RegisterForm = () => {
 
             <Button
               type="primary"
-              htmlType="submit"
               loading={loading}
               className={styles.registerButton}
               block
+              onClick={handleRegisterClick}
             >
               注册
             </Button>

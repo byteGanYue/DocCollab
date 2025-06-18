@@ -17,10 +17,10 @@ import {
  */
 export const userAPI = {
   // 用户登录
-  login: data => post('/auth/login', data),
+  login: data => post('/user/login', data),
 
   // 用户注册
-  register: data => post('/auth/register', data),
+  register: data => post('/user/register', data),
 
   // 获取用户信息
   getProfile: () => get('/user/profile'),
