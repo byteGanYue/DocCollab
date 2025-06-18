@@ -81,6 +81,13 @@ const Welcome = () => {
                 <p>历史版本记录，支持对比和回滚</p>
               </div>
             </div>
+            <div className={styles.feature}>
+              <div className={styles.featureIcon}>📊</div>
+              <div className={styles.featureText}>
+                <h3>多级文件管理</h3>
+                <p>支持多级文件夹结构，灵活组织文档</p>
+              </div>
+            </div>
           </div>
 
           {/* 操作按钮 */}
