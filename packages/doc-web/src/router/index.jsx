@@ -4,7 +4,6 @@ import Folder from '@/pages/Folder';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import Welcome from '@/pages/Welcome';
-import AuthGuard from '@/components/AuthGuard';
 
 const router = createBrowserRouter([
   {
