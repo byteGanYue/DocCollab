@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   FolderOpenOutlined,
   PlusSquareOutlined,
@@ -27,13 +27,52 @@ import styles from './folderMenu.module.less';
  * @param {Object} props - 组件属性
  * @param {string} props.text - 要显示的文本
  *
- * @returns {JSX.Element} 返回 Tooltip 组件包裹的文本元素，文本超出长度将显示省略号
+ * @returns {JSX.Element} 返回 Tooltip 组件包裹的文本元素，只有文字溢出时才显示tooltip
  */
-const EllipsisLabel = ({ text }) => (
-  <Tooltip title={text} placement="right">
-    <span className={styles.ellipsisText}>{text}</span>
-  </Tooltip>
-);
+const EllipsisLabel = ({ text }) => {
+  const textRef = useRef(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  useEffect(() => {
+    const checkOverflow = () => {
+      if (textRef.current) {
+        const element = textRef.current;
+        // 检查元素的滚动宽度是否大于客户端宽度
+        const isTextOverflowing = element.scrollWidth > element.clientWidth;
+        setIsOverflowing(isTextOverflowing);
+      }
+    };
+
+    // 初次检查
+    checkOverflow();
+
+    // 添加resize监听器，在窗口大小变化时重新检查
+    const resizeObserver = new ResizeObserver(checkOverflow);
+    if (textRef.current) {
+      resizeObserver.observe(textRef.current);
+    }
+
+    // 清理函数
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [text]); // 当文本变化时重新检查
+
+  const textElement = (
+    <span ref={textRef} className={styles.ellipsisText}>
+      {text}
+    </span>
+  );
+
+  // 只有在文字溢出时才显示tooltip
+  return isOverflowing ? (
+    <Tooltip title={text} placement="right">
+      {textElement}
+    </Tooltip>
+  ) : (
+    textElement
+  );
+};
 
 // 按钮样式
 const buttonStyle = {
@@ -57,7 +96,8 @@ const buttonHoverStyle = {
   background:
     'linear-gradient(135deg, var(--color-hover) 0%, var(--color-primary) 100%)',
   transform: 'translateY(-1px)',
-  boxShadow: '0 4px 12px rgba(24, 144, 255, 0.4)',
+  boxShadow:
+    '0 4px 12px color-mix(in srgb, var(--color-primary) 40%, transparent)',
 };
 
 // TODO: mock数据来的
