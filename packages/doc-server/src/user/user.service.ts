@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import * as uuid from 'uuid';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserDocument } from './schemas/user.schema'; // 引入 Mongoose 模型
@@ -28,7 +27,7 @@ export class UserService {
         username: createUserDto.username,
         email: createUserDto.email,
         password: hashedPassword,
-        folderId: uuid.v4(), // 假设初始时没有文件夹ID
+        folderId: null, // 假设初始时没有文件夹ID
         createdAt: new Date(),
         updatedAt: new Date(),
       });
