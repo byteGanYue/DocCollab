@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import * as uuid from 'uuid';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserDocument } from './schemas/user.schema'; // 引入 Mongoose 模型
@@ -28,18 +27,26 @@ export class UserService {
         username: createUserDto.username,
         email: createUserDto.email,
         password: hashedPassword,
-        folderId: uuid.v4(), // 假设初始时没有文件夹ID
+        folderId: null, // 假设初始时没有文件夹ID
         createdAt: new Date(),
         updatedAt: new Date(),
       });
       this.logger.log(`Created user: ${user.username}`);
-      return user;
+      return {
+        code: 200,
+        message: 'User created successfully',
+      };
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logger.error(`Failed to create user: ${errorMessage}`, errorStack);
       throw error;
+      return {
+        code: 500,
+        message: 'Failed to create user',
+        error: errorMessage,
+      };
     }
   }
 
@@ -57,9 +64,9 @@ export class UserService {
       throw new Error('Invalid password');
     }
     return {
-      id: user._id,
+      code: 200,
       username: user.username,
-      email: user.email,
+      message: 'Login successful',
     };
   }
 
