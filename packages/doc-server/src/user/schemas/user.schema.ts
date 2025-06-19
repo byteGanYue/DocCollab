@@ -14,7 +14,7 @@ export class User {
   @Prop({ required: true })
   password: string;
 
-  @Prop({ default: null, unique: true })
+  @Prop({ default: null })
   folderId: string; // 文件夹ID，假设是字符串类型
 }
 
