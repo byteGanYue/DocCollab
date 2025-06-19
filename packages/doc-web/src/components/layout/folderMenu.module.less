@@ -1,0 +1,83 @@
+/**
+ * FolderMenu 组件样式文件
+ */
+
+/* 文本省略号标签样式 */
+.ellipsisText {
+  display: inline-block;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* 侧边栏样式 */
+.sider {
+  background: var(--color-bg-container);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: fixed;
+  left: 0;
+  top: 64px; /* 距离顶部导航栏下方 */
+  bottom: 0;
+}
+
+/* 操作按钮容器样式 */
+.buttonContainer {
+  display: flex;
+  gap: 12px;
+  padding: 16px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  background: var(--color-bg-container);
+}
+
+/* 菜单样式 */
+.menu {
+  height: 100%;
+  border-right: 0;
+  flex: 1;
+}
+
+/* 菜单项标签容器样式 */
+.menuLabelContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 更多操作按钮样式 */
+.moreButton {
+  margin-left: 4px;
+}
+
+/* 菜单主题样式 */
+:global(.folder-menu-theme) {
+  .ant-menu-item-selected {
+    color: var(--color-primary) !important;
+    background-color: rgba(24, 144, 255, 0.1) !important;
+  }
+  
+  .ant-menu-item:hover {
+    color: var(--color-primary) !important;
+    background-color: rgba(24, 144, 255, 0.05) !important;
+  }
+  
+  .ant-menu-submenu-title:hover {
+    color: var(--color-primary) !important;
+    background-color: rgba(24, 144, 255, 0.05) !important;
+  }
+  
+  .ant-menu-submenu-selected > .ant-menu-submenu-title {
+    color: var(--color-primary) !important;
+  }
+  
+  .ant-menu-item-selected .ant-menu-title-content {
+    color: var(--color-primary) !important;
+  }
+  
+  .ant-menu-submenu-selected .ant-menu-title-content {
+    color: var(--color-primary) !important;
+  }
+} 

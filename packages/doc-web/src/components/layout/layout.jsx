@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Breadcrumb, Layout, Menu, Button, Space } from 'antd';
-import DocEditor from '@/pages/DocEditor';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { FolderMenu } from './folderMenu';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import styles from './layout.module.less';
@@ -14,22 +14,36 @@ const EditorList = ['1', '2', '3'].map(key => ({
 }));
 
 const LayoutComponent = () => {
-  const [selectedMenuKey, setSelectedMenuKey] = useState(['1']); // 默认选中第一个
+  const location = useLocation(); // 获取当前路由信息
+  const navigate = useNavigate(); // 路由导航
+
+  // 根据当前路由生成面包屑导航
+  const getBreadcrumbItems = () => {
+    const path = location.pathname;
+    switch (path) {
+      case '/home':
+        return [{ title: '首页' }];
+      case '/folder':
+        return [{ title: '首页' }, { title: '文件夹管理' }];
+      case '/doc-editor':
+        return [{ title: '首页' }, { title: '文档编辑' }];
+      default:
+        return [{ title: '首页' }];
+    }
+  };
 
   return (
     <Layout className={styles.layout}>
       <Header className={styles.header}>
         {/* 左侧：Logo和菜单 */}
         <div className={styles.headerLeft}>
-          <div className={styles.logo}>📝 DocCollab</div>
-          <Menu
-            theme="dark"
-            mode="horizontal"
-            items={EditorList}
-            className={`${styles.menu} header-menu`}
-            selectedKeys={selectedMenuKey}
-            onSelect={key => setSelectedMenuKey(key.keyPath)}
-          />
+          <div
+            className={styles.logo}
+            onClick={() => navigate('/home')}
+            style={{ cursor: 'pointer' }}
+          >
+            📝 DocCollab
+          </div>
         </div>
 
         {/* 右侧：主题切换器和静态用户信息 */}
@@ -48,10 +62,10 @@ const LayoutComponent = () => {
         </Sider>
         <Content className={styles.content}>
           <div className={styles.contentHeader}>
-            <Breadcrumb className={styles.breadcrumb}>
-              <Breadcrumb.Item>首页</Breadcrumb.Item>
-              <Breadcrumb.Item>文档编辑</Breadcrumb.Item>
-            </Breadcrumb>
+            <Breadcrumb
+              className={styles.breadcrumb}
+              items={getBreadcrumbItems()}
+            />
 
             <div className={styles.actions}>
               <Button className={`${styles.actionButton} ${styles.default}`}>
@@ -62,9 +76,9 @@ const LayoutComponent = () => {
               </Button>
             </div>
           </div>
-          {/* 编辑器功能区域 */}
-          <div style={{ padding: 24 }}>
-            <DocEditor />
+          {/* 使用Outlet渲染子路由内容 */}
+          <div className={styles.outletContainer}>
+            <Outlet />
           </div>
         </Content>
       </Layout>

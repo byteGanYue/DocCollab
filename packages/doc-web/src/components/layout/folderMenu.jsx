@@ -4,12 +4,12 @@ import {
   PlusSquareOutlined,
   FolderAddOutlined,
   MoreOutlined,
+  HomeOutlined,
 } from '@ant-design/icons';
 import {
   Layout,
   Menu,
   Button,
-  theme,
   Tooltip,
   message,
   Modal,
@@ -17,7 +17,9 @@ import {
   Dropdown,
   Menu as AntdMenu,
 } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import { folderUtils } from '@/utils';
+import styles from './folderMenu.module.less';
 
 /**
  * EllipsisLabel 组件
@@ -29,18 +31,7 @@ import { folderUtils } from '@/utils';
  */
 const EllipsisLabel = ({ text }) => (
   <Tooltip title={text} placement="right">
-    <span
-      style={{
-        display: 'inline-block',
-        maxWidth: 120,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-        verticalAlign: 'middle',
-      }}
-    >
-      {text}
-    </span>
+    <span className={styles.ellipsisText}>{text}</span>
   </Tooltip>
 );
 
@@ -72,6 +63,12 @@ const buttonHoverStyle = {
 // TODO: mock数据来的
 const initialFolderList = [
   {
+    key: 'home', // 首页菜单项
+    icon: React.createElement(HomeOutlined),
+    label: <EllipsisLabel text="首页" />,
+    children: null, // 首页没有子项
+  },
+  {
     key: 'root', // 根文件夹的key固定为'root'
     icon: React.createElement(FolderOpenOutlined),
     label: <EllipsisLabel text="我的文件夹" />,
@@ -101,11 +98,9 @@ const initialFolderList = [
  * @returns {JSX.Element} 渲染的组件
  */
 const FolderMenu = () => {
-  const {
-    token: { colorBgContainer },
-  } = theme.useToken();
+  const navigate = useNavigate();
   const [folderList, setFolderList] = useState(initialFolderList);
-  const [selectedKeys, setSelectedKeys] = useState(['doc1']);
+  const [selectedKeys, setSelectedKeys] = useState(['home']); // 默认选中首页
   const [openKeys, setOpenKeys] = useState(['root']);
   const [isAddFolderModalOpen, setIsAddFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -126,46 +121,21 @@ const FolderMenu = () => {
   // 新增：按钮悬停状态
   const [hoveredButton, setHoveredButton] = useState(null);
 
-  // 注入菜单主题色样式
-  React.useEffect(() => {
-    const styleId = 'folder-menu-theme-styles';
-    if (!document.getElementById(styleId)) {
-      const style = document.createElement('style');
-      style.id = styleId;
-      style.textContent = `
-        .folder-menu-theme .ant-menu-item-selected {
-          color: var(--color-primary) !important;
-          background-color: rgba(24, 144, 255, 0.1) !important;
-        }
-        
-        .folder-menu-theme .ant-menu-item:hover {
-          color: var(--color-primary) !important;
-          background-color: rgba(24, 144, 255, 0.05) !important;
-        }
-        
-        .folder-menu-theme .ant-menu-submenu-title:hover {
-          color: var(--color-primary) !important;
-          background-color: rgba(24, 144, 255, 0.05) !important;
-        }
-        
-        .folder-menu-theme .ant-menu-submenu-selected > .ant-menu-submenu-title {
-          color: var(--color-primary) !important;
-        }
-        
-        .folder-menu-theme .ant-menu-item-selected .ant-menu-title-content {
-          color: var(--color-primary) !important;
-        }
-        
-        .folder-menu-theme .ant-menu-submenu-selected .ant-menu-title-content {
-          color: var(--color-primary) !important;
-        }
-      `;
-      document.head.appendChild(style);
-    }
-  }, []);
-
   const handleMenuSelect = ({ selectedKeys }) => {
     setSelectedKeys(selectedKeys);
+
+    const selectedKey = selectedKeys[0];
+
+    // 处理首页点击导航
+    if (selectedKey === 'home') {
+      navigate('/home');
+    }
+    // 处理文档点击导航 - 以doc开头的key表示文档
+    else if (selectedKey && selectedKey.startsWith('doc')) {
+      navigate(`/doc-editor/${selectedKey}`);
+    }
+    // 处理文件夹点击 - 以sub开头的key表示文件夹，不需要导航，只是展开/折叠
+    // 其他情况暂不处理导航
   };
 
   const handleMenuOpenChange = newOpenKeys => {
@@ -245,8 +215,8 @@ const FolderMenu = () => {
     // 获取原始文本（用于重命名弹窗）
     const text = item.label?.props?.text || item.label;
 
-    // 如果是根文件夹（key === 'root'），则不显示操作按钮
-    if (item.key === 'root') {
+    // 如果是根文件夹（key === 'root'）或首页（key === 'home'），则不显示操作按钮
+    if (item.key === 'root' || item.key === 'home') {
       return <EllipsisLabel text={text} />;
     }
 
@@ -297,20 +267,14 @@ const FolderMenu = () => {
     );
 
     return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
+      <div className={styles.menuLabelContainer}>
         <EllipsisLabel text={text} />
         <Dropdown overlay={menu} trigger={['click']} placement="bottomLeft">
           <Button
             type="text"
             icon={<MoreOutlined />}
             size="small"
-            style={{ marginLeft: 4 }}
+            className={styles.moreButton}
             onClick={e => e.stopPropagation()}
           />
         </Dropdown>
@@ -326,28 +290,8 @@ const FolderMenu = () => {
     }));
   }
   return (
-    <Layout.Sider
-      width={200}
-      style={{
-        background: colorBgContainer,
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        position: 'fixed',
-        left: 0,
-        top: '64px', // 距离顶部导航栏下方
-        bottom: 0,
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          gap: 12,
-          padding: '16px 12px',
-          borderBottom: '1px solid #f0f0f0',
-          background: colorBgContainer,
-        }}
-      >
+    <Layout.Sider width={280} className={styles.sider}>
+      <div className={styles.buttonContainer}>
         <Tooltip title="新建文件">
           <Button
             icon={<PlusSquareOutlined style={{ fontSize: '20px' }} />}
@@ -470,7 +414,7 @@ const FolderMenu = () => {
         openKeys={openKeys}
         onSelect={handleMenuSelect}
         onOpenChange={handleMenuOpenChange}
-        style={{ height: '100%', borderRight: 0, flex: 1 }}
+        className={`${styles.menu} folder-menu-theme`}
         items={withMenuActions(folderList)}
       />
     </Layout.Sider>
