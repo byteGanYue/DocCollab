@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
-import { userAPI, authUtils } from '@/utils/api';
+import { userAPI } from '@/utils/api';
 import styles from './RegisterForm.module.less';
 const { Title, Text } = Typography;
 
@@ -109,19 +109,14 @@ const RegisterForm = () => {
       const response = await userAPI.register(registerData);
       console.log('注册响应:', response);
       // 注册成功，保存token和用户信息
-      if (response.Code == 201) {
-        if (response.token) {
-          authUtils.setAuthToken(response.token);
-          localStorage.setItem('user', JSON.stringify(response.user));
-        }
+      if (response.code == 200) {
         messageApi.success(
           `注册成功！欢迎加入 DocCollab，${response.username}！`,
         );
-
         // 延迟跳转，让用户看到成功消息
         setTimeout(() => {
           navigate('/login');
-        }, 800);
+        }, 1000);
       } else {
         // 如果没有返回token，可能是模拟注册
 
@@ -129,28 +124,7 @@ const RegisterForm = () => {
       }
     } catch (error) {
       console.error('注册失败:', error);
-
-      // 根据错误类型显示不同的错误消息
-      if (error.response) {
-        const { status, data } = error.response;
-        switch (status) {
-          case 400:
-            messageApi.error(data?.message || '注册信息有误，请检查输入');
-            break;
-          case 409:
-            messageApi.error('该邮箱或用户名已被注册');
-            break;
-          case 422:
-            messageApi.error('数据验证失败，请检查输入格式');
-            break;
-          default:
-            messageApi.error(data?.message || '注册失败，请稍后重试');
-        }
-      } else if (error.request) {
-        messageApi.error('网络连接失败，请检查网络');
-      } else {
-        messageApi.error('注册失败，请稍后重试');
-      }
+      messageApi.error('注册失败，请稍后重试');
     } finally {
       setLoading(false);
     }

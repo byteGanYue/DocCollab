@@ -7,10 +7,10 @@ import {
   GithubOutlined,
   FileTextOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import styles from './LoginForm.module.less';
-const { Title, Text, Link } = Typography;
+const { Title, Text } = Typography;
 import { userAPI } from '@/utils/api';
 /**
  * 登录表单组件
@@ -35,11 +35,8 @@ const LoginForm = () => {
         email: values.email,
         password: values.password,
       });
-      console.log(res);
-      if (res.Code == 200) {
-        // localStorage.setItem('token', res.token);
-        // localStorage.setItem('user', JSON.stringify(res.user));
-        messageApi.success(`欢迎回来，${res.user.username || res.user.email}`);
+      if (res.code == 200) {
+        messageApi.success(`欢迎回来，${res.username}`);
         setTimeout(() => {
           navigate('/home');
         }, 500);

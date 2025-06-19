@@ -6,7 +6,7 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import Welcome from '@/pages/Welcome';
 import LayoutComponent from '@/components/layout/layout';
-import AuthGuard from '@/components/AuthGuard';
+// import AuthGuard from '@/components/AuthGuard';
 
 const router = createBrowserRouter([
   {
