@@ -1,4 +1,4 @@
-import { EllipsisLabel } from '@/pages/Home/components/folderMenu';
+import { EllipsisLabel } from '@/components/layout/folderMenu';
 class folderUtils {
   /**
    * 根据键名修改树形结构中指定节点的名称
