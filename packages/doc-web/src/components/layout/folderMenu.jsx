@@ -158,6 +158,126 @@ const buttonHoverStyle = {
     '0 4px 12px color-mix(in srgb, var(--color-primary) 40%, transparent)',
 };
 
+// Mock数据：模拟其他用户的公开文件夹
+const mockCollaborationUsers = [
+  {
+    userId: 'user_001',
+    username: '张三',
+    avatar: '👨‍💻',
+    folderData: {
+      key: 'collab_user_001',
+      icon: React.createElement(UserOutlined),
+      label: <EllipsisLabel text="张三的公开空间" />,
+      permission: 'public',
+      owner: '张三',
+      ownerId: 'user_001',
+      children: [
+        {
+          key: 'collab_user_001_folder1',
+          icon: React.createElement(FolderOpenOutlined),
+          label: <EllipsisLabel text="前端开发资料" />,
+          children: [
+            {
+              key: 'collab_user_001_doc1',
+              label: <EllipsisLabel text="React 最佳实践" />,
+            },
+            {
+              key: 'collab_user_001_doc2',
+              label: <EllipsisLabel text="TypeScript 进阶指南" />,
+            },
+          ],
+        },
+        {
+          key: 'collab_user_001_folder2',
+          icon: React.createElement(FolderOpenOutlined),
+          label: <EllipsisLabel text="项目文档" />,
+          children: [
+            {
+              key: 'collab_user_001_doc3',
+              label: <EllipsisLabel text="需求分析文档" />,
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    userId: 'user_002',
+    username: '李四',
+    avatar: '👩‍💼',
+    folderData: {
+      key: 'collab_user_002',
+      icon: React.createElement(UserOutlined),
+      label: <EllipsisLabel text="李四的公开空间" />,
+      permission: 'public',
+      owner: '李四',
+      ownerId: 'user_002',
+      children: [
+        {
+          key: 'collab_user_002_folder1',
+          icon: React.createElement(FolderOpenOutlined),
+          label: <EllipsisLabel text="设计规范" />,
+          children: [
+            {
+              key: 'collab_user_002_doc1',
+              label: <EllipsisLabel text="UI设计规范" />,
+            },
+            {
+              key: 'collab_user_002_doc2',
+              label: <EllipsisLabel text="交互设计指南" />,
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    userId: 'user_003',
+    username: '王五',
+    avatar: '🧑‍🔬',
+    folderData: {
+      key: 'collab_user_003',
+      icon: React.createElement(UserOutlined),
+      label: <EllipsisLabel text="王五的公开空间" />,
+      permission: 'public',
+      owner: '王五',
+      ownerId: 'user_003',
+      children: [
+        {
+          key: 'collab_user_003_folder1',
+          icon: React.createElement(FolderOpenOutlined),
+          label: <EllipsisLabel text="技术分享" />,
+          children: [
+            {
+              key: 'collab_user_003_doc1',
+              label: <EllipsisLabel text="微服务架构实践" />,
+            },
+            {
+              key: 'collab_user_003_doc2',
+              label: <EllipsisLabel text="数据库优化技巧" />,
+            },
+            {
+              key: 'collab_user_003_doc3',
+              label: <EllipsisLabel text="DevOps 最佳实践" />,
+            },
+          ],
+        },
+        {
+          key: 'collab_user_003_folder2',
+          icon: React.createElement(FolderOpenOutlined),
+          label: <EllipsisLabel text="学习笔记" />,
+          children: [
+            {
+              key: 'collab_user_003_doc4',
+              label: <EllipsisLabel text="算法与数据结构" />,
+            },
+          ],
+        },
+      ],
+    },
+  },
+];
+
 // TODO: mock数据来的
 const initialFolderList = [
   {
@@ -167,17 +287,23 @@ const initialFolderList = [
     children: null, // 首页没有子项
   },
   {
+    key: 'collaboration', // 协同文档菜单项
+    icon: React.createElement(TeamOutlined),
+    label: <EllipsisLabel text="协同文档" />,
+    children: mockCollaborationUsers.map(user => user.folderData), // 动态加载协同文档
+  },
+  {
     key: 'root', // 根文件夹的key固定为'root'
     icon: React.createElement(FolderOpenOutlined),
     label: <EllipsisLabel text="我的文件夹" />,
-    permission: 'private', // 根文件夹默认私有
+    permission: 'private', // 根文件夹默认私有，控制整个用户空间的权限
     children: [FolderOpenOutlined].map((icon, index) => {
       const key = String(index + 1);
       return {
         key: `sub${key}`,
         icon: React.createElement(icon),
         label: <EllipsisLabel text={`文件夹 ${key}`} />,
-        permission: index === 0 ? 'public' : 'private', // 第一个文件夹公开，其他私有
+        // 子文件夹不再有独立权限，继承根文件夹权限
         children: Array.from({ length: 4 }).map((_, j) => {
           const subKey = index * 4 + j + 1;
           return {
@@ -268,11 +394,24 @@ const FolderMenu = () => {
     if (selectedKey === 'home') {
       navigate('/home');
     }
-    // 处理文档点击导航 - 以doc开头的key表示文档
-    else if (selectedKey && selectedKey.startsWith('doc')) {
-      navigate(`/doc-editor/${selectedKey}`);
+    // 处理协同文档点击导航
+    else if (selectedKey === 'collaboration') {
+      navigate('/collaboration');
+    }
+    // 处理文档点击导航 - 以doc开头的key表示文档（包括协同文档）
+    else if (
+      selectedKey &&
+      (selectedKey.startsWith('doc') || selectedKey.includes('_doc'))
+    ) {
+      // 如果是协同文档，添加协同标识
+      if (selectedKey.includes('collab_user_')) {
+        navigate(`/doc-editor/${selectedKey}?collaborative=true`);
+      } else {
+        navigate(`/doc-editor/${selectedKey}`);
+      }
     }
     // 处理文件夹点击 - 以sub开头的key表示文件夹，不需要导航，只是展开/折叠
+    // 协同文档的用户空间和文件夹也不需要导航
     // 其他情况暂不处理导航
   };
 
@@ -372,7 +511,7 @@ const FolderMenu = () => {
       icon: <FolderOpenOutlined />,
       label: <EllipsisLabel text={defaultName} />,
       children: [],
-      permission: 'private', // 新建文件夹默认为私有
+      // 子文件夹不再设置独立权限，继承根文件夹权限
       isNew: true, // 标记为新创建的项目
     };
 
@@ -428,6 +567,11 @@ const FolderMenu = () => {
 
   // 处理权限保存
   const handlePermissionSave = () => {
+    if (permissionModal.key !== 'root') {
+      message.error('只能修改工作空间的权限设置');
+      return;
+    }
+
     setFolderList(prev =>
       folderUtils.updateNodePermission(
         prev,
@@ -435,13 +579,17 @@ const FolderMenu = () => {
         permissionModal.permission,
       ),
     );
+
     setPermissionModal({
       visible: false,
       key: '',
       name: '',
       permission: 'private',
     });
-    message.success('权限设置已保存');
+
+    const permissionText =
+      permissionModal.permission === 'public' ? '公开空间' : '私有空间';
+    message.success(`工作空间已设置为${permissionText}`);
   };
 
   // 处理权限弹窗取消
@@ -454,14 +602,16 @@ const FolderMenu = () => {
     });
   };
 
-  // 获取权限图标
-  const getPermissionIcon = permission => {
+  // 获取权限图标（只有根文件夹显示权限图标）
+  const getPermissionIcon = (permission, isRoot = false) => {
+    if (!isRoot) return null; // 只有根文件夹显示权限图标
+
     return permission === 'public' ? (
-      <Tooltip title="公开文件夹 - 支持协同编辑">
+      <Tooltip title="公开空间 - 其他用户可协同编辑您的所有文档">
         <TeamOutlined style={{ color: '#52c41a', marginLeft: 4 }} />
       </Tooltip>
     ) : (
-      <Tooltip title="私有文件夹 - 仅自己可编辑">
+      <Tooltip title="私有空间 - 仅您可编辑您的所有文档">
         <UserOutlined style={{ color: '#8c8c8c', marginLeft: 4 }} />
       </Tooltip>
     );
@@ -472,8 +622,8 @@ const FolderMenu = () => {
     // 获取原始文本（用于重命名弹窗）
     const text = item.label?.props?.text || item.label;
 
-    // 如果是根文件夹（key === 'root'）或首页（key === 'home'），则不显示操作按钮
-    if (item.key === 'root' || item.key === 'home') {
+    // 首页和协同文档不显示操作按钮
+    if (item.key === 'home' || item.key === 'collaboration') {
       return (
         <div className={styles.menuLabelContainer}>
           <EllipsisLabel
@@ -482,18 +632,90 @@ const FolderMenu = () => {
             onSave={newName => handleRenameSave(item.key, newName)}
             onCancel={() => handleRenameCancel(item.key)}
           />
-          {/* 根文件夹也显示权限图标 */}
-          {item.key === 'root' &&
-            item.permission &&
-            getPermissionIcon(item.permission)}
+        </div>
+      );
+    }
+
+    // 协同文档的子项（其他用户的公开空间）不显示操作按钮，只显示所有者信息
+    if (item.key.startsWith('collab_user_')) {
+      return (
+        <div className={styles.menuLabelContainer}>
+          <div className={styles.labelContent}>
+            <EllipsisLabel
+              text={text}
+              isEditing={false} // 协同文档不允许编辑
+              onSave={() => {}}
+              onCancel={() => {}}
+            />
+            {/* 显示公开空间图标 */}
+            <Tooltip title={`${item.owner}的公开空间 - 可协同编辑`}>
+              <TeamOutlined
+                style={{ color: '#52c41a', marginLeft: 4, fontSize: '12px' }}
+              />
+            </Tooltip>
+          </div>
+        </div>
+      );
+    }
+
+    // 协同文档下的文件夹和文档不显示操作按钮
+    if (item.key.includes('collab_user_')) {
+      return (
+        <div className={styles.menuLabelContainer}>
+          <EllipsisLabel
+            text={text}
+            isEditing={false} // 协同文档不允许编辑
+            onSave={() => {}}
+            onCancel={() => {}}
+          />
+        </div>
+      );
+    }
+
+    // 根文件夹特殊处理，显示权限图标和权限管理按钮
+    if (item.key === 'root') {
+      return (
+        <div className={styles.menuLabelContainer}>
+          <div className={styles.labelContent}>
+            <EllipsisLabel
+              text={text}
+              isEditing={editingKey === item.key}
+              onSave={newName => handleRenameSave(item.key, newName)}
+              onCancel={() => handleRenameCancel(item.key)}
+            />
+            {/* 根文件夹显示权限图标 */}
+            {item.permission && getPermissionIcon(item.permission, true)}
+          </div>
+          {/* 显示权限管理按钮 */}
+          <Tooltip title="工作空间权限设置">
+            <Button
+              type="text"
+              icon={
+                item.permission === 'public' ? (
+                  <UnlockOutlined />
+                ) : (
+                  <LockOutlined />
+                )
+              }
+              size="small"
+              className={styles.permissionButton}
+              data-permission={item.permission || 'private'}
+              onClick={e => {
+                e.stopPropagation();
+                handlePermissionManage(
+                  item.key,
+                  text,
+                  item.permission || 'private',
+                );
+              }}
+            />
+          </Tooltip>
         </div>
       );
     }
 
     // 判断是否为文件（以doc开头的key为文件）
     const isFile = item.key.startsWith('doc');
-    // 判断是否为文件夹（以sub开头的key为文件夹）
-    const isFolder = item.key.startsWith('sub');
 
     // Dropdown 菜单内容
     const dropdownMenu = (
@@ -507,8 +729,8 @@ const FolderMenu = () => {
         >
           重命名
         </AntdMenu.Item>
-        {/* 只有文件夹才显示权限管理选项 */}
-        {isFolder && (
+        {/* 只有根文件夹才显示权限管理选项 */}
+        {item.key === 'root' && (
           <AntdMenu.Item
             key="permission"
             onClick={e => {
@@ -526,7 +748,7 @@ const FolderMenu = () => {
               ) : (
                 <LockOutlined />
               )}
-              权限管理
+              空间权限管理
             </Space>
           </AntdMenu.Item>
         )}
@@ -565,8 +787,7 @@ const FolderMenu = () => {
             onSave={newName => handleRenameSave(item.key, newName)}
             onCancel={() => handleRenameCancel(item.key)}
           />
-          {/* 文件夹显示权限图标 */}
-          {isFolder && item.permission && getPermissionIcon(item.permission)}
+          {/* 子文件夹不再显示权限图标，权限由根文件夹控制 */}
         </div>
         {editingKey !== item.key && (
           <Dropdown
@@ -596,6 +817,9 @@ const FolderMenu = () => {
         children: item.children ? withMenuActions(item.children) : undefined,
       };
 
+      // 为所有菜单项添加 data-key 属性，用于CSS选择器
+      result['data-key'] = item.key;
+
       // 为文件夹添加点击选中功能和权限样式
       if (item.key && (item.key.startsWith('sub') || item.key === 'root')) {
         result.onTitleClick = ({ key }) => {
@@ -606,6 +830,29 @@ const FolderMenu = () => {
         if (item.permission) {
           result.className = `${item.permission}-folder`;
         }
+      }
+
+      // 为协同文档的用户空间添加特殊样式
+      if (item.key && item.key.startsWith('collab_user_')) {
+        result.onTitleClick = ({ key }) => {
+          setSelectedKeys([key]);
+        };
+
+        // 添加协同用户空间的CSS类名
+        result.className = 'collaboration-user-space';
+      }
+
+      // 为协同文档下的文件夹添加特殊样式
+      if (
+        item.key &&
+        item.key.includes('collab_user_') &&
+        item.key.includes('folder')
+      ) {
+        result.onTitleClick = ({ key }) => {
+          setSelectedKeys([key]);
+        };
+
+        result.className = 'collaboration-folder';
       }
 
       return result;
@@ -661,7 +908,7 @@ const FolderMenu = () => {
 
       {/* 权限管理弹窗 */}
       <Modal
-        title={`"${permissionModal.name}" 权限设置`}
+        title="工作空间权限设置"
         open={permissionModal.visible}
         onOk={handlePermissionSave}
         onCancel={handlePermissionCancel}
@@ -670,7 +917,7 @@ const FolderMenu = () => {
         width={480}
       >
         <div style={{ marginBottom: 24 }}>
-          <h4 style={{ marginBottom: 12 }}>选择文件夹权限：</h4>
+          <h4 style={{ marginBottom: 12 }}>选择工作空间权限：</h4>
           <Radio.Group
             value={permissionModal.permission}
             onChange={e =>
@@ -685,9 +932,9 @@ const FolderMenu = () => {
                 <Space>
                   <UserOutlined style={{ color: '#8c8c8c' }} />
                   <div>
-                    <div style={{ fontWeight: 500 }}>私有</div>
+                    <div style={{ fontWeight: 500 }}>私有空间</div>
                     <div style={{ fontSize: 12, color: '#8c8c8c' }}>
-                      只有您可以查看和编辑此文件夹中的内容
+                      只有您可以查看和编辑您工作空间中的所有文档
                     </div>
                   </div>
                 </Space>
@@ -696,9 +943,9 @@ const FolderMenu = () => {
                 <Space>
                   <TeamOutlined style={{ color: '#52c41a' }} />
                   <div>
-                    <div style={{ fontWeight: 500 }}>公开</div>
+                    <div style={{ fontWeight: 500 }}>公开空间</div>
                     <div style={{ fontSize: 12, color: '#8c8c8c' }}>
-                      其他用户可以与您协同编辑此文件夹中的内容
+                      其他用户可以与您协同编辑您工作空间中的所有文档
                     </div>
                   </div>
                 </Space>
@@ -712,7 +959,7 @@ const FolderMenu = () => {
           <Space>
             <span style={{ fontSize: 12, color: '#666' }}>💡 提示：</span>
             <span style={{ fontSize: 12, color: '#666' }}>
-              公开文件夹支持多人实时协同编辑，私有文件夹仅您可访问
+              公开空间支持多人实时协同编辑，私有空间仅您可访问
             </span>
           </Space>
         </div>

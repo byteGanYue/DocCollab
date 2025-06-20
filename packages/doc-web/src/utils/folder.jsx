@@ -185,34 +185,137 @@ class folderUtils {
   }
 
   /**
-   * 更新指定节点的权限
+   * 更新指定节点的权限（仅支持根文件夹）
    *
    * @param list 节点列表
-   * @param targetKey 目标节点的键
+   * @param targetKey 目标节点的键（必须是 'root'）
    * @param permission 新的权限值 ('public' | 'private')
    * @returns 返回更新后的节点列表
    */
   static updateNodePermission(list, targetKey, permission) {
+    // 只允许更新根文件夹的权限
+    if (targetKey !== 'root') {
+      console.warn('只允许更新根文件夹的权限');
+      return list;
+    }
+
     const result = list.map(item => {
       if (item.key === targetKey) {
         return {
           ...item,
           permission: permission,
         };
-      } else if (item.children) {
-        return {
-          ...item,
-          children: folderUtils.updateNodePermission(
-            item.children,
-            targetKey,
-            permission,
-          ),
-        };
       }
       return item;
     });
-    console.log('更新权限后新的目录结构:', result); // 添加调试信息
+    console.log('更新工作空间权限后新的目录结构:', result); // 添加调试信息
     return result;
+  }
+
+  /**
+   * 获取协同文档列表
+   * 返回所有公开工作空间中的文档（包括其他用户的公开空间）
+   *
+   * @param list 节点列表
+   * @param currentUserId 当前用户ID（可选）
+   * @returns 返回协同文档列表
+   */
+  static getCollaborationDocuments(list, currentUserId = null) {
+    const collaborationDocs = [];
+
+    // 查找协同文档菜单
+    const collaborationMenu = list.find(item => item.key === 'collaboration');
+
+    if (collaborationMenu && collaborationMenu.children) {
+      // 递归收集所有协同文档
+      const collectDocuments = (nodes, ownerInfo = '', ownerId = '') => {
+        nodes.forEach(node => {
+          if (node.key.includes('_doc')) {
+            collaborationDocs.push({
+              ...node,
+              ownerInfo, // 添加所有者信息
+              ownerId, // 添加所有者ID
+              isCollaborative: true,
+              canEdit: true, // 协同文档默认可编辑
+            });
+          } else if (node.children) {
+            collectDocuments(node.children, ownerInfo, ownerId);
+          }
+        });
+      };
+
+      // 遍历所有用户的公开空间
+      collaborationMenu.children.forEach(userSpace => {
+        if (userSpace.children) {
+          collectDocuments(
+            userSpace.children,
+            userSpace.owner || '协同用户',
+            userSpace.ownerId || userSpace.key,
+          );
+        }
+      });
+    }
+
+    // 同时查找自己的公开根文件夹中的文档
+    const publicRoots = list.filter(
+      item => item.key === 'root' && item.permission === 'public',
+    );
+
+    const collectOwnDocuments = (nodes, ownerInfo = '') => {
+      nodes.forEach(node => {
+        if (node.key.startsWith('doc')) {
+          collaborationDocs.push({
+            ...node,
+            ownerInfo: '我的公开文档',
+            ownerId: currentUserId || 'current_user',
+            isCollaborative: true,
+            canEdit: true,
+          });
+        } else if (node.children) {
+          collectOwnDocuments(node.children, ownerInfo);
+        }
+      });
+    };
+
+    publicRoots.forEach(root => {
+      if (root.children) {
+        collectOwnDocuments(root.children);
+      }
+    });
+
+    console.log('协同文档列表:', collaborationDocs);
+    return collaborationDocs;
+  }
+
+  /**
+   * 检查文档是否可协同编辑
+   *
+   * @param list 节点列表
+   * @param docKey 文档的键
+   * @returns 返回是否可协同编辑
+   */
+  static isDocumentCollaborative(list, docKey) {
+    // 查找文档所属的根文件夹
+    const findRootForDoc = (nodes, targetKey, currentRoot = null) => {
+      for (const item of nodes) {
+        if (item.key === 'root') {
+          currentRoot = item;
+        }
+
+        if (item.key === targetKey) {
+          return currentRoot;
+        }
+
+        if (item.children) {
+          const found = findRootForDoc(item.children, targetKey, currentRoot);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const rootFolder = findRootForDoc(list, docKey);
+    return rootFolder && rootFolder.permission === 'public';
   }
 }
 
@@ -225,6 +328,8 @@ class folderUtils {
  * - findNodeByKey: 根据键查找节点
  * - findParentNodeByKey: 根据子节点键查找父节点
  * - getValidTargetKey: 获取适合新建的目标文件夹键
- * - updateNodePermission: 更新指定节点的权限
+ * - updateNodePermission: 更新根文件夹的权限（工作空间级别）
+ * - getCollaborationDocuments: 获取协同文档列表
+ * - isDocumentCollaborative: 检查文档是否可协同编辑
  */
 export default folderUtils;

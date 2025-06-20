@@ -1,0 +1,239 @@
+.collaborationContainer {
+  padding: 24px;
+  background: var(--color-bg-layout);
+  min-height: 100vh;
+}
+
+.header {
+  margin-bottom: 32px;
+  background: var(--color-bg-container);
+  padding: 32px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.titleSection {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.titleIcon {
+  font-size: 48px;
+  color: #722ed1;
+  margin-bottom: 16px;
+  display: block;
+}
+
+.title {
+  margin: 0 0 8px 0 !important;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: var(--color-text-secondary);
+}
+
+.searchSection {
+  display: flex;
+  justify-content: center;
+}
+
+.searchInput {
+  max-width: 480px;
+  width: 100%;
+  
+  .ant-input-search-button {
+    background: #722ed1;
+    border-color: #722ed1;
+    
+    &:hover {
+      background: #9254de;
+      border-color: #9254de;
+    }
+  }
+}
+
+.content {
+  background: var(--color-bg-container);
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.docCard {
+  height: 100%;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  border: 1px solid #f0f0f0;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-color: #722ed1;
+  }
+  
+  .ant-card-body {
+    padding: 20px;
+  }
+  
+  .ant-card-actions {
+    border-top: 1px solid #f0f0f0;
+    background: #fafafa;
+    
+    li {
+      margin: 8px 0;
+      
+      .ant-btn {
+        color: var(--color-text-secondary);
+        
+        &:hover {
+          color: #722ed1;
+          background: rgba(114, 46, 209, 0.06);
+        }
+      }
+    }
+  }
+}
+
+.userAvatar {
+  background: linear-gradient(135deg, #722ed1, #9254de);
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.docTitle {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.docIcon {
+  color: #722ed1;
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+.docName {
+  font-weight: 500;
+  color: var(--color-text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docMeta {
+  margin-top: 12px;
+}
+
+.ownerInfo {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.ownerIcon {
+  margin-right: 6px;
+  color: #8c8c8c;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.docTag {
+  margin: 0;
+  border-radius: 4px;
+  font-size: 12px;
+  padding: 2px 8px;
+  border: none;
+  font-weight: 500;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .collaborationContainer {
+    padding: 16px;
+  }
+  
+  .header {
+    padding: 24px 16px;
+  }
+  
+  .titleIcon {
+    font-size: 36px;
+  }
+  
+  .title {
+    font-size: 24px !important;
+  }
+  
+  .subtitle {
+    font-size: 14px;
+  }
+  
+  .content {
+    padding: 16px;
+  }
+}
+
+/* 空状态样式 */
+:global(.ant-empty) {
+  padding: 48px 24px;
+  
+  .ant-empty-description {
+    color: var(--color-text-secondary);
+    font-size: 16px;
+  }
+}
+
+/* 加载状态样式 */
+:global(.ant-spin-container) {
+  min-height: 200px;
+}
+
+/* 列表网格间距调整 */
+:global(.ant-list-grid .ant-col > .ant-list-item) {
+  margin-bottom: 16px;
+}
+
+/* 搜索输入框样式增强 */
+.searchInput {
+  :global(.ant-input-affix-wrapper) {
+    border-radius: 8px;
+    border: 2px solid #f0f0f0;
+    transition: all 0.3s ease;
+    
+    &:hover, &:focus {
+      border-color: #722ed1;
+      box-shadow: 0 0 0 2px rgba(114, 46, 209, 0.1);
+    }
+  }
+  
+  :global(.ant-input) {
+    font-size: 16px;
+    padding: 12px 16px;
+  }
+}
+
+/* 卡片动画效果 */
+@keyframes cardHover {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-4px);
+  }
+}
+
+.docCard:hover {
+  animation: cardHover 0.3s ease forwards;
+} 
