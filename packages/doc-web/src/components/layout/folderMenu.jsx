@@ -222,6 +222,43 @@ const FolderMenu = () => {
     permission: 'private',
   });
 
+  // 监听folderList变化
+  useEffect(() => {
+    console.log('📁 folderList 数据变化监听 📁');
+    console.log('当前folderList状态:', folderList);
+
+    // // 统计各类型节点数量
+    // const stats = {
+    //   totalFolders: 0,
+    //   totalFiles: 0,
+    //   publicFolders: 0,
+    //   privateFolders: 0,
+    // };
+
+    // const countNodes = (nodes) => {
+    //   nodes.forEach(node => {
+    //     if (node.key.startsWith('sub') || node.key === 'root') {
+    //       stats.totalFolders++;
+    //       if (node.permission === 'public') {
+    //         stats.publicFolders++;
+    //       } else if (node.permission === 'private') {
+    //         stats.privateFolders++;
+    //       }
+    //     } else if (node.key.startsWith('doc')) {
+    //       stats.totalFiles++;
+    //     }
+
+    //     if (node.children && node.children.length > 0) {
+    //       countNodes(node.children);
+    //     }
+    //   });
+    // };
+
+    // countNodes(folderList);
+
+    console.log('========================================');
+  }, [folderList]); // 监听folderList的变化
+
   const handleMenuSelect = ({ selectedKeys }) => {
     setSelectedKeys(selectedKeys);
 

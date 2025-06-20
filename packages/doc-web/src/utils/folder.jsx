@@ -9,7 +9,7 @@ class folderUtils {
    * @returns 修改后的树形结构的数据列表
    */
   static renameNodeByKey(list, targetKey, newName) {
-    return list.map(item => {
+    const result = list.map(item => {
       if (item.key === targetKey) {
         return {
           ...item,
@@ -28,6 +28,8 @@ class folderUtils {
       }
       return item;
     });
+    console.log('重命名后新的目录结构:', result); // 添加调试信息
+    return result;
   }
 
   /**
@@ -38,13 +40,15 @@ class folderUtils {
    * @returns 返回删除指定键节点后的新列表
    */
   static deleteNodeByKey(list, targetKey) {
-    return list.filter(item => {
+    const result = list.filter(item => {
       if (item.key === targetKey) return false;
       if (item.children) {
         item.children = folderUtils.deleteNodeByKey(item.children, targetKey);
       }
       return true;
     });
+    console.log('删除后新的目录结构:', result); // 添加调试信息
+    return result;
   }
 
   /**
@@ -56,7 +60,7 @@ class folderUtils {
    * @returns 返回处理后的节点列表
    */
   static insertToTarget(list, targetKey, newNode) {
-    return list.map(item => {
+    const result = list.map(item => {
       if (item.key === targetKey) {
         // 找到目标文件夹，插入到children
         return {
@@ -76,6 +80,8 @@ class folderUtils {
       }
       return item;
     });
+    console.log('插入新节点后新的目录结构:', result); // 添加调试信息
+    return result;
   }
 
   /**
@@ -187,7 +193,7 @@ class folderUtils {
    * @returns 返回更新后的节点列表
    */
   static updateNodePermission(list, targetKey, permission) {
-    return list.map(item => {
+    const result = list.map(item => {
       if (item.key === targetKey) {
         return {
           ...item,
@@ -205,6 +211,8 @@ class folderUtils {
       }
       return item;
     });
+    console.log('更新权限后新的目录结构:', result); // 添加调试信息
+    return result;
   }
 }
 
