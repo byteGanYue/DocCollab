@@ -12,6 +12,19 @@
   vertical-align: middle;
 }
 
+/* 编辑状态输入框样式 */
+.editingInput {
+  width: 120px;
+  border: 1px solid var(--color-primary);
+  border-radius: 4px;
+  background: #fff;
+  
+  &:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  }
+}
+
 /* 侧边栏样式 */
 .sider {
   background: var(--color-bg-container);
@@ -45,11 +58,32 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+  
+  /* 编辑状态时隐藏更多按钮 */
+  &.editing .moreButton {
+    display: none;
+  }
+}
+
+/* 标签内容容器样式 */
+.labelContent {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0; /* 允许省略号工作 */
 }
 
 /* 更多操作按钮样式 */
 .moreButton {
   margin-left: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  
+  /* 只有在父容器悬停时才显示 */
+  .menuLabelContainer:hover & {
+    opacity: 1;
+  }
 }
 
 /* 菜单主题样式 */
@@ -79,5 +113,73 @@
   
   .ant-menu-submenu-selected .ant-menu-title-content {
     color: var(--color-primary) !important;
+  }
+  
+  /* 编辑状态时的菜单项样式 */
+  .ant-menu-item.editing {
+    background-color: rgba(24, 144, 255, 0.05) !important;
+  }
+  
+  /* 新建项目的特殊样式 */
+  .ant-menu-item.new-item {
+    background-color: rgba(82, 196, 26, 0.05) !important;
+    border-left: 3px solid var(--color-success);
+  }
+  
+  /* 公开文件夹样式 */
+  .ant-menu-submenu.public-folder > .ant-menu-submenu-title {
+    border-left: 2px solid #52c41a;
+    background-color: rgba(82, 196, 26, 0.02) !important;
+  }
+  
+  .ant-menu-submenu.public-folder > .ant-menu-submenu-title:hover {
+    background-color: rgba(82, 196, 26, 0.05) !important;
+  }
+  
+  /* 私有文件夹样式 */
+  .ant-menu-submenu.private-folder > .ant-menu-submenu-title {
+    border-left: 2px solid #8c8c8c;
+    background-color: rgba(140, 140, 140, 0.02) !important;
+  }
+  
+  .ant-menu-submenu.private-folder > .ant-menu-submenu-title:hover {
+    background-color: rgba(140, 140, 140, 0.05) !important;
+  }
+}
+
+/* 权限图标样式 */
+.permissionIcon {
+  margin-left: 8px;
+  font-size: 12px;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+  
+  &:hover {
+    opacity: 1;
+  }
+}
+
+/* 权限管理弹窗样式 */
+.permissionModal {
+  .ant-radio-group {
+    width: 100%;
+  }
+  
+  .ant-radio-wrapper {
+    padding: 12px;
+    border: 1px solid #f0f0f0;
+    border-radius: 6px;
+    margin: 0;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      border-color: var(--color-primary);
+      background-color: rgba(24, 144, 255, 0.02);
+    }
+    
+    &.ant-radio-wrapper-checked {
+      border-color: var(--color-primary);
+      background-color: rgba(24, 144, 255, 0.05);
+    }
   }
 } 
