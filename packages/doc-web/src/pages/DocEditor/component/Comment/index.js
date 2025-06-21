@@ -10,6 +10,8 @@ export { default as CommentToolbar } from './CommentToolbar.js';
 // UI组件
 export { default as CommentDrawer } from './CommentDrawer.jsx';
 export { default as CommentTrigger } from './CommentTrigger.jsx';
+export { default as CommentButton } from './CommentButton.jsx';
+export { default as CommentModal } from './CommentModal.jsx';
 
 // 格式和样式
 export { default as CommentFormat } from './commentFormat.js';

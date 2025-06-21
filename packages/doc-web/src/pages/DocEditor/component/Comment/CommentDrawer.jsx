@@ -19,7 +19,6 @@ import {
   CheckOutlined,
   RedoOutlined,
   DeleteOutlined,
-  CloseOutlined,
 } from '@ant-design/icons';
 
 const { Text, Paragraph } = Typography;
@@ -34,6 +33,7 @@ const CommentDrawer = ({
   onResolveComment,
   onDeleteComment,
   onCommentClick,
+  highlightCommentId = null, // 新增：需要高亮的评论ID
 }) => {
   const [commentStats, setCommentStats] = useState({
     total: 0,
@@ -49,6 +49,27 @@ const CommentDrawer = ({
 
     setCommentStats({ total, resolved, unresolved });
   }, [comments]);
+
+  // 自动滚动到指定评论
+  useEffect(() => {
+    if (highlightCommentId && visible) {
+      setTimeout(() => {
+        const element = document.querySelector(
+          `[data-comment-id="${highlightCommentId}"]`,
+        );
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // 添加高亮效果
+          element.style.backgroundColor = '#e6f7ff';
+          element.style.border = '2px solid #1890ff';
+          setTimeout(() => {
+            element.style.backgroundColor = '';
+            element.style.border = '';
+          }, 2000);
+        }
+      }, 300);
+    }
+  }, [highlightCommentId, visible]);
 
   // 处理解决评论
   const handleResolveComment = (commentId, resolved) => {
@@ -77,12 +98,36 @@ const CommentDrawer = ({
   const renderCommentItem = comment => (
     <List.Item
       key={comment.id}
+      data-comment-id={comment.id}
       style={{
-        opacity: comment.resolved ? 0.7 : 1,
+        opacity: comment.resolved ? 0.8 : 1,
         cursor: 'pointer',
         transition: 'all 0.2s ease',
+        borderRadius: '8px',
+        margin: '8px 0',
+        padding: '12px',
+        backgroundColor: comment.resolved ? '#f6ffed' : 'transparent',
+        border: comment.resolved
+          ? '1px solid #d9f7be'
+          : '1px solid transparent',
       }}
       onClick={() => onCommentClick && onCommentClick(comment)}
+      onMouseEnter={e => {
+        e.currentTarget.style.backgroundColor = comment.resolved
+          ? '#f0f9ff'
+          : '#f8f9fa';
+        e.currentTarget.style.borderColor = comment.resolved
+          ? '#91d5ff'
+          : '#d9d9d9';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.backgroundColor = comment.resolved
+          ? '#f6ffed'
+          : 'transparent';
+        e.currentTarget.style.borderColor = comment.resolved
+          ? '#d9f7be'
+          : 'transparent';
+      }}
       actions={[
         <Tooltip
           title={comment.resolved ? '重新打开' : '标记解决'}
@@ -98,6 +143,8 @@ const CommentDrawer = ({
             }}
             style={{
               color: comment.resolved ? '#faad14' : '#52c41a',
+              backgroundColor: comment.resolved ? '#fff7e6' : '#f6ffed',
+              border: `1px solid ${comment.resolved ? '#ffd591' : '#b7eb8f'}`,
             }}
           />
         </Tooltip>,
@@ -105,7 +152,7 @@ const CommentDrawer = ({
           key="delete"
           title="确定要删除这条评论吗？"
           onConfirm={e => {
-            e.stopPropagation();
+            e && e.stopPropagation();
             handleDeleteComment(comment.id);
           }}
           okText="确定"
@@ -118,6 +165,10 @@ const CommentDrawer = ({
               icon={<DeleteOutlined />}
               danger
               onClick={e => e.stopPropagation()}
+              style={{
+                backgroundColor: '#fff2f0',
+                border: '1px solid #ffccc7',
+              }}
             />
           </Tooltip>
         </Popconfirm>,
@@ -130,6 +181,7 @@ const CommentDrawer = ({
             style={{
               backgroundColor: comment.authorColor || '#1890ff',
               fontSize: '12px',
+              opacity: comment.resolved ? 0.7 : 1,
             }}
           >
             {comment.author?.charAt(0)?.toUpperCase() || 'A'}
@@ -137,15 +189,36 @@ const CommentDrawer = ({
         }
         title={
           <Space>
-            <Text strong style={{ fontSize: '13px' }}>
+            <Text
+              strong
+              style={{
+                fontSize: '13px',
+                color: comment.resolved ? '#8c8c8c' : '#262626',
+              }}
+            >
               {comment.author || '匿名用户'}
             </Text>
-            <Text type="secondary" style={{ fontSize: '11px' }}>
+            <Text
+              type="secondary"
+              style={{
+                fontSize: '11px',
+                color: comment.resolved ? '#bfbfbf' : '#8c8c8c',
+              }}
+            >
               {formatTime(comment.timestamp)}
             </Text>
             {comment.resolved && (
-              <Tag color="success" size="small">
-                已解决
+              <Tag
+                color="success"
+                size="small"
+                style={{
+                  fontSize: '10px',
+                  lineHeight: '16px',
+                  height: '18px',
+                  borderRadius: '9px',
+                }}
+              >
+                ✓ 已解决
               </Tag>
             )}
           </Space>
@@ -155,14 +228,14 @@ const CommentDrawer = ({
             {/* 被评论的文本 */}
             <div
               style={{
-                background: '#f5f5f5',
+                background: comment.resolved ? '#f0f0f0' : '#f5f5f5',
                 padding: '4px 8px',
                 borderRadius: '4px',
                 borderLeft: `3px solid ${comment.resolved ? '#52c41a' : '#faad14'}`,
                 marginBottom: '8px',
                 fontSize: '12px',
                 fontStyle: 'italic',
-                color: '#666',
+                color: comment.resolved ? '#8c8c8c' : '#666',
               }}
             >
               "{comment.selectedText}"
@@ -174,6 +247,7 @@ const CommentDrawer = ({
                 margin: 0,
                 fontSize: '14px',
                 lineHeight: '1.4',
+                color: comment.resolved ? '#8c8c8c' : '#262626',
               }}
               ellipsis={{ rows: 3, expandable: true }}
             >
@@ -186,15 +260,24 @@ const CommentDrawer = ({
                 style={{
                   background: '#f6ffed',
                   border: '1px solid #b7eb8f',
-                  borderRadius: '4px',
-                  padding: '6px 8px',
-                  marginTop: '8px',
-                  fontSize: '11px',
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  marginTop: '12px',
+                  fontSize: '12px',
                   color: '#389e0d',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                 }}
               >
-                ✅ 已由 <Text strong>{comment.resolvedBy}</Text> 于{' '}
-                {formatTime(comment.resolvedAt)} 标记为已解决
+                <CheckOutlined style={{ color: '#52c41a', fontSize: '12px' }} />
+                <span>
+                  已由{' '}
+                  <Text strong style={{ color: '#389e0d' }}>
+                    {comment.resolvedBy}
+                  </Text>{' '}
+                  于 {formatTime(comment.resolvedAt)} 标记为已解决
+                </span>
               </div>
             )}
           </div>
@@ -219,7 +302,8 @@ const CommentDrawer = ({
       width={400}
       open={visible}
       onClose={onClose}
-      extra={<Button type="text" icon={<CloseOutlined />} onClick={onClose} />}
+      mask={false}
+      maskClosable={false}
     >
       {/* 统计信息 */}
       <div style={{ marginBottom: '16px' }}>

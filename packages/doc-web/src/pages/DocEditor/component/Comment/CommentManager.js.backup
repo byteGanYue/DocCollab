@@ -42,10 +42,7 @@ class CommentManager {
     document.addEventListener('click', this.handleDocumentClick.bind(this));
 
     // 监听自定义评论点击事件
-    document.addEventListener(
-      'commentClick',
-      this.handleCommentClickEvent.bind(this),
-    );
+    document.addEventListener('commentClick', this.handleCommentClickEvent.bind(this));
 
     console.log('CommentManager initialized successfully');
   }
@@ -55,13 +52,13 @@ class CommentManager {
    */
   handleCommentClickEvent(event) {
     const { commentId } = event.detail;
-    const comment = this.comments.get(commentId);
-    if (comment) {
+      const comment = this.comments.get(commentId);
+      if (comment) {
       console.log('Comment clicked via custom event:', commentId);
-      // 通知React组件打开侧边栏并跳转到对应评论
-      this.onCommentClick(comment, commentId);
+        // 通知React组件打开侧边栏并跳转到对应评论
+        this.onCommentClick(comment, commentId);
+      }
     }
-  }
 
   /**
    * 处理文本选择变化
@@ -77,27 +74,17 @@ class CommentManager {
     // 防止在输入评论时触发
     if (this.isSelecting) return;
 
-    // 清除之前的定时器
-    if (this.selectionTimer) {
-      clearTimeout(this.selectionTimer);
-    }
-
     if (range && range.length > 0) {
       console.log('Text selected, showing comment button');
       // 用户选择了文本
       this.selectedRange = range;
       this.showCommentButton(range);
-    } else {
-      // 延迟隐藏评论按钮，给用户时间点击
-      this.selectionTimer = setTimeout(() => {
-        console.log('Selection cleared, hiding comment button');
-        // 只有在没有存储的选择时才隐藏按钮
-        if (!this.currentSelectedRange) {
-          this.hideCommentButton();
-          this.selectedRange = null;
-        }
-      }, 100); // 100ms延迟
-    }
+      } else {
+      console.log('Selection cleared, hiding comment button');
+      // 取消选择
+      this.hideCommentButton();
+      this.selectedRange = null;
+      }
   }
   /**
    * 处理文档点击事件
@@ -107,26 +94,18 @@ class CommentManager {
     const commentElement = event.target.closest('[data-comment-id]');
     if (commentElement) {
       const commentId = commentElement.getAttribute('data-comment-id');
-      const comment = this.comments.get(commentId);
-      if (comment) {
+    const comment = this.comments.get(commentId);
+    if (comment) {
         console.log('Comment text clicked:', commentId);
         // 通知React组件打开侧边栏并跳转到对应评论
         this.onCommentClick(comment, commentId);
-        return;
-      }
+      return;
+    }
     }
 
-    // 检查是否点击了评论相关的UI元素
-    const isCommentRelated =
-      event.target.closest('.comment-button') ||
-      event.target.closest('[data-testid="comment-button"]') ||
-      event.target.closest('.ant-btn') ||
-      event.target.closest('.ql-editor') ||
-      event.target.closest('.ant-modal') ||
-      event.target.closest('.ant-drawer');
-
     // 如果点击的不是评论相关元素，隐藏评论按钮
-    if (!isCommentRelated) {
+    if (!event.target.closest('.comment-button') &&
+        !event.target.closest('.ql-editor')) {
       this.hideCommentButton();
     }
   }
@@ -188,7 +167,7 @@ class CommentManager {
       // 通知React组件显示按钮
       this.onShowCommentButton({
         visible: true,
-        position: { left, top },
+        position: { left, top }
       });
 
       console.log('Comment button shown via React component');
@@ -222,23 +201,13 @@ class CommentManager {
       this.selectedRange.length,
     );
 
-    console.log('Selected text for comment:', selectedText);
-
-    // 存储当前选中的文本和范围，以便在提交时使用
-    this.currentSelectedText = selectedText;
-    this.currentSelectedRange = { ...this.selectedRange };
+    console.log('Selected text:', selectedText);
 
     // 通知React组件显示评论模态框
-    console.log('Calling onShowCommentModal with:', {
-      visible: true,
-      selectedText: selectedText,
-      textLength: selectedText.length,
-    });
-
     this.onShowCommentModal({
       visible: true,
       selectedText: selectedText,
-      onSubmit: content => this.handleCommentSubmit(content, selectedText),
+      onSubmit: (content) => this.handleCommentSubmit(content, selectedText)
     });
   }
 
@@ -246,26 +215,11 @@ class CommentManager {
    * 处理评论提交
    */
   handleCommentSubmit(content, selectedText) {
-    console.log('Handling comment submit:', { content, selectedText });
-
-    // 使用存储的选中文本和范围，确保数据一致性
-    const finalSelectedText = selectedText || this.currentSelectedText;
-    const finalSelectedRange = this.currentSelectedRange || this.selectedRange;
-
-    if (!finalSelectedRange) {
-      console.error('No selected range available for comment');
-      return Promise.reject(new Error('No selected range'));
-    }
-
     const commentId = this.generateId();
-    this.saveComment(commentId, content, finalSelectedText, finalSelectedRange);
+    this.saveComment(commentId, content, selectedText);
 
     // 隐藏按钮和模态框
     this.hideCommentButton();
-
-    // 清理临时存储的数据
-    this.currentSelectedText = null;
-    this.currentSelectedRange = null;
 
     return Promise.resolve(); // 返回Promise以支持async处理
   }
@@ -273,13 +227,11 @@ class CommentManager {
   /**
    * 保存评论
    */
-  saveComment(commentId, content, selectedText, selectedRange) {
+  saveComment(commentId, content, selectedText) {
     const userState = this.awareness.getLocalState();
-    const range = selectedRange || this.selectedRange;
-
     const comment = {
       id: commentId,
-      range: { ...range },
+      range: { ...this.selectedRange },
       content: content,
       selectedText: selectedText,
       author: userState?.user?.name || '匿名用户',
@@ -715,15 +667,16 @@ class CommentManager {
    * 删除评论
    */
   deleteComment(commentId) {
-    // 移除重复的确认逻辑，确认已在UI层处理
-    this.removeCommentMark(commentId);
-    this.comments.delete(commentId);
-    this.yComments.delete(commentId);
+    if (confirm('确定要删除这条评论吗？')) {
+      this.removeCommentMark(commentId);
+      this.comments.delete(commentId);
+      this.yComments.delete(commentId);
 
-    // 通知React组件评论数据变化
-    this.onCommentsChange(Array.from(this.comments.values()));
+      // 通知React组件评论数据变化
+      this.onCommentsChange(Array.from(this.comments.values()));
 
-    console.log('Comment deleted:', commentId);
+      console.log('Comment deleted:', commentId);
+    }
   }
 
   /**
@@ -780,17 +733,9 @@ class CommentManager {
    * 清理资源
    */
   destroy() {
-    // 清理定时器
-    if (this.selectionTimer) {
-      clearTimeout(this.selectionTimer);
-    }
-
     // 移除事件监听
     document.removeEventListener('click', this.handleDocumentClick.bind(this));
-    document.removeEventListener(
-      'commentClick',
-      this.handleCommentClickEvent.bind(this),
-    );
+    document.removeEventListener('commentClick', this.handleCommentClickEvent.bind(this));
 
     // 移除DOM元素
     if (this.commentButton) {

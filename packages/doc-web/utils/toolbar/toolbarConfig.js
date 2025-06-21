@@ -17,7 +17,6 @@ export const TOOLBAR_TOOLTIPS = {
   table: '插入表格',
   image: '插入图片',
   video: '插入视频',
-  comment: '添加评论',
   clean: '清除格式',
 };
 
@@ -39,8 +38,8 @@ export const TOOLBAR_CONFIG = [
   ['link', 'blockquote'],
   // 代码和表格
   ['code-block', 'table'],
-  // 媒体和评论
-  ['image', 'video', 'comment'],
+  // 媒体
+  ['image', 'video'],
   // 清除格式
   ['clean'],
 ];

@@ -31,9 +31,10 @@ import './Comment/comment.module.less'; // 导入评论样式
 // 导入评论功能
 import {
   CommentManager,
-  CommentToolbar,
   CommentDrawer,
   CommentTrigger,
+  CommentButton,
+  CommentModal,
 } from './Comment';
 
 // 导入UI组件
@@ -77,6 +78,16 @@ const Editor = () => {
     total: 0,
     unresolved: 0,
   });
+  const [highlightCommentId, setHighlightCommentId] = useState(null);
+
+  // 新增：评论按钮和模态框状态
+  const [commentButtonVisible, setCommentButtonVisible] = useState(false);
+  const [commentButtonPosition, setCommentButtonPosition] = useState({
+    left: 0,
+    top: 0,
+  });
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [selectedTextForComment, setSelectedTextForComment] = useState('');
 
   // 添加工具栏提示样式
   useEffect(() => {
@@ -122,16 +133,39 @@ const Editor = () => {
           onCommentCreate: comment => {
             console.log('New comment created:', comment);
           },
+          onCommentClick: (comment, commentId) => {
+            console.log('Comment text clicked:', commentId);
+            setHighlightCommentId(commentId);
+            setCommentDrawerVisible(true);
+          },
+          onShowCommentButton: ({ visible, position }) => {
+            setCommentButtonVisible(visible);
+            setCommentButtonPosition(position);
+          },
+          onHideCommentButton: () => {
+            setCommentButtonVisible(false);
+          },
+          onShowCommentModal: ({ visible, selectedText, onSubmit }) => {
+            console.log('Editor: onShowCommentModal called with:', {
+              visible,
+              selectedText,
+              textLength: selectedText?.length || 0,
+            });
+            setSelectedTextForComment(selectedText);
+            setCommentModalVisible(visible);
+            // 直接存储提交回调函数到commentManager实例
+            commentManager.currentSubmitCallback = onSubmit;
+            console.log('Editor: Submit callback stored to commentManager');
+          },
         });
+
+        // 先赋值给ref，确保后续能访问到
         commentManagerRef.current = commentManager;
 
-        // 初始化评论工具栏，并关联评论管理器
-        const commentToolbar = new CommentToolbar(quill, { commentManager });
-
-        // 监听选择变化，更新工具栏按钮状态
-        quill.on('selection-change', () => {
-          commentToolbar.updateButtonState();
-        });
+        // 确保回调函数能正确设置
+        commentManager.setSubmitCallback = callback => {
+          commentManager.currentSubmitCallback = callback;
+        };
       }
 
       // 简化版本（备用）
@@ -247,11 +281,15 @@ const Editor = () => {
 
       <CommentDrawer
         visible={commentDrawerVisible}
-        onClose={() => setCommentDrawerVisible(false)}
+        onClose={() => {
+          setCommentDrawerVisible(false);
+          setHighlightCommentId(null); // 关闭时清除高亮
+        }}
         comments={comments}
         onResolveComment={handleResolveComment}
         onDeleteComment={handleDeleteComment}
         onCommentClick={handleCommentClick}
+        highlightCommentId={highlightCommentId}
       />
 
       <CommentTrigger
@@ -259,6 +297,33 @@ const Editor = () => {
         unresolvedCount={commentStats.unresolved}
         onClick={() => setCommentDrawerVisible(true)}
         visible={commentStats.total > 0}
+      />
+
+      <CommentButton
+        visible={commentButtonVisible}
+        position={commentButtonPosition}
+        onClick={() => {
+          console.log('CommentButton clicked, calling createComment');
+          if (commentManagerRef.current) {
+            commentManagerRef.current.createComment();
+          }
+        }}
+      />
+
+      <CommentModal
+        visible={commentModalVisible}
+        onCancel={() => setCommentModalVisible(false)}
+        selectedText={selectedTextForComment}
+        onSubmit={async comment => {
+          // 调用CommentManager的提交回调
+          if (
+            commentManagerRef.current &&
+            commentManagerRef.current.currentSubmitCallback
+          ) {
+            await commentManagerRef.current.currentSubmitCallback(comment);
+          }
+          setCommentModalVisible(false);
+        }}
       />
     </div>
   );
