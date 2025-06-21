@@ -28,6 +28,7 @@ export class UserService {
         email: createUserDto.email,
         password: hashedPassword,
         folderId: null, // 假设初始时没有文件夹ID
+        isPublic: false, // 默认不公开
         createdAt: new Date(),
         updatedAt: new Date(),
       });
