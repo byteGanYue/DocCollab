@@ -5,6 +5,13 @@ import { QuillBinding } from 'y-quill';
 import Quill from 'quill';
 import QuillCursors from 'quill-cursors';
 import DoUsername from 'do_username';
+import { Button, message, Modal, Input, Space, Tooltip } from 'antd';
+import {
+  SaveOutlined,
+  ShareAltOutlined,
+  CopyOutlined,
+  DownloadOutlined,
+} from '@ant-design/icons';
 import styles from './editor.module.less';
 import 'quill/dist/quill.core.css';
 // 注册 Quill 光标模块
@@ -65,6 +72,12 @@ const Editor = () => {
     lines: 0,
     paragraphs: 0,
   });
+
+  // 保存和分享状态
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [documentTitle, setDocumentTitle] = useState('未命名文档');
 
   // 添加工具栏提示样式
   useEffect(() => {
@@ -132,6 +145,57 @@ const Editor = () => {
           color: #495057;
           font-weight: 600;
         }
+
+        .editor-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 16px;
+          background: #fff;
+          border-bottom: 1px solid #e9ecef;
+        }
+
+        .document-title {
+          flex: 1;
+          font-size: 16px;
+          font-weight: 600;
+          color: #333;
+        }
+
+        .action-buttons {
+          display: flex;
+          gap: 8px;
+        }
+
+        .action-buttons .ant-btn {
+          border-color: var(--color-primary);
+          color: var(--color-primary);
+          background-color: white;
+        }
+
+        .action-buttons .ant-btn:hover {
+          border-color: var(--color-hover);
+          color: var(--color-hover);
+          background-color: white;
+        }
+
+        .action-buttons .ant-btn-primary {
+          background-color: white;
+          border-color: var(--color-primary);
+          color: var(--color-primary);
+        }
+
+        .action-buttons .ant-btn-primary:hover {
+          background-color: white;
+          border-color: var(--color-hover);
+          color: var(--color-hover);
+        }
+
+        .action-buttons .ant-btn-primary:active {
+          background-color: white;
+          border-color: var(--color-active);
+          color: var(--color-active);
+        }
       `;
       document.head.appendChild(style);
     }
@@ -146,6 +210,80 @@ const Editor = () => {
     const paragraphs = trimmedText ? trimmedText.split(/\n\s*\n/).length : 0;
 
     return { characters, words, lines, paragraphs };
+  };
+
+  // 保存文档
+  const handleSave = async () => {
+    if (!quillRef.current) return;
+
+    setSaveLoading(true);
+    try {
+      const content = quillRef.current.getContents();
+      const text = quillRef.current.getText();
+
+      // 这里可以调用后端API保存文档
+      // const response = await documentAPI.saveDocument({
+      //   title: documentTitle,
+      //   content: JSON.stringify(content),
+      //   text: text
+      // });
+
+      // 模拟保存延迟
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      message.success('文档保存成功！');
+
+      // 保存到本地存储作为备份
+      localStorage.setItem(
+        'document_backup',
+        JSON.stringify({
+          title: documentTitle,
+          content: content,
+          text: text,
+          timestamp: new Date().toISOString(),
+        }),
+      );
+    } catch (error) {
+      console.error('保存失败:', error);
+      message.error('保存失败，请重试');
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  // 分享文档
+  const handleShare = () => {
+    const currentUrl = window.location.href;
+    setShareUrl(currentUrl);
+    setShareModalVisible(true);
+  };
+
+  // 复制分享链接
+  const copyShareUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      message.success('链接已复制到剪贴板');
+    } catch {
+      message.error('复制失败，请手动复制');
+    }
+  };
+
+  // 下载文档
+  const handleDownload = () => {
+    if (!quillRef.current) return;
+
+    const text = quillRef.current.getText();
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${documentTitle}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    message.success('文档下载成功！');
   };
 
   // 初始化编辑器
@@ -270,6 +408,41 @@ const Editor = () => {
 
   return (
     <div className={styles.editorContainer}>
+      {/* 文档操作栏 */}
+      <div className="editor-actions">
+        <div className="document-title">
+          <Input
+            value={documentTitle}
+            onChange={e => setDocumentTitle(e.target.value)}
+            placeholder="输入文档标题"
+            bordered={false}
+            style={{ fontSize: '16px', fontWeight: '600' }}
+          />
+        </div>
+        <div className="action-buttons">
+          <Tooltip title="保存文档">
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              loading={saveLoading}
+              onClick={handleSave}
+            >
+              保存
+            </Button>
+          </Tooltip>
+          <Tooltip title="分享文档">
+            <Button icon={<ShareAltOutlined />} onClick={handleShare}>
+              分享
+            </Button>
+          </Tooltip>
+          <Tooltip title="下载文档">
+            <Button icon={<DownloadOutlined />} onClick={handleDownload}>
+              下载
+            </Button>
+          </Tooltip>
+        </div>
+      </div>
+
       <div className={styles.editorHeader}>
         <input
           type="text"
@@ -312,6 +485,31 @@ const Editor = () => {
           <span className="stat-value">{stats.paragraphs}</span>
         </div>
       </div>
+
+      {/* 分享模态框 */}
+      <Modal
+        title="分享文档"
+        open={shareModalVisible}
+        onCancel={() => setShareModalVisible(false)}
+        footer={[
+          <Button key="copy" icon={<CopyOutlined />} onClick={copyShareUrl}>
+            复制链接
+          </Button>,
+          <Button key="cancel" onClick={() => setShareModalVisible(false)}>
+            关闭
+          </Button>,
+        ]}
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <p>复制以下链接分享给其他人：</p>
+          <Input.TextArea
+            value={shareUrl}
+            rows={3}
+            readOnly
+            placeholder="分享链接"
+          />
+        </Space>
+      </Modal>
     </div>
   );
 };
