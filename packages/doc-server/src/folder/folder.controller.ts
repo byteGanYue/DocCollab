@@ -18,7 +18,7 @@ import {
   UpdateFolderDto,
   UpdateFolderResponseDto,
 } from './dto/update-folder.dto';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiOperation, ApiParam } from '@nestjs/swagger';
 @Controller('/folder')
 export class FolderController {
   constructor(private readonly folderService: FolderService) {}
@@ -69,6 +69,11 @@ export class FolderController {
    */
   @Get('getFolderDetailById/:id')
   @ApiOperation({ summary: '获取文件夹详情' })
+  @ApiParam({
+    name: 'id',
+    description: '文件夹ID',
+    example: '685660003a7988baf7809f44',
+  })
   findOne(@Param('id') id: string) {
     return this.folderService.findOne(id);
   }
@@ -81,6 +86,11 @@ export class FolderController {
    */
   @Patch('update/:id')
   @ApiOperation({ summary: '修改文件夹名称' })
+  @ApiParam({
+    name: 'id',
+    description: '文件夹ID',
+    example: '6856aacc90ea7201152ec98f',
+  })
   async update(
     @Param('id') id: string,
     @Body() updateFolderDto: UpdateFolderDto,
@@ -95,6 +105,11 @@ export class FolderController {
    */
   @Delete('deleteFolderById/:id')
   @ApiOperation({ summary: '删除文件夹' })
+  @ApiParam({
+    name: 'id',
+    description: '文件夹ID',
+    example: '685660003a7988baf7809f44',
+  })
   remove(@Param('id') id: string) {
     return this.folderService.remove(id);
   }

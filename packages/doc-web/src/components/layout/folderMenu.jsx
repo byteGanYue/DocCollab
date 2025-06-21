@@ -691,7 +691,6 @@ const FolderMenu = () => {
       // 调用更新 API
       const response = await folderAPI.updateFolder(key, {
         folderName: newName,
-        update_username: username,
       });
 
       if (response.success) {

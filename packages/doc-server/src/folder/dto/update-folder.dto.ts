@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
@@ -7,23 +7,12 @@ import { ApiProperty } from '@nestjs/swagger';
 export class UpdateFolderDto {
   @ApiProperty({
     description: '文件夹名称',
-    example: '新文件夹名称',
-    required: false,
+    example: '新修改的文件夹名称',
+    required: true,
   })
   @IsString()
   @IsNotEmpty()
-  @IsOptional()
-  folderName?: string; // 文件夹名称（可选）
-
-  @ApiProperty({
-    description: '更新者用户名',
-    example: '张三',
-    required: false,
-  })
-  @IsString()
-  @IsNotEmpty()
-  @IsOptional()
-  update_username?: string; // 更新者用户名（可选）
+  folderName: string; // 文件夹名称（必选）
 }
 
 /**
@@ -37,7 +26,6 @@ export interface UpdateFolderResponseDto {
     folderName: string;
     userId: string;
     create_username: string;
-    update_username: string;
     parentFolderIds: string[];
     depth: number;
     create_time: Date;
