@@ -350,7 +350,18 @@ const FolderMenu = () => {
 
       console.log('📁 使用的用户ID:', userId);
 
-      const response = await folderAPI.getFolders({ userId });
+      // 确保userId是number类型（后端期望number类型）
+      const numericUserId =
+        userId === 'current_user' ? 1 : parseInt(userId, 10);
+
+      // 验证转换结果
+      if (isNaN(numericUserId) || numericUserId <= 0) {
+        throw new Error('无效的用户ID，请重新登录');
+      }
+
+      console.log('📁 转换后的用户ID:', numericUserId);
+
+      const response = await folderAPI.getFolders({ userId: numericUserId });
       console.log('📁 从后端获取的文件夹数据:', response);
 
       // 转换后端数据为前端菜单格式
@@ -588,6 +599,15 @@ const FolderMenu = () => {
         }
       }
 
+      // 确保userId是number类型（后端期望number类型）
+      const numericUserId =
+        userId === 'current_user' ? 1 : parseInt(userId, 10);
+
+      // 验证转换结果
+      if (isNaN(numericUserId) || numericUserId <= 0) {
+        throw new Error('无效的用户ID，请重新登录');
+      }
+
       const username =
         userInfo?.username ||
         userInfo?.name ||
@@ -618,7 +638,7 @@ const FolderMenu = () => {
       // 准备创建文件夹的数据
       const createFolderData = {
         folderName: defaultName,
-        userId: userId,
+        userId: numericUserId,
         create_username: username,
         parentFolderIds: parentFolderIds,
       };

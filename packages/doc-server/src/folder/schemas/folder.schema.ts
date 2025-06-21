@@ -3,8 +3,8 @@ import { Document, Types } from 'mongoose';
 
 @Schema({ timestamps: { createdAt: 'create_time', updatedAt: 'update_time' } })
 export class Folder extends Document {
-  @Prop({ type: Types.ObjectId, required: true, ref: 'User' })
-  userId: Types.ObjectId; // 拥有者ID
+  @Prop({ type: Number, required: true })
+  userId: number; // 用户ID，与用户模块的自增userId保持一致
 
   @Prop({ type: String, required: true })
   folderName: string; // 文件夹名称
@@ -46,4 +46,4 @@ export const FolderSchema = SchemaFactory.createForClass(Folder);
 // 创建索引以提高查询性能
 FolderSchema.index({ userId: 1, depth: 1 });
 FolderSchema.index({ parentFolderIds: 1 });
-FolderSchema.index({ folderName: 1 });
+FolderSchema.index({ folderName: 1, userId: 1, parentFolderIds: 1 });

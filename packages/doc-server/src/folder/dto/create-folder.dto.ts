@@ -5,6 +5,7 @@ import {
   IsNotEmpty,
   IsArray,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
@@ -17,9 +18,9 @@ export class CreateFolderDto {
   folderName: string; // 文件夹名称
 
   @ApiProperty({ description: '创建人id', example: '685660003a7988baf7809f44' })
-  @IsString()
+  @IsNumber()
   @IsNotEmpty()
-  userId: string; // 拥有者ID
+  userId: number; // 拥有者ID
 
   @ApiProperty({ description: '创建人用户名', example: '测试2' })
   @IsString()
@@ -44,10 +45,11 @@ export class CreateFolderDto {
  * 查询文件夹树形结构DTO
  */
 export class QueryFolderTreeDto {
-  @ApiProperty({ description: '用户id', example: '685660003a7988baf7809f44' })
-  @IsString()
+  @ApiProperty({ description: '用户id', example: '1' })
+  @IsNumber()
   @IsOptional()
-  userId?: string; // 用户ID (可选，用于筛选特定用户的文件夹)
+  @Type(() => Number)
+  userId?: number; // 用户ID (可选，用于筛选特定用户的文件夹)
 
   @IsString()
   @IsOptional()
@@ -55,6 +57,7 @@ export class QueryFolderTreeDto {
 
   @IsNumber()
   @IsOptional()
+  @Type(() => Number)
   maxDepth?: number; // 最大查询深度 (可选，用于控制递归深度，避免性能问题)
 }
 
@@ -67,10 +70,33 @@ export interface CreateFolderResponseDto {
   data: {
     folderId: string;
     folderName: string;
-    userId: string;
+    userId: number;
     create_username: string;
     parentFolderIds: string[];
     depth: number;
+    create_time: Date;
+    update_time: Date;
+  };
+}
+
+/**
+ * 查询文件夹详情响应DTO
+ */
+export interface FindFolderDetailResponseDto {
+  success: boolean;
+  message: string;
+  data: {
+    folderId: string;
+    folderName: string;
+    userId: number; // 使用number类型，与用户模块保持一致
+    create_username: string;
+    update_username: string;
+    parentFolderIds: string[];
+    depth: number;
+    childrenCount: {
+      documents: number;
+      folders: number;
+    };
     create_time: Date;
     update_time: Date;
   };

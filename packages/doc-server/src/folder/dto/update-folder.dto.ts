@@ -24,7 +24,7 @@ export interface UpdateFolderResponseDto {
   data: {
     folderId: string;
     folderName: string;
-    userId: string;
+    userId: number;
     create_username: string;
     parentFolderIds: string[];
     depth: number;
