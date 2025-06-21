@@ -30,6 +30,7 @@ lerna-debug.log*
 # VitePress cache
 packages/doc-docs/.vitepress/cache
 packages/doc-docs/.vitepress/dist
+.vitepress/cache
 
 # Environment variables
 .env
