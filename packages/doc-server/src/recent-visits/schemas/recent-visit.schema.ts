@@ -9,11 +9,11 @@ export type RecentVisitDocument = RecentVisit & Document;
  */
 @Schema({ timestamps: true }) // 自动添加 createdAt 和 updatedAt 字段
 export class RecentVisit {
-  @Prop({ required: true })
-  userId: string; // 用户ID，与user表的_id关联
+  @Prop({ type: Number, required: true })
+  userId: number; // 用户ID，与user表的userId关联 (number类型)
 
-  @Prop({ required: true })
-  documentId: string; // 文档ID
+  @Prop({ type: Number, required: true })
+  documentId: number; // 文档ID (number类型)
 
   @Prop({ required: true })
   documentName: string; // 文档名称
@@ -21,8 +21,8 @@ export class RecentVisit {
   @Prop({ required: true, default: new Date() })
   visitTime: Date; // 最近访问时间
 
-  @Prop({ required: true })
-  visitId: string; // 最近访问人的ID
+  @Prop({ type: Number, required: true })
+  visitId: number; // 最近访问人的ID (number类型)
 }
 
 export const RecentVisitSchema = SchemaFactory.createForClass(RecentVisit);

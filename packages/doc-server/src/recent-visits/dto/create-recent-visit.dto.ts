@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
@@ -7,19 +7,19 @@ import { ApiProperty } from '@nestjs/swagger';
 export class CreateRecentVisitDto {
   @ApiProperty({
     description: '用户ID',
-    example: '507f1f77bcf86cd799439011',
+    example: 1,
   })
-  @IsString()
+  @IsNumber()
   @IsNotEmpty()
-  userId: string;
+  userId: number;
 
   @ApiProperty({
     description: '文档ID',
-    example: '507f1f77bcf86cd799439012',
+    example: 1,
   })
-  @IsString()
+  @IsNumber()
   @IsNotEmpty()
-  documentId: string;
+  documentId: number;
 
   @ApiProperty({
     description: '文档名称',
@@ -31,9 +31,9 @@ export class CreateRecentVisitDto {
 
   @ApiProperty({
     description: '访问者ID',
-    example: '507f1f77bcf86cd799439011',
+    example: 1,
   })
-  @IsString()
+  @IsNumber()
   @IsNotEmpty()
-  visitId: string;
+  visitId: number;
 }

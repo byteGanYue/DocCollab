@@ -9,14 +9,7 @@ import {
   message,
   Modal,
 } from 'antd';
-import {
-  FileTextOutlined,
-  MoreOutlined,
-  TableOutlined,
-  FileImageOutlined,
-  BranchesOutlined,
-  CalculatorOutlined,
-} from '@ant-design/icons';
+import { FileTextOutlined, MoreOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { recentVisitsAPI } from '@/utils/api';
 import styles from './index.module.css';
@@ -56,10 +49,6 @@ const RecentDocs = () => {
   const getDocTypeIcon = type => {
     const iconMap = {
       document: <FileTextOutlined style={{ color: '#1890ff' }} />,
-      spreadsheet: <TableOutlined style={{ color: '#52c41a' }} />,
-      presentation: <FileImageOutlined style={{ color: '#ff7a45' }} />,
-      mindmap: <BranchesOutlined style={{ color: '#722ed1' }} />,
-      form: <CalculatorOutlined style={{ color: '#13c2c2' }} />,
     };
     return iconMap[type] || <FileTextOutlined style={{ color: '#1890ff' }} />;
   };
@@ -109,6 +98,7 @@ const RecentDocs = () => {
       setLoading(true);
 
       try {
+        console.log('userInfo', userInfo);
         // 调用API获取用户的最近访问记录（分页）
         const response = await recentVisitsAPI.getUserVisits({
           userId: userInfo.userId,

@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Query,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { RecentVisitsService } from './recent-visits.service';
 import { CreateRecentVisitDto } from './dto/create-recent-visit.dto';
@@ -47,7 +48,7 @@ export class RecentVisitsController {
   @ApiParam({
     name: 'userId',
     description: '用户ID',
-    example: '507f1f77bcf86cd799439011',
+    example: 1,
   })
   @ApiQuery({
     name: 'page',
@@ -62,7 +63,7 @@ export class RecentVisitsController {
     required: false,
   })
   findByUserId(
-    @Param('userId') userId: string,
+    @Param('userId', ParseIntPipe) userId: number,
     @Query('page') page?: number,
     @Query('pageSize') pageSize?: number,
   ) {
@@ -114,9 +115,9 @@ export class RecentVisitsController {
   @ApiParam({
     name: 'userId',
     description: '用户ID',
-    example: '507f1f77bcf86cd799439011',
+    example: 1,
   })
-  clearUserVisits(@Param('userId') userId: string) {
+  clearUserVisits(@Param('userId', ParseIntPipe) userId: number) {
     return this.recentVisitsService.clearUserVisits(userId);
   }
 }
