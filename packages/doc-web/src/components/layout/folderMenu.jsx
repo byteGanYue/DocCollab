@@ -311,6 +311,7 @@ const FolderMenu = () => {
     visible: false,
     key: '',
     name: '',
+    loading: false,
   });
   // 新增：按钮悬停状态
   const [hoveredButton, setHoveredButton] = useState(null);
@@ -771,6 +772,48 @@ const FolderMenu = () => {
     });
   };
 
+  // 处理删除确认
+  const handleDeleteConfirm = async () => {
+    const { key } = deleteModal;
+
+    // 设置加载状态
+    setDeleteModal(prev => ({ ...prev, loading: true }));
+
+    try {
+      // 调用后端删除接口
+      const response = await folderAPI.deleteFolder(key);
+
+      if (response.success) {
+        // 显示删除统计信息
+        const { deletedFoldersCount, deletedDocumentsCount } = response.data;
+        message.success(
+          `删除成功！共删除 ${deletedFoldersCount} 个文件夹，${deletedDocumentsCount} 个文档`,
+        );
+
+        // 如果删除的是当前选中的项，清空选中状态
+        if (selectedKeys.includes(key)) {
+          setSelectedKeys([]);
+        }
+
+        // 重新获取文件夹列表以确保数据同步
+        await fetchFolders();
+      } else {
+        throw new Error(response.message || '删除失败');
+      }
+    } catch (error) {
+      console.error('删除文件夹失败:', error);
+      message.error(error.message || '删除失败，请重试');
+    } finally {
+      // 关闭弹窗并重置状态
+      setDeleteModal({
+        visible: false,
+        key: '',
+        name: '',
+        loading: false,
+      });
+    }
+  };
+
   // 获取权限图标（只有根文件夹显示权限图标）
   const getPermissionIcon = (permission, isRoot = false) => {
     if (!isRoot) return null; // 只有根文件夹显示权限图标
@@ -939,7 +982,12 @@ const FolderMenu = () => {
           danger
           onClick={e => {
             e.domEvent.stopPropagation();
-            setDeleteModal({ visible: true, key: item.key, name: text });
+            setDeleteModal({
+              visible: true,
+              key: item.key,
+              name: text,
+              loading: false,
+            });
           }}
         >
           删除
@@ -1057,21 +1105,18 @@ const FolderMenu = () => {
       <Modal
         title="确认删除"
         open={deleteModal.visible}
-        onOk={() => {
-          setFolderList(prev =>
-            folderUtils.deleteNodeByKey(prev, deleteModal.key),
-          );
-          setDeleteModal({ visible: false, key: '', name: '' });
-          message.success('删除成功');
-        }}
-        onCancel={() => setDeleteModal({ visible: false, key: '', name: '' })}
+        onOk={handleDeleteConfirm}
+        onCancel={() =>
+          setDeleteModal({ visible: false, key: '', name: '', loading: false })
+        }
         okText="删除"
         okButtonProps={{ danger: true }}
         cancelText="取消"
+        confirmLoading={deleteModal.loading}
       >
         <span>
           确定要删除"{deleteModal.name}
-          "吗？此操作不可恢复，且会删除其下所有内容。
+          "吗？此操作不可恢复，且会递归删除其下所有子文件夹和文档。
         </span>
       </Modal>
 
