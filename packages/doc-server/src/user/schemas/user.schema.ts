@@ -16,6 +16,9 @@ export class User {
 
   @Prop({ default: null })
   folderId: string; // 文件夹ID，假设是字符串类型
+
+  @Prop({ default: false })
+  isPublic: boolean; // 是否公开文件夹信息
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

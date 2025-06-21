@@ -152,13 +152,32 @@ class folderUtils {
    * @returns 返回目标文件夹的键，优先选择文件夹类型的节点
    */
   static getValidTargetKey(list, selectedKey, openKeys) {
-    // 如果没有选中任何项，默认在根目录创建
+    // 如果没有选中任何项，默认在"我的文件夹"根目录创建
     if (!selectedKey) {
       return 'root';
     }
 
-    // 如果选中的是文件夹，直接在该文件夹下创建
-    if (selectedKey.startsWith('sub') || selectedKey === 'root') {
+    // 如果选中的是特殊菜单项（首页、最近访问、协同文档），在"我的文件夹"根目录创建
+    if (['home', 'recent-docs', 'collaboration'].includes(selectedKey)) {
+      return 'root';
+    }
+
+    // 如果选中的是"我的文件夹"根节点，在根目录创建
+    if (selectedKey === 'root') {
+      return 'root';
+    }
+
+    // 如果选中的是文件夹（包括子文件夹），直接在该文件夹下创建
+    if (
+      selectedKey.startsWith('sub') ||
+      (!selectedKey.startsWith('doc') &&
+        !selectedKey.includes('collab_user_') &&
+        !['home', 'recent-docs', 'collaboration', 'root'].includes(selectedKey))
+    ) {
+      // 协同文档相关的不能创建新文件夹
+      if (selectedKey.includes('collab_user_')) {
+        return 'root'; // 重定向到"我的文件夹"根目录
+      }
       return selectedKey;
     }
 
@@ -170,18 +189,147 @@ class folderUtils {
       }
     }
 
-    // 如果找不到合适的父文件夹，使用最后打开的文件夹
+    // 如果找不到合适的父文件夹，使用最后打开的有效文件夹
     if (openKeys.length > 0) {
-      // 从openKeys中找到最后一个文件夹类型的键
+      // 从openKeys中找到最后一个有效的文件夹类型的键
       for (let i = openKeys.length - 1; i >= 0; i--) {
-        if (openKeys[i].startsWith('sub') || openKeys[i] === 'root') {
-          return openKeys[i];
+        const key = openKeys[i];
+        // 排除协同文档相关的键，优先选择"我的文件夹"下的文件夹
+        if (
+          !key.includes('collab_user_') &&
+          (key === 'root' ||
+            key.startsWith('sub') ||
+            (!key.startsWith('doc') &&
+              !['home', 'recent-docs', 'collaboration'].includes(key)))
+        ) {
+          return key;
         }
       }
     }
 
-    // 最后的备选方案是根目录
+    // 最后的备选方案是"我的文件夹"根目录
     return 'root';
+  }
+
+  /**
+   * 构建文件夹的完整路径数组（用于新的parentFolderIds结构）
+   *
+   * @param list 节点列表
+   * @param targetKey 目标文件夹的键
+   * @returns 返回完整的父文件夹路径数组
+   */
+  static buildParentFolderIds(list, targetKey) {
+    if (!targetKey || targetKey === 'root') {
+      return []; // 根目录没有父文件夹
+    }
+
+    const findPath = (nodes, key, currentPath = []) => {
+      for (const node of nodes) {
+        if (node.key === key) {
+          return currentPath; // 找到目标，返回当前路径
+        }
+
+        if (node.children && node.children.length > 0) {
+          const childPath = findPath(node.children, key, [
+            ...currentPath,
+            node.key,
+          ]);
+          if (childPath !== null) {
+            return childPath;
+          }
+        }
+      }
+      return null;
+    };
+
+    const path = findPath(list, targetKey);
+    return path || []; // 如果找不到路径，返回空数组
+  }
+
+  /**
+   * 检查节点是否为文件夹类型
+   *
+   * @param node 要检查的节点
+   * @returns 返回是否为文件夹
+   */
+  static isFolderNode(node) {
+    if (!node || !node.key) return false;
+
+    // 排除特殊菜单项
+    if (['home', 'recent-docs', 'collaboration'].includes(node.key)) {
+      return false;
+    }
+
+    // 排除协同文档相关的节点（这些不能被编辑）
+    if (node.key.includes('collab_user_')) {
+      return false;
+    }
+
+    // 排除文档节点
+    if (node.key.startsWith('doc')) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * 检查节点是否可以创建子文件夹
+   *
+   * @param node 要检查的节点
+   * @returns 返回是否可以创建子文件夹
+   */
+  static canCreateSubfolder(node) {
+    if (!folderUtils.isFolderNode(node)) {
+      return false;
+    }
+
+    // 协同文档相关的文件夹不能创建子文件夹
+    if (node.key.includes('collab_user_')) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * 格式化文件夹数据以适配后端API
+   *
+   * @param folderData 前端文件夹数据
+   * @returns 返回适配后端API的数据格式
+   */
+  static formatFolderDataForAPI(folderData) {
+    return {
+      folderName: folderData.folderName || folderData.name,
+      userId: folderData.userId,
+      create_username: folderData.create_username || folderData.username,
+      update_username: folderData.update_username || folderData.username,
+      parentFolderIds: folderData.parentFolderIds || [],
+    };
+  }
+
+  /**
+   * 从后端响应数据中提取文件夹信息
+   *
+   * @param backendData 后端返回的数据
+   * @returns 返回格式化的文件夹信息
+   */
+  static extractFolderFromBackendData(backendData) {
+    return {
+      folderId: backendData.folderId || backendData._id,
+      folderName: backendData.folderName,
+      userId: backendData.userId,
+      create_username: backendData.create_username,
+      update_username: backendData.update_username,
+      parentFolderIds: backendData.parentFolderIds || [],
+      depth: backendData.depth || 0,
+      childrenCount: backendData.childrenCount || {
+        documents: backendData.all_children_documentId?.length || 0,
+        folders: backendData.all_children_folderId?.length || 0,
+      },
+      create_time: backendData.create_time,
+      update_time: backendData.update_time,
+    };
   }
 
   /**
@@ -327,9 +475,14 @@ class folderUtils {
  * - insertToTarget: 插入新节点到目标位置
  * - findNodeByKey: 根据键查找节点
  * - findParentNodeByKey: 根据子节点键查找父节点
- * - getValidTargetKey: 获取适合新建的目标文件夹键
+ * - getValidTargetKey: 获取适合新建的目标文件夹键（支持新的数据结构）
+ * - buildParentFolderIds: 构建文件夹的完整路径数组
+ * - isFolderNode: 检查节点是否为文件夹类型
+ * - canCreateSubfolder: 检查节点是否可以创建子文件夹
  * - updateNodePermission: 更新根文件夹的权限（工作空间级别）
  * - getCollaborationDocuments: 获取协同文档列表
  * - isDocumentCollaborative: 检查文档是否可协同编辑
+ * - formatFolderDataForAPI: 格式化文件夹数据以适配后端API
+ * - extractFolderFromBackendData: 从后端响应数据中提取文件夹信息
  */
 export default folderUtils;

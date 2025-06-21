@@ -18,30 +18,7 @@ const members = [
     //   { icon: 'twitter', link: 'https://twitter.com/youyuxi' }
     ]
   },
-  {
-    avatar: 'https://avatars.githubusercontent.com/u/109895777?v=4',
-    name: 'Zero1017',
-    title: '🎨 Frontend Designer',
-    links: [
-      { icon: 'github', link: 'https://github.com/Eomnational' }
-    ]
-  },
-  {
-    avatar: 'https://avatars.githubusercontent.com/u/122375177?v=4',
-    name: 'zihuv',
-    title: '🛠️ Backend Developer',
-    links: [
-      { icon: 'github', link: 'https://github.com/zihuv' }
-    ]
-  },
-    {
-    avatar: 'https://avatars.githubusercontent.com/u/126047472?v=4',
-    name: 'fzr365',
-    title: '🛠️ Backend Developer',
-    links: [
-      { icon: 'github', link: 'https://github.com/fzr365' }
-    ]
-  },
+
       {
     avatar: 'https://avatars.githubusercontent.com/u/128409343?v=4',
     name: 'wenhuilan',

@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useContext,
+  useCallback,
+} from 'react';
 import {
   FolderOpenOutlined,
   PlusSquareOutlined,
@@ -25,8 +31,12 @@ import {
   Space,
 } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { folderUtils } from '@/utils';
 import styles from './folderMenu.module.less';
+import folderUtils from '../../utils/folder';
+// 导入 API
+import { folderAPI } from '../../utils/api';
+// 导入用户上下文
+import { UserContext } from '../../contexts/UserContext';
 
 /**
  * EllipsisLabel 组件
@@ -279,50 +289,6 @@ const mockCollaborationUsers = [
   },
 ];
 
-// TODO: mock数据来的
-const initialFolderList = [
-  {
-    key: 'home', // 首页菜单项
-    icon: React.createElement(HomeOutlined),
-    label: <EllipsisLabel text="首页" />,
-    children: null, // 首页没有子项
-  },
-  {
-    key: 'recent-docs', // 最近访问文档列表菜单项
-    icon: React.createElement(ClockCircleOutlined),
-    label: <EllipsisLabel text="最近访问文档列表" />,
-    children: null, // 最近访问文档列表没有子项
-  },
-  {
-    key: 'collaboration', // 协同文档菜单项
-    icon: React.createElement(TeamOutlined),
-    label: <EllipsisLabel text="协同文档" />,
-    children: mockCollaborationUsers.map(user => user.folderData), // 动态加载协同文档
-  },
-  {
-    key: 'root', // 根文件夹的key固定为'root'
-    icon: React.createElement(FolderOpenOutlined),
-    label: <EllipsisLabel text="我的文件夹" />,
-    permission: 'private', // 根文件夹默认私有，控制整个用户空间的权限
-    children: [FolderOpenOutlined].map((icon, index) => {
-      const key = String(index + 1);
-      return {
-        key: `sub${key}`,
-        icon: React.createElement(icon),
-        label: <EllipsisLabel text={`文件夹 ${key}`} />,
-        // 子文件夹不再有独立权限，继承根文件夹权限
-        children: Array.from({ length: 4 }).map((_, j) => {
-          const subKey = index * 4 + j + 1;
-          return {
-            key: `doc${subKey}`,
-            label: <EllipsisLabel text={`文档${subKey}`} />,
-          };
-        }),
-      };
-    }),
-  },
-];
-
 /**
  * FolderMenu 组件
  *
@@ -332,7 +298,10 @@ const initialFolderList = [
  */
 const FolderMenu = () => {
   const navigate = useNavigate();
-  const [folderList, setFolderList] = useState(initialFolderList);
+  // 使用用户上下文获取用户信息
+  const { userInfo } = useContext(UserContext);
+
+  const [folderList, setFolderList] = useState([]);
   const [selectedKeys, setSelectedKeys] = useState(['home']); // 默认选中首页
   const [openKeys, setOpenKeys] = useState(['root']);
   // 新增：控制编辑状态的key
@@ -354,43 +323,174 @@ const FolderMenu = () => {
     name: '',
     permission: 'private',
   });
+  // 新增：加载状态
+  const [loading, setLoading] = useState(false);
 
-  // 监听folderList变化
+  // 获取文件夹列表
+  const fetchFolders = useCallback(async () => {
+    try {
+      setLoading(true);
+      // 使用用户上下文获取用户ID，支持多种格式
+      let userId =
+        userInfo?.userId ||
+        userInfo?._id ||
+        localStorage.getItem('userId') ||
+        'current_user';
+
+      // 如果从localStorage获取的是对象字符串，尝试解析
+      if (typeof userId === 'string' && userId.startsWith('{')) {
+        try {
+          const userObj = JSON.parse(userId);
+          userId = userObj.userId || userObj._id || userId;
+        } catch {
+          // 解析失败，继续使用原值
+        }
+      }
+
+      console.log('📁 使用的用户ID:', userId);
+
+      const response = await folderAPI.getFolders({ userId });
+      console.log('📁 从后端获取的文件夹数据:', response);
+
+      // 转换后端数据为前端菜单格式
+      const convertedFolders = convertBackendFoldersToMenuFormat(
+        response.data || [],
+      );
+
+      // 合并基础菜单项（首页、最近访问等）和用户文件夹
+      const baseMenuItems = [
+        {
+          key: 'home',
+          icon: React.createElement(HomeOutlined),
+          label: <EllipsisLabel text="首页" />,
+          children: null,
+        },
+        {
+          key: 'recent-docs',
+          icon: React.createElement(ClockCircleOutlined),
+          label: <EllipsisLabel text="最近访问文档列表" />,
+          children: null,
+        },
+        {
+          key: 'collaboration',
+          icon: React.createElement(TeamOutlined),
+          label: <EllipsisLabel text="协同文档" />,
+          children: mockCollaborationUsers.map(user => user.folderData),
+        },
+      ];
+
+      setFolderList([...baseMenuItems, ...convertedFolders]);
+    } catch (error) {
+      console.error('获取文件夹列表失败:', error);
+      message.error('获取文件夹列表失败');
+
+      // 失败时使用基础菜单项
+      const baseMenuItems = [
+        {
+          key: 'home',
+          icon: React.createElement(HomeOutlined),
+          label: <EllipsisLabel text="首页" />,
+          children: null,
+        },
+        {
+          key: 'recent-docs',
+          icon: React.createElement(ClockCircleOutlined),
+          label: <EllipsisLabel text="最近访问文档列表" />,
+          children: null,
+        },
+        {
+          key: 'collaboration',
+          icon: React.createElement(TeamOutlined),
+          label: <EllipsisLabel text="协同文档" />,
+          children: mockCollaborationUsers.map(user => user.folderData),
+        },
+        {
+          key: 'root',
+          icon: React.createElement(FolderOpenOutlined),
+          label: <EllipsisLabel text="我的文件夹" />,
+          permission: 'private',
+          children: [],
+        },
+      ];
+      setFolderList(baseMenuItems);
+    } finally {
+      setLoading(false);
+    }
+  }, [userInfo]);
+
+  // 将后端文件夹数据转换为前端菜单格式
+  const convertBackendFoldersToMenuFormat = backendFolders => {
+    console.log('转换后端文件夹数据:', backendFolders);
+
+    // 递归转换后端文件夹数据为前端菜单格式
+    const convertFolderToMenuItem = folder => {
+      const menuItem = {
+        key: folder.folderId,
+        icon: React.createElement(FolderOpenOutlined),
+        label: <EllipsisLabel text={folder.folderName} />,
+        children: [],
+        backendData: folder, // 保存后端数据以便后续使用
+        depth: folder.depth || 0,
+        parentFolderIds: folder.parentFolderIds || [],
+        childrenCount: folder.childrenCount || { documents: 0, folders: 0 },
+        create_time: folder.create_time,
+        update_time: folder.update_time,
+      };
+
+      // 递归处理子文件夹
+      if (
+        folder.children &&
+        Array.isArray(folder.children) &&
+        folder.children.length > 0
+      ) {
+        menuItem.children = folder.children.map(childFolder =>
+          convertFolderToMenuItem(childFolder),
+        );
+      }
+
+      return menuItem;
+    };
+
+    // 转换所有根级文件夹（后端已经返回了完整的树形结构）
+    const folderTree = Array.isArray(backendFolders)
+      ? backendFolders.map(folder => convertFolderToMenuItem(folder))
+      : [];
+
+    // 对文件夹进行排序（按名称）
+    const sortFolders = folders => {
+      return folders
+        .sort((a, b) => {
+          const nameA = a.label?.props?.text || a.label || '';
+          const nameB = b.label?.props?.text || b.label || '';
+          return nameA.localeCompare(nameB);
+        })
+        .map(folder => ({
+          ...folder,
+          children:
+            folder.children && folder.children.length > 0
+              ? sortFolders(folder.children)
+              : [],
+        }));
+    };
+
+    const sortedFolderTree = sortFolders(folderTree);
+
+    // 创建"我的文件夹"根节点，包含所有后端文件夹数据
+    const myFoldersRoot = {
+      key: 'root',
+      icon: React.createElement(FolderOpenOutlined),
+      label: <EllipsisLabel text="我的文件夹" />,
+      permission: 'private',
+      children: sortedFolderTree, // 将所有文件夹作为子项
+    };
+
+    return [myFoldersRoot];
+  };
+
+  // 组件挂载时获取文件夹列表
   useEffect(() => {
-    console.log('📁 folderList 数据变化监听 📁');
-    console.log('当前folderList状态:', folderList);
-
-    // // 统计各类型节点数量
-    // const stats = {
-    //   totalFolders: 0,
-    //   totalFiles: 0,
-    //   publicFolders: 0,
-    //   privateFolders: 0,
-    // };
-
-    // const countNodes = (nodes) => {
-    //   nodes.forEach(node => {
-    //     if (node.key.startsWith('sub') || node.key === 'root') {
-    //       stats.totalFolders++;
-    //       if (node.permission === 'public') {
-    //         stats.publicFolders++;
-    //       } else if (node.permission === 'private') {
-    //         stats.privateFolders++;
-    //       }
-    //     } else if (node.key.startsWith('doc')) {
-    //       stats.totalFiles++;
-    //     }
-
-    //     if (node.children && node.children.length > 0) {
-    //       countNodes(node.children);
-    //     }
-    //   });
-    // };
-
-    // countNodes(folderList);
-
-    console.log('========================================');
-  }, [folderList]); // 监听folderList的变化
+    fetchFolders();
+  }, [fetchFolders]);
 
   const handleMenuSelect = ({ selectedKeys }) => {
     setSelectedKeys(selectedKeys);
@@ -439,129 +539,188 @@ const FolderMenu = () => {
     }
   };
 
-  // 修改：直接创建文件，只能在文件夹下创建
+  // 新建文件功能（目前暂时只是占位，后续可以扩展）
   const handleAddFile = () => {
-    // 使用工具函数获取有效的目标文件夹
-    const targetKey = folderUtils.getValidTargetKey(
-      folderList,
-      selectedKeys[0],
-      openKeys,
-    );
-
-    // 检查是否选中了文件，如果是则给出提示
-    const currentKey = selectedKeys[0];
-    if (currentKey && currentKey.startsWith('doc')) {
-      const parentNode = folderUtils.findParentNodeByKey(
-        folderList,
-        currentKey,
-      );
-      const parentName = parentNode
-        ? parentNode.label?.props?.text || parentNode.label
-        : '根目录';
-      message.info(`文件将在文件夹"${parentName}"中创建`);
-    }
-
-    // 生成新文件的key和默认名称
-    const newFileKey = `doc${Date.now()}`;
-    const defaultName = `新建文档${counters.file}`;
-
-    const newFile = {
-      key: newFileKey,
-      label: <EllipsisLabel text={defaultName} />,
-      isNew: true, // 标记为新创建的项目
-    };
-
-    // 更新文件夹列表
-    setFolderList(prev => folderUtils.insertToTarget(prev, targetKey, newFile));
-
-    // 更新计数器
-    setCounters(prev => ({ ...prev, file: prev.file + 1 }));
-
-    // 进入编辑状态
-    setEditingKey(newFileKey);
-
-    // 选中新建的文件
-    setSelectedKeys([newFileKey]);
-
-    // 确保目标文件夹展开
-    if (targetKey !== 'root' && !openKeys.includes(targetKey)) {
-      setOpenKeys(prev => [...prev, targetKey]);
-    }
-
-    message.success('新建文档成功，请输入文档名称');
+    message.info('新建文件功能开发中，请先创建文件夹');
   };
 
-  // 修改：直接创建文件夹，只能在文件夹下创建
-  const handleAddFolder = () => {
-    // 使用工具函数获取有效的目标文件夹
-    const targetKey = folderUtils.getValidTargetKey(
-      folderList,
-      selectedKeys[0],
-      openKeys,
-    );
-
-    // 检查是否选中了文件，如果是则给出提示
-    const currentKey = selectedKeys[0];
-    if (currentKey && currentKey.startsWith('doc')) {
-      const parentNode = folderUtils.findParentNodeByKey(
+  // 修改：创建文件夹，调用后端 API
+  const handleAddFolder = async () => {
+    try {
+      // 使用工具函数获取有效的目标文件夹
+      const targetKey = folderUtils.getValidTargetKey(
         folderList,
-        currentKey,
+        selectedKeys[0],
+        openKeys,
       );
-      const parentName = parentNode
-        ? parentNode.label?.props?.text || parentNode.label
-        : '根目录';
-      message.info(`文件夹将在文件夹"${parentName}"中创建`);
+
+      // 检查是否选中了文件，如果是则给出提示
+      const currentKey = selectedKeys[0];
+      if (currentKey && currentKey.startsWith('doc')) {
+        const parentNode = folderUtils.findParentNodeByKey(
+          folderList,
+          currentKey,
+        );
+        const parentName = parentNode
+          ? parentNode.label?.props?.text || parentNode.label
+          : '我的文件夹';
+        message.info(`文件夹将在文件夹"${parentName}"中创建`);
+      }
+
+      // 生成默认名称
+      const defaultName = `新建文件夹${counters.folder}`;
+
+      // 获取当前用户ID和用户名
+      let userId =
+        userInfo?.userId ||
+        userInfo?._id ||
+        localStorage.getItem('userId') ||
+        'current_user';
+
+      // 如果从localStorage获取的是对象字符串，尝试解析
+      if (typeof userId === 'string' && userId.startsWith('{')) {
+        try {
+          const userObj = JSON.parse(userId);
+          userId = userObj.userId || userObj._id || userId;
+        } catch {
+          // 解析失败，继续使用原值
+        }
+      }
+
+      const username =
+        userInfo?.username ||
+        userInfo?.name ||
+        localStorage.getItem('username') ||
+        '当前用户';
+
+      // 准备父文件夹ID数组
+      let parentFolderIds = [];
+
+      // 如果选中的是"我的文件夹"根节点，创建根级文件夹
+      if (targetKey === 'root') {
+        parentFolderIds = []; // 根级文件夹，parentFolderIds为空数组
+      } else if (targetKey && targetKey !== 'root') {
+        // 找到目标文件夹并构建父文件夹路径
+        const targetFolder = folderUtils.findNodeByKey(folderList, targetKey);
+        if (targetFolder && targetFolder.backendData) {
+          // 如果目标文件夹存在，继承其路径并添加自身
+          parentFolderIds = [
+            ...(targetFolder.backendData.parentFolderIds || []),
+            targetKey,
+          ];
+        } else {
+          // 如果找不到详细信息，直接使用targetKey作为父级
+          parentFolderIds = [targetKey];
+        }
+      }
+
+      // 准备创建文件夹的数据
+      const createFolderData = {
+        folderName: defaultName,
+        userId: userId,
+        create_username: username,
+        parentFolderIds: parentFolderIds,
+      };
+
+      console.log('创建文件夹请求数据:', createFolderData);
+
+      // 调用后端 API 创建文件夹
+      const response = await folderAPI.createFolder(createFolderData);
+      console.log('创建文件夹响应:', response);
+
+      if (response.success) {
+        message.success('新建文件夹成功');
+
+        // 重新获取文件夹列表以显示最新数据
+        await fetchFolders();
+
+        // 更新计数器
+        setCounters(prev => ({ ...prev, folder: prev.folder + 1 }));
+
+        // 选中新建的文件夹
+        setSelectedKeys([response.data.folderId]);
+
+        // 进入编辑状态
+        setEditingKey(response.data.folderId);
+
+        // 确保"我的文件夹"根节点展开
+        if (!openKeys.includes('root')) {
+          setOpenKeys(prev => [...prev, 'root']);
+        }
+
+        // 确保父文件夹路径都展开
+        if (parentFolderIds.length > 0) {
+          const newOpenKeys = [
+            ...new Set([...openKeys, 'root', ...parentFolderIds]),
+          ];
+          setOpenKeys(newOpenKeys);
+        } else {
+          // 如果是根级文件夹，只需要展开"我的文件夹"
+          const newOpenKeys = [...new Set([...openKeys, 'root'])];
+          setOpenKeys(newOpenKeys);
+        }
+      } else {
+        throw new Error(response.message || '创建文件夹失败');
+      }
+    } catch (error) {
+      console.error('创建文件夹失败:', error);
+      message.error(error.message || '创建文件夹失败，请重试');
     }
-
-    // 生成新文件夹的key和默认名称
-    const newFolderKey = `sub${Date.now()}`;
-    const defaultName = `新建文件夹${counters.folder}`;
-
-    const newFolder = {
-      key: newFolderKey,
-      icon: <FolderOpenOutlined />,
-      label: <EllipsisLabel text={defaultName} />,
-      children: [],
-      // 子文件夹不再设置独立权限，继承根文件夹权限
-      isNew: true, // 标记为新创建的项目
-    };
-
-    // 更新文件夹列表
-    setFolderList(prev =>
-      folderUtils.insertToTarget(prev, targetKey, newFolder),
-    );
-
-    // 更新计数器
-    setCounters(prev => ({ ...prev, folder: prev.folder + 1 }));
-
-    // 进入编辑状态
-    setEditingKey(newFolderKey);
-
-    // 选中新建的文件夹
-    setSelectedKeys([newFolderKey]);
-
-    // 确保目标文件夹展开
-    if (targetKey !== 'root' && !openKeys.includes(targetKey)) {
-      setOpenKeys(prev => [...prev, targetKey]);
-    }
-
-    message.success('新建文件夹成功，请输入文件夹名称');
   };
 
   // 处理重命名保存
-  const handleRenameSave = (key, newName) => {
-    setFolderList(prev => folderUtils.renameNodeByKey(prev, key, newName));
-    setEditingKey(null);
-    message.success('重命名成功');
+  const handleRenameSave = async (key, newName) => {
+    try {
+      // 获取当前用户名
+      let username =
+        userInfo?.username ||
+        userInfo?.name ||
+        localStorage.getItem('username') ||
+        '当前用户';
+
+      // 如果从localStorage获取的是对象字符串，尝试解析
+      if (typeof username === 'string' && username.startsWith('{')) {
+        try {
+          const userObj = JSON.parse(username);
+          username = userObj.username || userObj.name || username;
+        } catch {
+          // 解析失败，继续使用原值
+        }
+      }
+
+      // 调用更新 API
+      const response = await folderAPI.updateFolder(key, {
+        folderName: newName,
+        update_username: username,
+      });
+
+      if (response.success) {
+        // 重新获取文件夹列表
+        await fetchFolders();
+        setEditingKey(null);
+        message.success('重命名成功');
+      } else {
+        throw new Error(response.message || '重命名失败');
+      }
+    } catch (error) {
+      console.error('重命名失败:', error);
+      message.error(error.message || '重命名失败，请重试');
+    }
   };
 
   // 处理重命名取消
-  const handleRenameCancel = key => {
+  const handleRenameCancel = async key => {
     // 如果是新创建的项目且取消了重命名，则删除该项目
     const item = folderUtils.findNodeByKey(folderList, key);
     if (item?.isNew) {
-      setFolderList(prev => folderUtils.deleteNodeByKey(prev, key));
-      message.info('已取消创建');
+      try {
+        await folderAPI.deleteFolder(key);
+        await fetchFolders();
+        message.info('已取消创建');
+      } catch (error) {
+        console.error('删除文件夹失败:', error);
+        message.error('取消创建失败');
+      }
     }
     setEditingKey(null);
   };
@@ -986,6 +1145,7 @@ const FolderMenu = () => {
         items={withMenuActions(folderList)}
         selectable={true}
         multiple={false}
+        loading={loading}
       />
     </Layout.Sider>
   );

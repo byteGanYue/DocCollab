@@ -20,7 +20,7 @@ export class UserController {
 
   @Post('/register')
   @ApiOperation({ summary: '注册新用户' })
-  @ApiResponse({ status: 201, description: '用户注册成功' })
+  @ApiResponse({ status: 200, description: '用户注册成功' })
   create(@Body() createUserDto: CreateUserDto) {
     return this.userService.create(createUserDto);
   }
@@ -30,6 +30,13 @@ export class UserController {
   @ApiResponse({ status: 200, description: '用户登陆成功' })
   login(@Body() loginUserDto: LoginUserDto) {
     return this.userService.login(loginUserDto);
+  }
+
+  @Get('/isPublic/:email')
+  @ApiOperation({ summary: '修改用户公开状态' })
+  @ApiResponse({ status: 200, description: '用户公开状态修改成功' })
+  isPublic(@Param('email') email: string) {
+    return this.userService.isPublic(email);
   }
 
   @Get()

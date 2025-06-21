@@ -36,4 +36,8 @@ async function bootstrap() {
   await app.listen(port);
   logger.log(`Application is running on: http://localhost:${port}`);
 }
-bootstrap();
+
+bootstrap().catch((error) => {
+  console.error('应用启动失败:', error);
+  process.exit(1);
+});

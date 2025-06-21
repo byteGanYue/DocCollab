@@ -35,6 +35,9 @@ export const userAPI = {
   // 修改密码
   changePassword: data => patch('/user/password', data),
 
+  // 修改用户公开状态
+  changePublicStatus: email => patch('/user/isPublic/' + email),
+
   // 用户登出
   logout: () => post('/auth/logout'),
 };
@@ -111,26 +114,30 @@ export const documentAPI = {
  * 文件夹相关API
  */
 export const folderAPI = {
-  // 获取文件夹列表
-  getFolders: params => get('/folders', params),
+  // 获取文件夹树形结构列表
+  getFolders: params => get('/v1/folder', params),
 
-  // 获取单个文件夹
-  getFolder: id => get(`/folders/${id}`),
+  // 获取文件夹树形结构（备用接口）
+  getFolderTree: params => get('/v1/folder/tree', params),
+
+  // 获取单个文件夹详情
+  getFolder: id => get(`/v1/folder/${id}`),
 
   // 创建文件夹
-  createFolder: data => post('/folders', data),
+  createFolder: data => post('/v1/folder', data),
 
   // 更新文件夹
-  updateFolder: (id, data) => put(`/folders/${id}`, data),
+  updateFolder: (id, data) => patch(`/v1/folder/${id}`, data),
 
   // 删除文件夹
-  deleteFolder: id => del(`/folders/${id}`),
+  deleteFolder: id => del(`/v1/folder/${id}`),
 
-  // 移动文件夹
-  moveFolder: (id, targetId) => patch(`/folders/${id}/move`, { targetId }),
+  // 移动文件夹（保留，后续可能实现）
+  moveFolder: (id, targetParentFolderIds) =>
+    patch(`/v1/folder/${id}/move`, { parentFolderIds: targetParentFolderIds }),
 
-  // 获取文件夹内容
-  getFolderContents: id => get(`/folders/${id}/contents`),
+  // 获取文件夹内容（保留，后续可能实现）
+  getFolderContents: id => get(`/v1/folder/${id}/contents`),
 };
 
 /**

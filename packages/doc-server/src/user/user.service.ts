@@ -28,6 +28,7 @@ export class UserService {
         email: createUserDto.email,
         password: hashedPassword,
         folderId: null, // 假设初始时没有文件夹ID
+        isPublic: false, // 默认不公开
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -50,7 +51,13 @@ export class UserService {
     }
   }
 
-  // 用户登陆逻辑
+  /**
+   * 登录功能
+   *
+   * @param loginUserDto 登录用户数据传输对象
+   * @returns 登录结果，包含状态码、用户名和登录成功信息
+   * @throws 如果用户不存在或密码错误，则抛出错误
+   */
   async login(loginUserDto: LoginUserDto) {
     const user = await this.userModel.findOne({ email: loginUserDto.email });
     if (!user) {
@@ -74,6 +81,28 @@ export class UserService {
   }
 
   /**
+   * 修改用户公开状态
+   *
+   * @param id 用户ID
+
+   * @returns 返回修改后的用户对象
+   */
+  async isPublic(email: string) {
+    const user = await this.userModel.findOne({ email: email });
+
+    if (!user) {
+      throw new Error(`User with email ${email} not found`);
+    }
+    user.isPublic = !user.isPublic;
+
+    await user.save();
+    return {
+      code: 200,
+      message: 'User public status updated successfully',
+    };
+  }
+
+  /**
    * 异步查询所有用户信息
    *
    * @returns 返回包含用户id、用户名、邮箱、创建时间和更新时间的对象数组
@@ -88,6 +117,12 @@ export class UserService {
     });
   }
 
+  /**
+   * 根据给定的ID查找单个用户信息
+   *
+   * @param id 用户ID
+   * @returns 返回一个包含用户信息的Promise对象，如果未找到则返回null
+   */
   async findOne(id: string) {
     return this.userModel.findOne({ _id: id }, { __v: 0 }).select({
       id: 1,

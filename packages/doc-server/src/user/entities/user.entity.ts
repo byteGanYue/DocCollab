@@ -4,5 +4,7 @@ export class User {
   email: string;
   password: string;
   folderId: string;
+  isPublic: boolean;
   createdAt: Date;
+  updatedAt: Date;
 }

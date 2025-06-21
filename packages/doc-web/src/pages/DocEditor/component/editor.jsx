@@ -21,13 +21,26 @@ import {
   showPDFMenu,
 } from '../../../../utils/index.js';
 
+// 注册 Quill 光标模块
+Quill.register('modules/cursors', QuillCursors);
+
+// 导入并注册评论格式（必须在Quill实例化之前）
+import './Comment/commentFormat.js'; // 注册评论格式
+import './Comment/comment.module.less'; // 导入评论样式
+
+// 导入评论功能
+import {
+  CommentManager,
+  CommentDrawer,
+  CommentTrigger,
+  CommentButton,
+  CommentModal,
+} from './Comment';
+
 // 导入UI组件
 import EditorHeader from './EditorHeader.jsx';
 import TextStats from './TextStats.jsx';
 import ShareModal from './ShareModal.jsx';
-
-// 注册 Quill 光标模块
-Quill.register('modules/cursors', QuillCursors);
 
 const Editor = () => {
   // 使用 ref 来存储 Quill 实例和 DOM 元素
@@ -36,6 +49,8 @@ const Editor = () => {
   const bindingRef = useRef(null);
   const providerRef = useRef(null);
   const awarenessRef = useRef(null);
+  const commentManagerRef = useRef(null); // 评论管理器引用
+  const yDocRef = useRef(null); // Yjs文档引用
 
   // 状态管理
   const [username, setUsername] = useState('');
@@ -55,6 +70,24 @@ const Editor = () => {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [documentTitle, setDocumentTitle] = useState('未命名文档');
+
+  // 评论相关状态
+  const [comments, setComments] = useState([]);
+  const [commentDrawerVisible, setCommentDrawerVisible] = useState(false);
+  const [commentStats, setCommentStats] = useState({
+    total: 0,
+    unresolved: 0,
+  });
+  const [highlightCommentId, setHighlightCommentId] = useState(null);
+
+  // 新增：评论按钮和模态框状态
+  const [commentButtonVisible, setCommentButtonVisible] = useState(false);
+  const [commentButtonPosition, setCommentButtonPosition] = useState({
+    left: 0,
+    top: 0,
+  });
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [selectedTextForComment, setSelectedTextForComment] = useState('');
 
   // 添加工具栏提示样式
   useEffect(() => {
@@ -76,7 +109,7 @@ const Editor = () => {
       quillRef.current = quill;
 
       // 初始化协同编辑
-      const { binding, provider, awareness } = initCollaboration(
+      const { binding, provider, awareness, yDoc } = initCollaboration(
         quill,
         setUsername,
         setUsers,
@@ -85,6 +118,59 @@ const Editor = () => {
       bindingRef.current = binding;
       providerRef.current = provider;
       awarenessRef.current = awareness;
+      yDocRef.current = yDoc;
+
+      // 初始化评论管理器 - 恢复完整版本
+      if (yDoc && awareness) {
+        const commentManager = new CommentManager(quill, yDoc, awareness, {
+          onCommentsChange: commentsArray => {
+            console.log('Comments updated:', commentsArray);
+            setComments(commentsArray);
+            const total = commentsArray.length;
+            const unresolved = commentsArray.filter(c => !c.resolved).length;
+            setCommentStats({ total, unresolved });
+          },
+          onCommentCreate: comment => {
+            console.log('New comment created:', comment);
+          },
+          onCommentClick: (comment, commentId) => {
+            console.log('Comment text clicked:', commentId);
+            setHighlightCommentId(commentId);
+            setCommentDrawerVisible(true);
+          },
+          onShowCommentButton: ({ visible, position }) => {
+            setCommentButtonVisible(visible);
+            setCommentButtonPosition(position);
+          },
+          onHideCommentButton: () => {
+            setCommentButtonVisible(false);
+          },
+          onShowCommentModal: ({ visible, selectedText, onSubmit }) => {
+            console.log('Editor: onShowCommentModal called with:', {
+              visible,
+              selectedText,
+              textLength: selectedText?.length || 0,
+            });
+            setSelectedTextForComment(selectedText);
+            setCommentModalVisible(visible);
+            // 直接存储提交回调函数到commentManager实例
+            commentManager.currentSubmitCallback = onSubmit;
+            console.log('Editor: Submit callback stored to commentManager');
+          },
+        });
+
+        // 先赋值给ref，确保后续能访问到
+        commentManagerRef.current = commentManager;
+
+        // 确保回调函数能正确设置
+        commentManager.setSubmitCallback = callback => {
+          commentManager.currentSubmitCallback = callback;
+        };
+      }
+
+      // 简化版本（备用）
+      // const commentManager = new CommentManagerSimple(quill);
+      // commentManagerRef.current = commentManager;
 
       // 添加字数统计功能
       const updateCounter = () => {
@@ -120,6 +206,10 @@ const Editor = () => {
       return () => {
         observer.disconnect();
         cleanupCollaboration(binding, provider);
+        // 清理评论管理器
+        if (commentManagerRef.current) {
+          commentManagerRef.current.destroy();
+        }
       };
     }
   }, [myColor]);
@@ -137,6 +227,25 @@ const Editor = () => {
   const onDownload = () => showDownloadMenu(quillRef.current);
   const onCopyUrl = () => copyShareUrl(shareUrl);
   const onGenerateSummary = () => showPDFMenu();
+
+  // 评论处理函数
+  const handleResolveComment = commentId => {
+    if (commentManagerRef.current) {
+      commentManagerRef.current.toggleResolveComment(commentId);
+    }
+  };
+
+  const handleDeleteComment = commentId => {
+    if (commentManagerRef.current) {
+      commentManagerRef.current.deleteComment(commentId);
+    }
+  };
+
+  const handleCommentClick = comment => {
+    if (commentManagerRef.current) {
+      commentManagerRef.current.highlightCommentText(comment);
+    }
+  };
 
   return (
     <div className={styles.editorContainer}>
@@ -168,6 +277,53 @@ const Editor = () => {
         setShareModalVisible={setShareModalVisible}
         shareUrl={shareUrl}
         onCopyUrl={onCopyUrl}
+      />
+
+      <CommentDrawer
+        visible={commentDrawerVisible}
+        onClose={() => {
+          setCommentDrawerVisible(false);
+          setHighlightCommentId(null); // 关闭时清除高亮
+        }}
+        comments={comments}
+        onResolveComment={handleResolveComment}
+        onDeleteComment={handleDeleteComment}
+        onCommentClick={handleCommentClick}
+        highlightCommentId={highlightCommentId}
+      />
+
+      <CommentTrigger
+        commentCount={commentStats.total}
+        unresolvedCount={commentStats.unresolved}
+        onClick={() => setCommentDrawerVisible(true)}
+        visible={commentStats.total > 0}
+      />
+
+      <CommentButton
+        visible={commentButtonVisible}
+        position={commentButtonPosition}
+        onClick={() => {
+          console.log('CommentButton clicked, calling createComment');
+          if (commentManagerRef.current) {
+            commentManagerRef.current.createComment();
+          }
+        }}
+      />
+
+      <CommentModal
+        visible={commentModalVisible}
+        onCancel={() => setCommentModalVisible(false)}
+        selectedText={selectedTextForComment}
+        onSubmit={async comment => {
+          // 调用CommentManager的提交回调
+          if (
+            commentManagerRef.current &&
+            commentManagerRef.current.currentSubmitCallback
+          ) {
+            await commentManagerRef.current.currentSubmitCallback(comment);
+          }
+          setCommentModalVisible(false);
+        }}
       />
     </div>
   );
