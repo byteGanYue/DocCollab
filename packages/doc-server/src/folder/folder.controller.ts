@@ -99,16 +99,19 @@ export class FolderController {
   }
 
   /**
-   * 删除文件夹
+   * 删除文件夹（递归删除所有子文件夹和子文档）
    * @param id 文件夹ID
    * @returns 删除结果
    */
   @Delete('deleteFolderById/:id')
-  @ApiOperation({ summary: '删除文件夹' })
+  @ApiOperation({
+    summary: '递归删除文件夹',
+    description: '删除指定文件夹及其所有子文件夹和子文档',
+  })
   @ApiParam({
     name: 'id',
     description: '文件夹ID',
-    example: '685660003a7988baf7809f44',
+    example: '6856aacc90ea7201152ec98f',
   })
   remove(@Param('id') id: string) {
     return this.folderService.remove(id);
