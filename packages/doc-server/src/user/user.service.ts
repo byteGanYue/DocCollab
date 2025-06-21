@@ -84,7 +84,7 @@ export class UserService {
    * @returns 返回修改后的用户对象
    */
   async isPublic(email: string) {
-    const user = await this.userModel.findOne({ _email: email });
+    const user = await this.userModel.findOne({ email: email });
 
     if (!user) {
       throw new Error(`User with email ${email} not found`);
@@ -92,7 +92,10 @@ export class UserService {
     user.isPublic = !user.isPublic;
 
     await user.save();
-    return user;
+    return {
+      code: 200,
+      message: 'User public status updated successfully',
+    };
   }
 
   /**
