@@ -12,6 +12,6 @@ import { RecentVisit, RecentVisitSchema } from './schemas/recent-visit.schema';
   ],
   controllers: [RecentVisitsController],
   providers: [RecentVisitsService],
-  exports: [RecentVisitsService], // 导出服务，供其他模块使用
+  exports: [RecentVisitsService], // 导出服务以供其他模块使用
 })
 export class RecentVisitsModule {}
