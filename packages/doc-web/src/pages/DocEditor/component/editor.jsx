@@ -58,6 +58,14 @@ const Editor = () => {
     () => USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)],
   );
 
+  // 字数统计状态
+  const [stats, setStats] = useState({
+    characters: 0,
+    words: 0,
+    lines: 0,
+    paragraphs: 0,
+  });
+
   // 添加工具栏提示样式
   useEffect(() => {
     const styleId = 'quill-toolbar-tooltips';
@@ -99,10 +107,46 @@ const Editor = () => {
           z-index: 1000;
           pointer-events: none;
         }
+        
+        .editor-stats {
+          display: flex;
+          gap: 16px;
+          padding: 8px 16px;
+          background: #f8f9fa;
+          border-top: 1px solid #e9ecef;
+          font-size: 12px;
+          color: #6c757d;
+        }
+        
+        .stat-item {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        
+        .stat-label {
+          font-weight: 500;
+        }
+        
+        .stat-value {
+          color: #495057;
+          font-weight: 600;
+        }
       `;
       document.head.appendChild(style);
     }
   }, []);
+
+  // 计算字数统计
+  const calculateStats = text => {
+    const trimmedText = text.trim();
+    const characters = trimmedText.length;
+    const words = trimmedText ? trimmedText.split(/\s+/).length : 0;
+    const lines = trimmedText ? trimmedText.split('\n').length : 0;
+    const paragraphs = trimmedText ? trimmedText.split(/\n\s*\n/).length : 0;
+
+    return { characters, words, lines, paragraphs };
+  };
 
   // 初始化编辑器
   useEffect(() => {
@@ -147,6 +191,13 @@ const Editor = () => {
       theme: 'snow',
     });
     quillRef.current = quill;
+
+    // 监听文本变化，更新字数统计
+    quill.on('text-change', () => {
+      const text = quill.getText();
+      const newStats = calculateStats(text);
+      setStats(newStats);
+    });
 
     // 为工具栏按钮添加提示
     setTimeout(() => {
@@ -241,6 +292,25 @@ const Editor = () => {
       </div>
       <div className={styles.editorWrapper}>
         <div id="editor" ref={editorRef} className={styles.quillEditor} />
+      </div>
+      {/* 字数统计栏 */}
+      <div className="editor-stats">
+        <div className="stat-item">
+          <span className="stat-label">字符:</span>
+          <span className="stat-value">{stats.characters}</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">单词:</span>
+          <span className="stat-value">{stats.words}</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">行数:</span>
+          <span className="stat-value">{stats.lines}</span>
+        </div>
+        <div className="stat-item">
+          <span className="stat-label">段落:</span>
+          <span className="stat-value">{stats.paragraphs}</span>
+        </div>
       </div>
     </div>
   );
