@@ -14,9 +14,12 @@ import {
   QueryFolderTreeDto,
   CreateFolderResponseDto,
 } from './dto/create-folder.dto';
-import { UpdateFolderDto } from './dto/update-folder.dto';
-
-@Controller('v1/folder')
+import {
+  UpdateFolderDto,
+  UpdateFolderResponseDto,
+} from './dto/update-folder.dto';
+import { ApiOperation } from '@nestjs/swagger';
+@Controller('/folder')
 export class FolderController {
   constructor(private readonly folderService: FolderService) {}
 
@@ -25,7 +28,8 @@ export class FolderController {
    * @param createFolderDto 创建文件夹数据
    * @returns 创建结果
    */
-  @Post()
+  @Post('create')
+  @ApiOperation({ summary: '创建文件夹' })
   async create(
     @Body() createFolderDto: CreateFolderDto,
   ): Promise<CreateFolderResponseDto> {
@@ -37,7 +41,8 @@ export class FolderController {
    * @param queryDto 查询参数
    * @returns 文件夹列表
    */
-  @Get()
+  @Get('getFoldersList')
+  @ApiOperation({ summary: '获取文件夹列表' })
   findAll(@Query() queryDto: QueryFolderTreeDto) {
     return this.folderService.findAll(queryDto);
   }
@@ -48,7 +53,8 @@ export class FolderController {
    * @param userId 用户ID
    * @returns 树形结构的文件夹列表
    */
-  @Get('tree')
+  @Get('getFoldersTree')
+  @ApiOperation({ summary: '获取文件夹树形结构' })
   findFolderTree(
     @Query('parentFolderId') parentFolderId?: string,
     @Query('userId') userId?: string,
@@ -61,9 +67,10 @@ export class FolderController {
    * @param id 文件夹ID
    * @returns 文件夹详情
    */
-  @Get(':id')
+  @Get('getFolderDetailById/:id')
+  @ApiOperation({ summary: '获取文件夹详情' })
   findOne(@Param('id') id: string) {
-    return this.folderService.findOne(+id);
+    return this.folderService.findOne(id);
   }
 
   /**
@@ -72,9 +79,13 @@ export class FolderController {
    * @param updateFolderDto 更新数据
    * @returns 更新结果
    */
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateFolderDto: UpdateFolderDto) {
-    return this.folderService.update(+id, updateFolderDto);
+  @Patch('update/:id')
+  @ApiOperation({ summary: '修改文件夹名称' })
+  async update(
+    @Param('id') id: string,
+    @Body() updateFolderDto: UpdateFolderDto,
+  ): Promise<UpdateFolderResponseDto> {
+    return this.folderService.update(id, updateFolderDto);
   }
 
   /**
@@ -82,47 +93,9 @@ export class FolderController {
    * @param id 文件夹ID
    * @returns 删除结果
    */
-  @Delete(':id')
+  @Delete('deleteFolderById/:id')
+  @ApiOperation({ summary: '删除文件夹' })
   remove(@Param('id') id: string) {
-    return this.folderService.remove(+id);
-  }
-
-  /**
-   * 创建测试数据（仅用于开发测试）
-   * @returns 创建结果
-   */
-  @Post('test/create-sample-data')
-  async createSampleData() {
-    // 创建测试用户的文件夹数据
-    const testFolders = [
-      {
-        folderName: '我的文档',
-        userId: '685660003a7988baf7809f44',
-        create_username: '测试用户',
-        parentFolderIds: [],
-      },
-      {
-        folderName: '工作项目',
-        userId: '685660003a7988baf7809f44',
-        create_username: '测试用户',
-        parentFolderIds: [],
-      },
-    ];
-
-    const results: CreateFolderResponseDto[] = [];
-    for (const folder of testFolders) {
-      try {
-        const result = await this.folderService.create(folder);
-        results.push(result);
-      } catch (error) {
-        console.error('创建测试文件夹失败:', error);
-      }
-    }
-
-    return {
-      success: true,
-      message: '测试数据创建完成',
-      data: results,
-    };
+    return this.folderService.remove(id);
   }
 }
