@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -407,53 +408,30 @@ export class FolderService {
         throw new BadRequestException('文件夹不存在');
       }
 
-      // 如果要更新文件夹名称，需要验证同名检查
-      if (updateFolderDto.folderName) {
-        const trimmedName = updateFolderDto.folderName.trim();
-
-        // 验证文件夹名称不能为空
-        if (!trimmedName) {
-          throw new BadRequestException('文件夹名称不能为空');
-        }
-
-        // 检查同级目录下是否已存在同名文件夹（排除当前文件夹）
-        const duplicateFolder = await this.folderModel.findOne({
-          _id: { $ne: id }, // 排除当前文件夹
-          folderName: trimmedName,
-          userId: existingFolder.userId,
-          parentFolderIds: { $eq: existingFolder.parentFolderIds },
-        });
-
-        if (duplicateFolder) {
-          throw new BadRequestException('同级目录下已存在同名文件夹');
-        }
-
-        updateFolderDto.folderName = trimmedName;
-      }
-
       // 准备更新数据
-      const updateData: Partial<{
-        folderName: string;
-        update_username: string;
-      }> = {};
+      const trimmedName = updateFolderDto.folderName.trim();
 
-      if (updateFolderDto.folderName) {
-        updateData.folderName = updateFolderDto.folderName;
+      // 验证文件夹名称不能为空
+      if (!trimmedName) {
+        throw new BadRequestException('文件夹名称不能为空');
       }
 
-      if (updateFolderDto.update_username) {
-        updateData.update_username = updateFolderDto.update_username;
-      }
+      // 检查同级目录下是否已存在同名文件夹（排除当前文件夹）
+      const duplicateFolder = await this.folderModel.findOne({
+        _id: { $ne: id }, // 排除当前文件夹
+        folderName: trimmedName,
+        userId: existingFolder.userId,
+        parentFolderIds: { $eq: existingFolder.parentFolderIds },
+      });
 
-      // 如果没有提供任何更新字段，抛出错误
-      if (Object.keys(updateData).length === 0) {
-        throw new BadRequestException('请提供要更新的字段');
+      if (duplicateFolder) {
+        throw new BadRequestException('同级目录下已存在同名文件夹');
       }
 
       // 执行更新操作
       const updatedFolder = await this.folderModel.findByIdAndUpdate(
         id,
-        updateData,
+        { folderName: trimmedName },
         {
           new: true, // 返回更新后的文档
           runValidators: true, // 运行模式验证器
@@ -474,7 +452,6 @@ export class FolderService {
           folderName: folderDoc.folderName,
           userId: folderDoc.userId.toString(),
           create_username: folderDoc.create_username,
-          update_username: folderDoc.update_username,
           parentFolderIds: folderDoc.parentFolderIds,
           depth: folderDoc.depth,
           create_time: folderDoc.create_time,
@@ -485,7 +462,6 @@ export class FolderService {
       this.logger.log('文件夹更新成功', {
         folderId: folderDoc._id.toString(),
         folderName: folderDoc.folderName,
-        updateFields: Object.keys(updateData),
       });
 
       return result;
