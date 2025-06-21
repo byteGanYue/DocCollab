@@ -144,6 +144,9 @@ importers:
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@22.15.31)(ts-node@10.9.2(@swc/core@1.12.1)(@types/node@22.15.31)(typescript@5.8.3))
+      mongodb:
+        specifier: ^6.17.0
+        version: 6.17.0
       prettier:
         specifier: ^3.4.2
         version: 3.5.3

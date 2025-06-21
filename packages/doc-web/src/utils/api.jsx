@@ -85,36 +85,59 @@ export const recentVisitsAPI = {
  */
 export const documentAPI = {
   // 获取文档列表
-  getDocuments: params => get('/documents', params),
+  getDocuments: params => get('/document/getDocumentsList', params),
 
-  // 获取单个文档
-  getDocument: id => get(`/documents/${id}`),
+  // 获取单个文档详情，需要传递userId参数
+  getDocument: (documentId, userId) =>
+    get(`/document/getDocumentById/${documentId}?userId=${userId}`),
 
   // 创建文档
-  createDocument: data => post('/documents', data),
+  createDocument: data => post('/document/create', data),
 
   // 更新文档
-  updateDocument: (id, data) => put(`/documents/${id}`, data),
+  updateDocument: (documentId, data) =>
+    patch(`/document/update/${documentId}`, data),
 
   // 删除文档
-  deleteDocument: id => del(`/documents/${id}`),
+  deleteDocument: documentId =>
+    del(`/document/deleteDocumentById/${documentId}`),
 
-  // 获取文档历史版本
-  getDocumentHistory: id => get(`/documents/${id}/history`),
+  // 添加协同编辑者
+  addCollaborator: (documentId, userId) =>
+    post(`/document/${documentId}/editors`, { userId }),
 
-  // 恢复文档版本
-  restoreDocument: (id, versionId) =>
-    post(`/documents/${id}/restore`, { versionId }),
+  // 移除协同编辑者
+  removeCollaborator: (documentId, userId) =>
+    del(`/document/${documentId}/editors/${userId}`),
 
-  // 导出文档
-  exportDocument: (id, format) =>
-    download(`/documents/${id}/export`, { format }),
+  // 根据用户ID获取文档列表
+  getUserDocuments: (userId, params = {}) =>
+    get('/document/getDocumentsList', { userId, ...params }),
 
-  // 上传文档附件
+  // 根据父文件夹ID获取文档列表
+  getFolderDocuments: (parentFolderId, params = {}) =>
+    get('/document/getDocumentsList', { parentFolderId, ...params }),
+
+  // 搜索文档
+  searchDocuments: (search, params = {}) =>
+    get('/document/getDocumentsList', { search, ...params }),
+
+  // 获取文档历史版本（保留，后续可能实现）
+  getDocumentHistory: documentId => get(`/document/${documentId}/history`),
+
+  // 恢复文档版本（保留，后续可能实现）
+  restoreDocument: (documentId, versionId) =>
+    post(`/document/${documentId}/restore`, { versionId }),
+
+  // 导出文档（保留，后续可能实现）
+  exportDocument: (documentId, format) =>
+    download(`/document/${documentId}/export`, { format }),
+
+  // 上传文档附件（保留，后续可能实现）
   uploadAttachment: (documentId, file) => {
     const formData = new FormData();
     formData.append('file', file);
-    return upload(`/documents/${documentId}/attachments`, formData);
+    return upload(`/document/${documentId}/attachments`, formData);
   },
 };
 

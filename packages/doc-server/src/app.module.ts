@@ -5,6 +5,7 @@ import { UserModule } from './user/user.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { FolderModule } from './folder/folder.module';
 import { RecentVisitsModule } from './recent-visits/recent-visits.module';
+import { DocumentModule } from './document/document.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { RecentVisitsModule } from './recent-visits/recent-visits.module';
     UserModule,
     FolderModule,
     RecentVisitsModule,
+    DocumentModule,
   ],
 
   controllers: [AppController],
