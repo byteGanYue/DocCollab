@@ -6,12 +6,16 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserDocument } from './schemas/user.schema'; // 引入 Mongoose 模型
 import { LoginUserDto } from './dto/login-user.dto';
+import { CounterService } from './services/counter.service'; // 引入计数器服务
 
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name);
 
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+  constructor(
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private readonly counterService: CounterService, // 注入计数器服务
+  ) {}
 
   /**
    * 注册一个新用户
@@ -22,8 +26,12 @@ export class UserService {
    */
   async create(createUserDto: CreateUserDto) {
     try {
+      // 获取下一个用户ID
+      const userId = await this.counterService.getNextSequence('userId');
+
       const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
       const user = await this.userModel.create({
+        userId, // 设置自增的用户ID
         username: createUserDto.username,
         email: createUserDto.email,
         password: hashedPassword,
@@ -32,10 +40,15 @@ export class UserService {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      this.logger.log(`Created user: ${user.username}`);
+      this.logger.log(`Created user: ${user.username} with userId: ${userId}`);
       return {
         code: 200,
         message: 'User created successfully',
+        data: {
+          userId: user.userId,
+          username: user.username,
+          email: user.email,
+        },
       };
     } catch (error: unknown) {
       const errorMessage =
@@ -74,8 +87,9 @@ export class UserService {
       code: 200,
       message: 'Login successful',
       data: {
+        userId: user.userId, // 返回自增的用户ID
         username: user.username,
-        userId: user._id,
+        email: user.email,
       },
     };
   }
@@ -83,8 +97,7 @@ export class UserService {
   /**
    * 修改用户公开状态
    *
-   * @param id 用户ID
-
+   * @param email 用户邮箱
    * @returns 返回修改后的用户对象
    */
   async isPublic(email: string) {
@@ -99,6 +112,10 @@ export class UserService {
     return {
       code: 200,
       message: 'User public status updated successfully',
+      data: {
+        userId: user.userId,
+        isPublic: user.isPublic,
+      },
     };
   }
 
@@ -109,52 +126,79 @@ export class UserService {
    */
   async findAll() {
     return this.userModel.find({}, { __v: 0 }).select({
-      id: 1,
+      userId: 1, // 使用自增的用户ID
       username: 1,
       email: 1,
+      isPublic: 1,
       createdAt: 1,
       updatedAt: 1,
     });
   }
 
   /**
-   * 根据给定的ID查找单个用户信息
+   * 根据给定的用户ID查找单个用户信息
    *
-   * @param id 用户ID
+   * @param userId 自增的用户ID
    * @returns 返回一个包含用户信息的Promise对象，如果未找到则返回null
    */
-  async findOne(id: string) {
-    return this.userModel.findOne({ _id: id }, { __v: 0 }).select({
-      id: 1,
+  async findOne(userId: number) {
+    return this.userModel.findOne({ userId }, { __v: 0 }).select({
+      userId: 1,
       username: 1,
       email: 1,
+      isPublic: 1,
+      folderId: 1,
       createdAt: 1,
       updatedAt: 1,
     });
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto) {
+  /**
+   * 根据MongoDB的_id查找用户信息（保留原方法以兼容现有代码）
+   *
+   * @param id MongoDB的_id
+   * @returns 返回一个包含用户信息的Promise对象，如果未找到则返回null
+   */
+  async findOneById(id: string) {
+    return this.userModel.findOne({ _id: id }, { __v: 0 }).select({
+      userId: 1,
+      username: 1,
+      email: 1,
+      isPublic: 1,
+      folderId: 1,
+      createdAt: 1,
+      updatedAt: 1,
+    });
+  }
+
+  async update(userId: number, updateUserDto: UpdateUserDto) {
     try {
       if (updateUserDto.password) {
         updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
       }
       const updatedUser = await this.userModel
-        .findByIdAndUpdate(
-          id,
+        .findOneAndUpdate(
+          { userId }, // 使用自增的用户ID查找
           { $set: updateUserDto },
           { new: true, runValidators: true }, // 返回更新后的文档
         )
         .select({
-          id: 1,
+          userId: 1,
           username: 1,
           email: 1,
+          isPublic: 1,
+          folderId: 1,
           createdAt: 1,
           updatedAt: 1,
         });
       if (!updatedUser) {
-        throw new Error(`User with id ${id} not found`);
+        throw new Error(`User with userId ${userId} not found`);
       }
-      return updatedUser;
+      return {
+        code: 200,
+        message: 'User updated successfully',
+        data: updatedUser,
+      };
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -164,11 +208,36 @@ export class UserService {
     }
   }
 
-  async remove(id: string) {
-    const deletedUser = await this.userModel.findByIdAndDelete(id);
+  async remove(userId: number) {
+    const deletedUser = await this.userModel.findOneAndDelete({ userId });
     if (!deletedUser) {
-      throw new Error(`User with id ${id} not found`);
+      throw new Error(`User with userId ${userId} not found`);
     }
-    return deletedUser;
+    return {
+      code: 200,
+      message: 'User deleted successfully',
+      data: {
+        userId: deletedUser.userId,
+        username: deletedUser.username,
+      },
+    };
+  }
+
+  /**
+   * 根据用户ID获取用户统计信息
+   *
+   * @returns 用户总数和最新的用户ID
+   */
+  async getUserStats() {
+    const totalUsers = await this.userModel.countDocuments();
+    const currentUserId = await this.counterService.getCurrentValue('userId');
+
+    return {
+      code: 200,
+      data: {
+        totalUsers,
+        currentUserId,
+      },
+    };
   }
 }
