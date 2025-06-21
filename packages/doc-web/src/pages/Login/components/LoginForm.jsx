@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
+import { useUser } from '@/hooks/useAuth';
 import styles from './LoginForm.module.less';
 const { Title, Text } = Typography;
 import { userAPI } from '@/utils/api';
@@ -23,6 +24,8 @@ const LoginForm = () => {
   const navigate = useNavigate();
   // 消息提示
   const [messageApi, contextHolder] = message.useMessage();
+  // 获取用户上下文
+  const { login } = useUser();
 
   // 登录逻辑
   const handleEmailLogin = async () => {
@@ -36,7 +39,9 @@ const LoginForm = () => {
         password: values.password,
       });
       if (res.code == 200) {
-        messageApi.success(`欢迎回来，${res.username}`);
+        // 使用 UserContext 的 login 方法保存用户信息
+        login(res.data);
+        messageApi.success(`欢迎回来，${res.data.username}`);
         setTimeout(() => {
           navigate('/home');
         }, 500);

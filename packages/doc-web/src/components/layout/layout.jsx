@@ -1,7 +1,17 @@
 import React from 'react';
-import { Breadcrumb, Layout, Menu, Button, Space } from 'antd';
+import {
+  Breadcrumb,
+  Layout,
+  Menu,
+  Button,
+  Space,
+  Dropdown,
+  Avatar,
+} from 'antd';
+import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { FolderMenu } from './folderMenu';
+import { useUser } from '@/hooks/useAuth';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import styles from './layout.module.less';
 import 'quill/dist/quill.snow.css';
@@ -16,6 +26,7 @@ const EditorList = ['1', '2', '3'].map(key => ({
 const LayoutComponent = () => {
   const location = useLocation(); // 获取当前路由信息
   const navigate = useNavigate(); // 路由导航
+  const { userInfo, logout } = useUser(); // 获取用户信息和登出方法
 
   // 根据当前路由生成面包屑导航
   const getBreadcrumbItems = () => {
@@ -32,6 +43,22 @@ const LayoutComponent = () => {
     }
   };
 
+  // 处理登出
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  // 用户下拉菜单项
+  const userMenuItems = [
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: '登出',
+      onClick: handleLogout,
+    },
+  ];
+
   return (
     <Layout className={styles.layout}>
       <Header className={styles.header}>
@@ -46,11 +73,26 @@ const LayoutComponent = () => {
           </div>
         </div>
 
-        {/* 右侧：主题切换器和静态用户信息 */}
+        {/* 右侧：主题切换器和用户信息 */}
         <div className={styles.headerRight}>
           <ThemeSwitcher />
           <Space className={styles.userInfo}>
-            <span className={styles.userName}>静态用户</span>
+            <Dropdown
+              menu={{ items: userMenuItems }}
+              placement="bottomRight"
+              trigger={['click']}
+            >
+              <div className={styles.userDropdown}>
+                <Avatar
+                  size="small"
+                  icon={<UserOutlined />}
+                  className={styles.userAvatar}
+                />
+                <span className={styles.userName}>
+                  {userInfo?.username || '用户'}
+                </span>
+              </div>
+            </Dropdown>
           </Space>
         </div>
       </Header>
