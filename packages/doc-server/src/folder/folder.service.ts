@@ -7,6 +7,7 @@ import {
   CreateFolderDto,
   QueryFolderTreeDto,
   CreateFolderResponseDto,
+  FindFolderDetailResponseDto,
 } from './dto/create-folder.dto';
 import {
   UpdateFolderDto,
@@ -17,7 +18,7 @@ import { Folder } from './schemas/folder.schema';
 interface FolderDocument {
   _id: Types.ObjectId;
   folderName: string;
-  userId: Types.ObjectId;
+  userId: number;
   create_username: string;
   update_username: string;
   parentFolderIds: string[];
@@ -37,7 +38,7 @@ export interface FolderTreeResponse {
 export interface FolderTreeItem {
   folderId: string;
   folderName: string;
-  userId: Types.ObjectId;
+  userId: number;
   create_username: string;
   update_username: string;
   parentFolderIds: string[];
@@ -68,54 +69,44 @@ export class FolderService {
     try {
       this.logger.log('开始创建文件夹', createFolderDto);
 
-      // 验证文件夹名称
-      if (!createFolderDto.folderName.trim()) {
-        throw new BadRequestException('文件夹名称不能为空');
-      }
-
-      // 计算父文件夹ID数组和深度
-      let parentFolderIds: string[] = [];
+      // 获取父文件夹路径并验证
+      const parentFolderIds = createFolderDto.parentFolderIds || [];
       let depth = 0;
 
-      if (
-        createFolderDto.parentFolderIds &&
-        createFolderDto.parentFolderIds.length > 0
-      ) {
-        // 验证父文件夹是否存在
-        const parentFolderId =
-          createFolderDto.parentFolderIds[
-            createFolderDto.parentFolderIds.length - 1
-          ];
-        const parentFolder = await this.folderModel.findById(parentFolderId);
+      if (parentFolderIds.length > 0) {
+        // 验证父文件夹是否存在且属于同一用户
+        const parentFolderId = parentFolderIds[parentFolderIds.length - 1];
+
+        if (!Types.ObjectId.isValid(parentFolderId)) {
+          throw new BadRequestException('无效的父文件夹ID格式');
+        }
+
+        const parentFolder = await this.folderModel
+          .findById(parentFolderId)
+          .lean()
+          .exec();
 
         if (!parentFolder) {
-          throw new BadRequestException('指定的父文件夹不存在');
+          throw new BadRequestException('父文件夹不存在');
         }
 
-        // 验证权限：只能在自己的文件夹下创建子文件夹
-        if (parentFolder.userId.toString() !== createFolderDto.userId) {
-          throw new BadRequestException('没有权限在此文件夹下创建子文件夹');
+        // 验证父文件夹所有者与当前操作用户一致
+        if (parentFolder.userId !== createFolderDto.userId) {
+          throw new BadRequestException('无权限在此文件夹中创建子文件夹');
         }
 
-        // 构建完整的父文件夹路径
-        parentFolderIds = [...parentFolder.parentFolderIds, parentFolderId];
+        // 设置文件夹层级
         depth = parentFolder.depth + 1;
-      }
 
-      // 检查同名文件夹
-      const existingFolder = await this.folderModel.findOne({
-        folderName: createFolderDto.folderName,
-        userId: createFolderDto.userId,
-        parentFolderIds: { $eq: parentFolderIds },
-      });
-
-      if (existingFolder) {
-        throw new BadRequestException('同级目录下已存在同名文件夹');
+        // 层级限制检查（最多10级）
+        if (depth > 10) {
+          throw new BadRequestException('文件夹层级不能超过10级');
+        }
       }
 
       // 创建新文件夹
       const newFolder = new this.folderModel({
-        userId: new Types.ObjectId(createFolderDto.userId),
+        userId: createFolderDto.userId, // 直接使用number类型的userId
         folderName: createFolderDto.folderName.trim(),
         create_username: createFolderDto.create_username,
         update_username: createFolderDto.create_username,
@@ -126,7 +117,7 @@ export class FolderService {
       });
 
       const savedFolder = await newFolder.save();
-      const folderDoc = savedFolder.toObject() as FolderDocument;
+      const folderDoc = savedFolder.toObject() as unknown as FolderDocument;
 
       // 更新父文件夹的子文件夹列表
       if (parentFolderIds.length > 0) {
@@ -143,7 +134,7 @@ export class FolderService {
         data: {
           folderId: folderDoc._id.toString(),
           folderName: folderDoc.folderName,
-          userId: folderDoc.userId.toString(),
+          userId: createFolderDto.userId, // 直接使用原始的number类型userId
           create_username: folderDoc.create_username,
           parentFolderIds: folderDoc.parentFolderIds,
           depth: folderDoc.depth,
@@ -172,37 +163,24 @@ export class FolderService {
   }
 
   /**
-   * 查询文件夹树形结构
+   * 查询文件夹列表（支持分页和条件筛选）
    * @param queryDto 查询参数
-   * @returns 树形结构的文件夹列表
+   * @returns 文件夹列表
    */
   async findAll(queryDto?: QueryFolderTreeDto): Promise<FolderTreeResponse> {
     try {
-      this.logger.log('开始查询文件夹树形结构', queryDto);
+      this.logger.log('开始查询文件夹列表', queryDto);
 
-      const parentFolderId = queryDto?.parentFolderId || null;
-      const userId = queryDto?.userId;
-      const maxDepth = queryDto?.maxDepth;
-
-      const result = await this.buildFolderTree(
-        parentFolderId,
-        userId,
+      return await this.buildFolderTree(
+        queryDto?.parentFolderId || null,
+        queryDto?.userId?.toString(), // 将number转换为string
         0,
-        maxDepth,
+        queryDto?.maxDepth,
       );
-
-      this.logger.log('查询文件夹树形结构成功', {
-        parentFolderId,
-        userId,
-        maxDepth,
-        resultCount: result.data.length,
-      });
-
-      return result;
     } catch (error) {
       const err = error as Error;
-      this.logger.error('查询文件夹树形结构失败', err.stack);
-      throw new Error(`查询文件夹树形结构失败: ${err.message}`);
+      this.logger.error('查询文件夹列表失败', err.stack);
+      throw new BadRequestException(`查询文件夹列表失败: ${err.message}`);
     }
   }
 
@@ -241,13 +219,8 @@ export class FolderService {
 
       // 根据用户ID筛选
       if (userId) {
-        // 将字符串用户ID转换为ObjectId进行查询
-        try {
-          filter.userId = new Types.ObjectId(userId);
-        } catch {
-          // 如果userId不是有效的ObjectId格式，则直接使用字符串查询
-          filter.userId = userId;
-        }
+        // 直接使用number类型的userId进行查询
+        filter.userId = parseInt(userId);
       }
 
       this.logger.log('查询过滤条件', filter);
@@ -255,7 +228,6 @@ export class FolderService {
       // 查询当前层级的文件夹
       const folders = await this.folderModel
         .find(filter)
-        .populate('userId', 'username email')
         .sort({ folderName: 1 }) // 按文件夹名称排序
         .lean()
         .exec();
@@ -311,11 +283,11 @@ export class FolderService {
    */
   async findFolderTree(
     parentFolderId: string = 'null',
-    userId?: string,
+    userId?: number,
   ): Promise<FolderTreeResponse> {
     return await this.buildFolderTree(
       parentFolderId === 'null' ? null : parentFolderId,
-      userId,
+      userId?.toString(), // 将number转换为string传递给buildFolderTree
     );
   }
 
@@ -324,7 +296,7 @@ export class FolderService {
    * @param id 文件夹ID
    * @returns 文件夹详情
    */
-  async findOne(id: string) {
+  async findOne(id: string): Promise<FindFolderDetailResponseDto> {
     try {
       this.logger.log('开始查询文件夹详情', { id });
 
@@ -334,11 +306,7 @@ export class FolderService {
       }
 
       // 查询文件夹
-      const folder = await this.folderModel
-        .findById(id)
-        .populate('userId', 'username email')
-        .lean()
-        .exec();
+      const folder = await this.folderModel.findById(id).lean().exec();
 
       if (!folder) {
         throw new BadRequestException('文件夹不存在');
@@ -352,7 +320,7 @@ export class FolderService {
         data: {
           folderId: folderDoc._id.toString(),
           folderName: folderDoc.folderName,
-          userId: folderDoc.userId.toString(),
+          userId: folderDoc.userId, // 直接使用number类型的userId
           create_username: folderDoc.create_username,
           update_username: folderDoc.update_username,
           parentFolderIds: folderDoc.parentFolderIds,
@@ -442,7 +410,7 @@ export class FolderService {
         throw new BadRequestException('文件夹更新失败');
       }
 
-      const folderDoc = updatedFolder.toObject() as FolderDocument;
+      const folderDoc = updatedFolder.toObject() as unknown as FolderDocument;
 
       const result: UpdateFolderResponseDto = {
         success: true,
@@ -450,7 +418,7 @@ export class FolderService {
         data: {
           folderId: folderDoc._id.toString(),
           folderName: folderDoc.folderName,
-          userId: folderDoc.userId.toString(),
+          userId: folderDoc.userId, // 直接使用number类型的userId
           create_username: folderDoc.create_username,
           parentFolderIds: folderDoc.parentFolderIds,
           depth: folderDoc.depth,
@@ -502,7 +470,7 @@ export class FolderService {
 
       // 从父文件夹中移除对该文件夹的引用
       await this.removeFromParentFolder(
-        existingFolder.toObject() as FolderDocument,
+        existingFolder.toObject() as unknown as FolderDocument,
       );
 
       const result = {

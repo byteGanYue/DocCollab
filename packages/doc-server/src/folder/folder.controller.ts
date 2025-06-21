@@ -13,12 +13,13 @@ import {
   CreateFolderDto,
   QueryFolderTreeDto,
   CreateFolderResponseDto,
+  FindFolderDetailResponseDto,
 } from './dto/create-folder.dto';
 import {
   UpdateFolderDto,
   UpdateFolderResponseDto,
 } from './dto/update-folder.dto';
-import { ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
 @Controller('/folder')
 export class FolderController {
   constructor(private readonly folderService: FolderService) {}
@@ -55,9 +56,21 @@ export class FolderController {
    */
   @Get('getFoldersTree')
   @ApiOperation({ summary: '获取文件夹树形结构' })
+  @ApiQuery({
+    name: 'parentFolderId',
+    required: false,
+    description: '父文件夹ID',
+    type: String,
+  })
+  @ApiQuery({
+    name: 'userId',
+    required: false,
+    description: '用户ID',
+    type: Number,
+  })
   findFolderTree(
     @Query('parentFolderId') parentFolderId?: string,
-    @Query('userId') userId?: string,
+    @Query('userId') userId?: number,
   ) {
     return this.folderService.findFolderTree(parentFolderId, userId);
   }
@@ -74,7 +87,7 @@ export class FolderController {
     description: '文件夹ID',
     example: '685660003a7988baf7809f44',
   })
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string): Promise<FindFolderDetailResponseDto> {
     return this.folderService.findOne(id);
   }
 
