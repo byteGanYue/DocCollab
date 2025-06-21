@@ -37,7 +37,7 @@ export const initCollaboration = (quill, setUsername, setUsers, myColor) => {
     setUsers(userList);
   });
 
-  return { binding, provider, awareness };
+  return { binding, provider, awareness, yDoc: ydoc };
 };
 
 // 更新用户名
