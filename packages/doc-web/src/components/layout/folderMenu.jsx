@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useContext,
+  useCallback,
+} from 'react';
 import {
   FolderOpenOutlined,
   PlusSquareOutlined,
@@ -29,6 +35,8 @@ import styles from './folderMenu.module.less';
 import folderUtils from '../../utils/folder';
 // 导入 API
 import { folderAPI } from '../../utils/api';
+// 导入用户上下文
+import { UserContext } from '../../contexts/UserContext';
 
 /**
  * EllipsisLabel 组件
@@ -290,6 +298,9 @@ const mockCollaborationUsers = [
  */
 const FolderMenu = () => {
   const navigate = useNavigate();
+  // 使用用户上下文获取用户信息
+  const { userInfo } = useContext(UserContext);
+
   const [folderList, setFolderList] = useState([]);
   const [selectedKeys, setSelectedKeys] = useState(['home']); // 默认选中首页
   const [openKeys, setOpenKeys] = useState(['root']);
@@ -316,10 +327,29 @@ const FolderMenu = () => {
   const [loading, setLoading] = useState(false);
 
   // 获取文件夹列表
-  const fetchFolders = async () => {
+  const fetchFolders = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await folderAPI.getFolders();
+      // 使用用户上下文获取用户ID，支持多种格式
+      let userId =
+        userInfo?.userId ||
+        userInfo?._id ||
+        localStorage.getItem('userId') ||
+        'current_user';
+
+      // 如果从localStorage获取的是对象字符串，尝试解析
+      if (typeof userId === 'string' && userId.startsWith('{')) {
+        try {
+          const userObj = JSON.parse(userId);
+          userId = userObj.userId || userObj._id || userId;
+        } catch {
+          // 解析失败，继续使用原值
+        }
+      }
+
+      console.log('📁 使用的用户ID:', userId);
+
+      const response = await folderAPI.getFolders({ userId });
       console.log('📁 从后端获取的文件夹数据:', response);
 
       // 转换后端数据为前端菜单格式
@@ -386,64 +416,81 @@ const FolderMenu = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userInfo]);
 
   // 将后端文件夹数据转换为前端菜单格式
   const convertBackendFoldersToMenuFormat = backendFolders => {
     console.log('转换后端文件夹数据:', backendFolders);
 
-    // 创建文件夹映射
-    const folderMap = new Map();
-    const rootFolders = [];
-
-    // 首先创建所有文件夹节点
-    backendFolders.forEach(folder => {
+    // 递归转换后端文件夹数据为前端菜单格式
+    const convertFolderToMenuItem = folder => {
       const menuItem = {
-        key: folder._id,
+        key: folder.folderId,
         icon: React.createElement(FolderOpenOutlined),
         label: <EllipsisLabel text={folder.folderName} />,
-        permission: folder.parentFolderId === '0' ? 'private' : undefined, // 只有根级文件夹有权限
         children: [],
         backendData: folder, // 保存后端数据以便后续使用
+        depth: folder.depth || 0,
+        parentFolderIds: folder.parentFolderIds || [],
+        childrenCount: folder.childrenCount || { documents: 0, folders: 0 },
+        create_time: folder.create_time,
+        update_time: folder.update_time,
       };
-      folderMap.set(folder._id, menuItem);
-    });
 
-    // 构建层级关系
-    backendFolders.forEach(folder => {
-      const menuItem = folderMap.get(folder._id);
-      if (folder.parentFolderId === '0') {
-        // 根级文件夹
-        rootFolders.push(menuItem);
-      } else {
-        // 子文件夹
-        const parentItem = folderMap.get(folder.parentFolderId);
-        if (parentItem) {
-          parentItem.children.push(menuItem);
-        }
+      // 递归处理子文件夹
+      if (
+        folder.children &&
+        Array.isArray(folder.children) &&
+        folder.children.length > 0
+      ) {
+        menuItem.children = folder.children.map(childFolder =>
+          convertFolderToMenuItem(childFolder),
+        );
       }
-    });
 
-    // 如果没有根文件夹，创建一个默认的"我的文件夹"
-    if (rootFolders.length === 0) {
-      return [
-        {
-          key: 'root',
-          icon: React.createElement(FolderOpenOutlined),
-          label: <EllipsisLabel text="我的文件夹" />,
-          permission: 'private',
-          children: [],
-        },
-      ];
-    }
+      return menuItem;
+    };
 
-    return rootFolders;
+    // 转换所有根级文件夹（后端已经返回了完整的树形结构）
+    const folderTree = Array.isArray(backendFolders)
+      ? backendFolders.map(folder => convertFolderToMenuItem(folder))
+      : [];
+
+    // 对文件夹进行排序（按名称）
+    const sortFolders = folders => {
+      return folders
+        .sort((a, b) => {
+          const nameA = a.label?.props?.text || a.label || '';
+          const nameB = b.label?.props?.text || b.label || '';
+          return nameA.localeCompare(nameB);
+        })
+        .map(folder => ({
+          ...folder,
+          children:
+            folder.children && folder.children.length > 0
+              ? sortFolders(folder.children)
+              : [],
+        }));
+    };
+
+    const sortedFolderTree = sortFolders(folderTree);
+
+    // 创建"我的文件夹"根节点，包含所有后端文件夹数据
+    const myFoldersRoot = {
+      key: 'root',
+      icon: React.createElement(FolderOpenOutlined),
+      label: <EllipsisLabel text="我的文件夹" />,
+      permission: 'private',
+      children: sortedFolderTree, // 将所有文件夹作为子项
+    };
+
+    return [myFoldersRoot];
   };
 
   // 组件挂载时获取文件夹列表
   useEffect(() => {
     fetchFolders();
-  }, []);
+  }, [fetchFolders]);
 
   const handleMenuSelect = ({ selectedKeys }) => {
     setSelectedKeys(selectedKeys);
@@ -516,17 +563,63 @@ const FolderMenu = () => {
         );
         const parentName = parentNode
           ? parentNode.label?.props?.text || parentNode.label
-          : '根目录';
+          : '我的文件夹';
         message.info(`文件夹将在文件夹"${parentName}"中创建`);
       }
 
       // 生成默认名称
       const defaultName = `新建文件夹${counters.folder}`;
 
+      // 获取当前用户ID和用户名
+      let userId =
+        userInfo?.userId ||
+        userInfo?._id ||
+        localStorage.getItem('userId') ||
+        'current_user';
+
+      // 如果从localStorage获取的是对象字符串，尝试解析
+      if (typeof userId === 'string' && userId.startsWith('{')) {
+        try {
+          const userObj = JSON.parse(userId);
+          userId = userObj.userId || userObj._id || userId;
+        } catch {
+          // 解析失败，继续使用原值
+        }
+      }
+
+      const username =
+        userInfo?.username ||
+        userInfo?.name ||
+        localStorage.getItem('username') ||
+        '当前用户';
+
+      // 准备父文件夹ID数组
+      let parentFolderIds = [];
+
+      // 如果选中的是"我的文件夹"根节点，创建根级文件夹
+      if (targetKey === 'root') {
+        parentFolderIds = []; // 根级文件夹，parentFolderIds为空数组
+      } else if (targetKey && targetKey !== 'root') {
+        // 找到目标文件夹并构建父文件夹路径
+        const targetFolder = folderUtils.findNodeByKey(folderList, targetKey);
+        if (targetFolder && targetFolder.backendData) {
+          // 如果目标文件夹存在，继承其路径并添加自身
+          parentFolderIds = [
+            ...(targetFolder.backendData.parentFolderIds || []),
+            targetKey,
+          ];
+        } else {
+          // 如果找不到详细信息，直接使用targetKey作为父级
+          parentFolderIds = [targetKey];
+        }
+      }
+
       // 准备创建文件夹的数据
       const createFolderData = {
         folderName: defaultName,
-        parentFolderId: targetKey === 'root' ? '0' : targetKey,
+        userId: userId,
+        create_username: username,
+        parentFolderIds: parentFolderIds,
       };
 
       console.log('创建文件夹请求数据:', createFolderData);
@@ -545,14 +638,26 @@ const FolderMenu = () => {
         setCounters(prev => ({ ...prev, folder: prev.folder + 1 }));
 
         // 选中新建的文件夹
-        setSelectedKeys([response.data._id]);
+        setSelectedKeys([response.data.folderId]);
 
         // 进入编辑状态
-        setEditingKey(response.data._id);
+        setEditingKey(response.data.folderId);
 
-        // 确保目标文件夹展开
-        if (targetKey !== 'root' && !openKeys.includes(targetKey)) {
-          setOpenKeys(prev => [...prev, targetKey]);
+        // 确保"我的文件夹"根节点展开
+        if (!openKeys.includes('root')) {
+          setOpenKeys(prev => [...prev, 'root']);
+        }
+
+        // 确保父文件夹路径都展开
+        if (parentFolderIds.length > 0) {
+          const newOpenKeys = [
+            ...new Set([...openKeys, 'root', ...parentFolderIds]),
+          ];
+          setOpenKeys(newOpenKeys);
+        } else {
+          // 如果是根级文件夹，只需要展开"我的文件夹"
+          const newOpenKeys = [...new Set([...openKeys, 'root'])];
+          setOpenKeys(newOpenKeys);
         }
       } else {
         throw new Error(response.message || '创建文件夹失败');
@@ -566,9 +671,27 @@ const FolderMenu = () => {
   // 处理重命名保存
   const handleRenameSave = async (key, newName) => {
     try {
-      // 如果是新创建的文件夹，调用更新 API
+      // 获取当前用户名
+      let username =
+        userInfo?.username ||
+        userInfo?.name ||
+        localStorage.getItem('username') ||
+        '当前用户';
+
+      // 如果从localStorage获取的是对象字符串，尝试解析
+      if (typeof username === 'string' && username.startsWith('{')) {
+        try {
+          const userObj = JSON.parse(username);
+          username = userObj.username || userObj.name || username;
+        } catch {
+          // 解析失败，继续使用原值
+        }
+      }
+
+      // 调用更新 API
       const response = await folderAPI.updateFolder(key, {
         folderName: newName,
+        update_username: username,
       });
 
       if (response.success) {
