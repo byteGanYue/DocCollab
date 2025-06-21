@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import Home from '@/pages/Home';
 import Folder from '@/pages/Folder';
 import DocEditor from '@/pages/DocEditor';
+import RecentDocs from '@/pages/RecentDocs';
 import Collaboration from '@/pages/Collaboration';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
@@ -29,6 +30,10 @@ const router = createBrowserRouter([
       {
         path: 'home',
         element: <Home />,
+      },
+      {
+        path: 'recent-docs',
+        element: <RecentDocs />,
       },
       {
         path: 'folder',

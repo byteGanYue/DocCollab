@@ -23,12 +23,12 @@ const LayoutComponent = () => {
     switch (path) {
       case '/home':
         return [{ title: '首页' }];
-      case '/folder':
-        return [{ title: '首页' }, { title: '文件夹管理' }];
+      case '/recent-docs':
+        return [{ title: '最近访问文档列表' }];
       case '/doc-editor':
-        return [{ title: '首页' }, { title: '文档编辑' }];
+        return [{ title: '文档编辑' }];
       default:
-        return [{ title: '首页' }];
+        return [{ title: '文档编辑' }];
     }
   };
 
@@ -66,15 +66,6 @@ const LayoutComponent = () => {
               className={styles.breadcrumb}
               items={getBreadcrumbItems()}
             />
-
-            <div className={styles.actions}>
-              <Button className={`${styles.actionButton} ${styles.default}`}>
-                分享
-              </Button>
-              <Button className={`${styles.actionButton} ${styles.primary}`}>
-                保存
-              </Button>
-            </div>
           </div>
           {/* 使用Outlet渲染子路由内容 */}
           <div className={styles.outletContainer}>

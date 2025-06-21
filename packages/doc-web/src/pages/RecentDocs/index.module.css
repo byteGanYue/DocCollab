@@ -1,0 +1,293 @@
+/**
+ * 最近访问文档页面样式文件
+ * 提供现代化、响应式的界面设计
+ */
+
+/* 页面容器样式 */
+.container {
+  padding: 24px;
+  background-color: var(--color-background, #ffffff);
+  min-height: 100vh;
+  color: var(--color-text, #000000);
+}
+
+/* 页面头部样式 */
+.header {
+  margin-bottom: 24px;
+}
+
+/* 页面标题样式 */
+.title {
+  margin: 0 0 16px 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--color-text, #000000);
+  line-height: 1.4;
+}
+
+
+
+/* 内容区域样式 */
+.content {
+  background-color: var(--color-bg-container, #ffffff);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* 表格样式 */
+.table {
+  /* 移除表格默认边框 */
+  border: none;
+}
+
+/* 表格行样式 */
+.tableRow {
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+
+/* 表格行悬停样式 */
+.tableRow:hover {
+  background-color: var(--color-bg-container, #fafafa) !important;
+}
+
+/* 标题单元格样式 */
+.titleCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+/* 标题文本样式 */
+.titleText {
+  font-weight: 500;
+  color: var(--color-text, #000000);
+  cursor: pointer;
+  transition: color 0.2s ease;
+  line-height: 1.4;
+}
+
+/* 标题文本悬停样式 */
+.titleText:hover {
+  color: var(--color-primary, #1890ff);
+}
+
+/* 创建者单元格样式 */
+.ownerCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+/* 创建者名称样式 */
+.ownerName {
+  font-size: 14px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.4;
+}
+
+/* 时间文本样式 */
+.timeText {
+  font-size: 14px;
+  color: var(--color-text-secondary, #666666);
+  line-height: 1.4;
+}
+
+/* 响应式样式 - 平板设备 */
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+  
+  .title {
+    font-size: 20px;
+  }
+  
+  .filters {
+    padding: 12px;
+  }
+  
+  .filterSelect {
+    min-width: 100px;
+  }
+  
+  /* 在小屏幕上隐藏部分列以节省空间 */
+  .table :global(.ant-table-thead) th:nth-child(3),
+  .table :global(.ant-table-tbody) td:nth-child(3) {
+    display: none;
+  }
+}
+
+/* 响应式样式 - 手机设备 */
+@media (max-width: 480px) {
+  .container {
+    padding: 12px;
+  }
+  
+  .title {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  
+  .filters {
+    padding: 8px;
+  }
+  
+  .filterSelect {
+    min-width: 80px;
+    font-size: 12px;
+  }
+  
+  /* 在手机上进一步简化表格显示 */
+  .table :global(.ant-table-thead) th:nth-child(2),
+  .table :global(.ant-table-tbody) td:nth-child(2),
+  .table :global(.ant-table-thead) th:nth-child(3),
+  .table :global(.ant-table-tbody) td:nth-child(3) {
+    display: none;
+  }
+  
+  .titleText {
+    font-size: 14px;
+  }
+}
+
+/* 加载状态样式 */
+.loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--color-text-secondary, #666666);
+}
+
+/* 空状态样式 */
+.empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--color-text-secondary, #666666);
+}
+
+/* 标签样式增强 */
+.table :global(.ant-tag) {
+  margin: 0 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+/* 头像样式增强 */
+.ownerCell :global(.ant-avatar) {
+  border: 1px solid var(--color-border, #d9d9d9);
+}
+
+/* 更多操作按钮样式 */
+.table :global(.ant-btn-text) {
+  color: var(--color-text-secondary, #666666);
+  border: none;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.table :global(.ant-btn-text:hover) {
+  color: var(--color-primary, #1890ff);
+  background-color: var(--color-bg-container, #fafafa);
+}
+
+/* 表格头部样式 */
+.table :global(.ant-table-thead) th {
+  background-color: var(--color-bg-container, #fafafa);
+  color: var(--color-text, #000000);
+  font-weight: 600;
+  border-bottom: 2px solid var(--color-border, #f0f0f0);
+}
+
+/* 表格单元格样式 */
+.table :global(.ant-table-tbody) td {
+  border-bottom: 1px solid var(--color-border, #f0f0f0);
+  padding: 12px 16px;
+}
+
+/* 分页器样式 */
+.table :global(.ant-pagination) {
+  margin: 16px 0;
+  text-align: right;
+}
+
+.table :global(.ant-pagination-item) {
+  border-color: var(--color-border, #d9d9d9);
+}
+
+.table :global(.ant-pagination-item-active) {
+  border-color: var(--color-primary, #1890ff);
+  background-color: var(--color-primary, #1890ff);
+}
+
+.table :global(.ant-pagination-item-active a) {
+  color: #ffffff;
+}
+
+/* 下拉菜单样式 */
+:global(.ant-dropdown) {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+:global(.ant-dropdown-menu) {
+  border-radius: 8px;
+  padding: 4px 0;
+}
+
+:global(.ant-dropdown-menu-item) {
+  padding: 8px 12px;
+  transition: background-color 0.2s ease;
+}
+
+:global(.ant-dropdown-menu-item:hover) {
+  background-color: var(--color-bg-container, #fafafa);
+}
+
+/* 主题适配增强 */
+:global(.theme-purple) .titleText:hover {
+  color: #805AD5;
+}
+
+:global(.theme-blue) .titleText:hover {
+  color: #3A86FF;
+}
+
+:global(.theme-green) .titleText:hover {
+  color: #48BB78;
+}
+
+/* 过渡动画 */
+.container * {
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* 无障碍样式 */
+.titleText:focus {
+  outline: 2px solid var(--color-primary, #1890ff);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* 打印样式 */
+@media print {
+  .container {
+    padding: 0;
+    background: white;
+    color: black;
+  }
+  
+
+  
+  .table :global(.ant-table-thead) th:nth-child(4),
+  .table :global(.ant-table-tbody) td:nth-child(4) {
+    display: none;
+  }
+  
+  .table :global(.ant-pagination) {
+    display: none;
+  }
+} 

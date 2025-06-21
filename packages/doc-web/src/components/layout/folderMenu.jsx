@@ -5,6 +5,7 @@ import {
   FolderAddOutlined,
   MoreOutlined,
   HomeOutlined,
+  ClockCircleOutlined,
   LockOutlined,
   UnlockOutlined,
   TeamOutlined,
@@ -287,6 +288,12 @@ const initialFolderList = [
     children: null, // 首页没有子项
   },
   {
+    key: 'recent-docs', // 最近访问文档列表菜单项
+    icon: React.createElement(ClockCircleOutlined),
+    label: <EllipsisLabel text="最近访问文档列表" />,
+    children: null, // 最近访问文档列表没有子项
+  },
+  {
     key: 'collaboration', // 协同文档菜单项
     icon: React.createElement(TeamOutlined),
     label: <EllipsisLabel text="协同文档" />,
@@ -393,6 +400,10 @@ const FolderMenu = () => {
     // 处理首页点击导航
     if (selectedKey === 'home') {
       navigate('/home');
+    }
+    // 处理最近访问文档列表点击导航
+    else if (selectedKey === 'recent-docs') {
+      navigate('/recent-docs');
     }
     // 处理协同文档点击导航
     else if (selectedKey === 'collaboration') {

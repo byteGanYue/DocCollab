@@ -1,26 +1,33 @@
 import React, { useEffect, useRef, useState } from 'react';
-import * as Y from 'yjs';
-import { WebrtcProvider } from 'y-webrtc';
-import { QuillBinding } from 'y-quill';
 import Quill from 'quill';
 import QuillCursors from 'quill-cursors';
-import DoUsername from 'do_username';
 import styles from './editor.module.less';
+import 'quill/dist/quill.core.css';
+
+// 导入配置和工具函数
+import {
+  TOOLBAR_CONFIG,
+  USER_COLORS,
+  addToolbarStyles,
+  addToolbarTooltips,
+  calculateStats,
+  handleSave,
+  handleShare,
+  copyShareUrl,
+  showDownloadMenu,
+  initCollaboration,
+  updateUsername,
+  cleanupCollaboration,
+  showPDFMenu,
+} from '../../../../utils/index.js';
+
+// 导入UI组件
+import EditorHeader from './EditorHeader.jsx';
+import TextStats from './TextStats.jsx';
+import ShareModal from './ShareModal.jsx';
 
 // 注册 Quill 光标模块
 Quill.register('modules/cursors', QuillCursors);
-
-// 用户颜色列表
-const USER_COLORS = [
-  '#30bced',
-  '#6eeb83',
-  '#ffbc42',
-  '#ecd444',
-  '#ee6352',
-  '#9ac2c9',
-  '#8acb88',
-  '#1be7ff',
-];
 
 const Editor = () => {
   // 使用 ref 来存储 Quill 实例和 DOM 元素
@@ -37,106 +44,131 @@ const Editor = () => {
     () => USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)],
   );
 
+  // 字数统计状态
+  const [characterCount, setCharacterCount] = useState(0);
+  const [wordCount, setWordCount] = useState(0);
+  const [lineCount, setLineCount] = useState(0);
+  const [paragraphCount, setParagraphCount] = useState(0);
+
+  // 保存和分享状态
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [documentTitle, setDocumentTitle] = useState('未命名文档');
+
+  // 添加工具栏提示样式
+  useEffect(() => {
+    addToolbarStyles();
+  }, []);
+
   // 初始化编辑器
   useEffect(() => {
-    if (!editorRef.current) return;
-
-    // 初始化 Quill 编辑器
-    const quill = new Quill(editorRef.current, {
-      modules: {
-        cursors: true,
-        toolbar: [
-          [{ header: [1, 2, false] }],
-          ['bold', 'italic', 'underline'],
-          ['image', 'code-block'],
-        ],
-        history: {
-          userOnly: true,
+    if (!quillRef.current) {
+      const quill = new Quill('#editor', {
+        theme: 'snow',
+        modules: {
+          toolbar: TOOLBAR_CONFIG,
+          cursors: true,
         },
-      },
-      placeholder: '开始协作编辑...',
-      theme: 'snow',
-    });
-    quillRef.current = quill;
+        placeholder: '开始编写您的文档...',
+      });
 
-    // 初始化 Yjs 文档
-    const ydoc = new Y.Doc();
-    const provider = new WebrtcProvider('quill-demo-awareness-room', ydoc);
-    providerRef.current = provider;
+      quillRef.current = quill;
 
-    // 获取共享文本
-    const ytext = ydoc.getText('quill');
-    const awareness = provider.awareness;
-    awarenessRef.current = awareness;
+      // 初始化协同编辑
+      const { binding, provider, awareness } = initCollaboration(
+        quill,
+        setUsername,
+        setUsers,
+        myColor,
+      );
+      bindingRef.current = binding;
+      providerRef.current = provider;
+      awarenessRef.current = awareness;
 
-    // 绑定 Quill 和 Yjs
-    const binding = new QuillBinding(ytext, quill, awareness);
-    bindingRef.current = binding;
+      // 添加字数统计功能
+      const updateCounter = () => {
+        const stats = calculateStats(quillRef);
+        setCharacterCount(stats.characters);
+        setWordCount(stats.words);
+        setLineCount(stats.lines);
+        setParagraphCount(stats.paragraphs);
+      };
 
-    // 设置初始用户名
-    const initialUsername = DoUsername.generate(15);
-    setUsername(initialUsername);
-    awareness.setLocalStateField('user', {
-      name: initialUsername,
-      color: myColor,
-    });
+      quill.on('text-change', updateCounter);
+      updateCounter(); // 初始化统计
 
-    // 监听用户状态变化
-    awareness.on('change', () => {
-      const states = Array.from(awareness.getStates().entries());
-      const userList = states
-        .filter(([, state]) => state.user)
-        .map(([, state]) => ({
-          name: state.user.name,
-          color: state.user.color,
-        }));
-      setUsers(userList);
-    });
+      // 添加工具栏提示和自定义图标
+      setTimeout(() => {
+        addToolbarTooltips();
+      }, 100);
 
-    // 清理函数
-    return () => {
-      binding.destroy();
-      provider.destroy();
-    };
+      // 监听工具栏变化，重新添加提示
+      const observer = new MutationObserver(() => {
+        addToolbarTooltips();
+      });
+
+      const toolbar = document.querySelector('.ql-toolbar');
+      if (toolbar) {
+        observer.observe(toolbar, {
+          childList: true,
+          subtree: true,
+        });
+      }
+
+      // 清理函数
+      return () => {
+        observer.disconnect();
+        cleanupCollaboration(binding, provider);
+      };
+    }
   }, [myColor]);
 
   // 处理用户名变化
   const handleUsernameChange = e => {
     const newUsername = e.target.value;
     setUsername(newUsername);
-    if (awarenessRef.current) {
-      awarenessRef.current.setLocalStateField('user', {
-        name: newUsername,
-        color: myColor,
-      });
-    }
+    updateUsername(awarenessRef.current, newUsername, myColor);
   };
+
+  // 文档操作处理函数
+  const onSave = () => handleSave(quillRef, documentTitle, setSaveLoading);
+  const onShare = () => handleShare(setShareUrl, setShareModalVisible);
+  const onDownload = () => showDownloadMenu(quillRef.current);
+  const onCopyUrl = () => copyShareUrl(shareUrl);
+  const onGenerateSummary = () => showPDFMenu();
 
   return (
     <div className={styles.editorContainer}>
-      <div className={styles.editorHeader}>
-        <input
-          type="text"
-          value={username}
-          onChange={handleUsernameChange}
-          placeholder="输入用户名"
-          className={styles.usernameInput}
-        />
-        <div className={styles.usersList}>
-          {users.map((user, index) => (
-            <div
-              key={index}
-              style={{ color: user.color }}
-              className={styles.userItem}
-            >
-              • {user.name}
-            </div>
-          ))}
-        </div>
-      </div>
+      <EditorHeader
+        documentTitle={documentTitle}
+        setDocumentTitle={setDocumentTitle}
+        username={username}
+        handleUsernameChange={handleUsernameChange}
+        users={users}
+        saveLoading={saveLoading}
+        onSave={onSave}
+        onShare={onShare}
+        onDownload={onDownload}
+        onGenerateSummary={onGenerateSummary}
+      />
+
       <div className={styles.editorWrapper}>
         <div id="editor" ref={editorRef} className={styles.quillEditor} />
+        <TextStats
+          characterCount={characterCount}
+          wordCount={wordCount}
+          lineCount={lineCount}
+          paragraphCount={paragraphCount}
+        />
       </div>
+
+      <ShareModal
+        shareModalVisible={shareModalVisible}
+        setShareModalVisible={setShareModalVisible}
+        shareUrl={shareUrl}
+        onCopyUrl={onCopyUrl}
+      />
     </div>
   );
 };
