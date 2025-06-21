@@ -30,7 +30,10 @@ export const userAPI = {
   getProfile: () => get('/user/profile'),
 
   // 更新用户信息
-  updateProfile: data => put('/user/profile', data),
+  updateProfile: (userId, data) => put(`/user/userId/${userId}`, data),
+
+  // 获取用户统计信息
+  getUserStats: () => get('/user/stats'),
 
   // 修改密码
   changePassword: data => patch('/user/password', data),
@@ -40,6 +43,9 @@ export const userAPI = {
 
   // 用户登出
   logout: () => post('/auth/logout'),
+
+  // 根据userId删除用户
+  deleteUser: userId => del(`/user/userId/${userId}`),
 };
 
 /**

@@ -45,6 +45,11 @@ export const useAuth = () => {
     if (!userInfo) return '';
     return userInfo.userId;
   };
+  // 获取email
+  const getUserEmail = () => {
+    if (!userInfo) return '';
+    return userInfo.email;
+  };
 
   return {
     // 用户信息
@@ -59,5 +64,6 @@ export const useAuth = () => {
     // 便捷方法
     getUserDisplayName,
     getUserId,
+    getUserEmail,
   };
 };
