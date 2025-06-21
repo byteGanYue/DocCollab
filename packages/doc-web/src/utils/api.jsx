@@ -35,6 +35,9 @@ export const userAPI = {
   // 修改密码
   changePassword: data => patch('/user/password', data),
 
+  // 修改用户公开状态
+  changePublicStatus: email => patch('/user/isPublic/' + email),
+
   // 用户登出
   logout: () => post('/auth/logout'),
 };

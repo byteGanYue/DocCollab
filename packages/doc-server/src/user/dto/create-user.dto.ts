@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEmail, MinLength } from 'class-validator';
+import { IsString, IsEmail, MinLength, IsBoolean } from 'class-validator';
 
 export class CreateUserDto {
   @ApiProperty({ description: '用户名', example: 'john_doe' })
@@ -15,4 +15,12 @@ export class CreateUserDto {
   @IsString()
   @MinLength(6)
   password: string;
+
+  @ApiProperty({
+    description: '文件夹公开状态',
+    example: 'false',
+    required: false,
+  })
+  @IsBoolean()
+  isPublic: boolean;
 }
