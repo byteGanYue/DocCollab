@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types, FilterQuery } from 'mongoose';
@@ -6,7 +7,10 @@ import {
   QueryFolderTreeDto,
   CreateFolderResponseDto,
 } from './dto/create-folder.dto';
-import { UpdateFolderDto } from './dto/update-folder.dto';
+import {
+  UpdateFolderDto,
+  UpdateFolderResponseDto,
+} from './dto/update-folder.dto';
 import { Folder } from './schemas/folder.schema';
 
 interface FolderDocument {
@@ -319,8 +323,64 @@ export class FolderService {
    * @param id 文件夹ID
    * @returns 文件夹详情
    */
-  findOne(id: number) {
-    return `This action returns a #${id} folder`;
+  async findOne(id: string) {
+    try {
+      this.logger.log('开始查询文件夹详情', { id });
+
+      // 验证文件夹ID格式
+      if (!Types.ObjectId.isValid(id)) {
+        throw new BadRequestException('无效的文件夹ID格式');
+      }
+
+      // 查询文件夹
+      const folder = await this.folderModel
+        .findById(id)
+        .populate('userId', 'username email')
+        .lean()
+        .exec();
+
+      if (!folder) {
+        throw new BadRequestException('文件夹不存在');
+      }
+
+      const folderDoc = folder as unknown as FolderDocument;
+
+      const result = {
+        success: true,
+        message: '查询文件夹详情成功',
+        data: {
+          folderId: folderDoc._id.toString(),
+          folderName: folderDoc.folderName,
+          userId: folderDoc.userId.toString(),
+          create_username: folderDoc.create_username,
+          update_username: folderDoc.update_username,
+          parentFolderIds: folderDoc.parentFolderIds,
+          depth: folderDoc.depth,
+          childrenCount: {
+            documents: folderDoc.all_children_documentId?.length || 0,
+            folders: folderDoc.all_children_folderId?.length || 0,
+          },
+          create_time: folderDoc.create_time,
+          update_time: folderDoc.update_time,
+        },
+      };
+
+      this.logger.log('查询文件夹详情成功', {
+        folderId: folderDoc._id.toString(),
+        folderName: folderDoc.folderName,
+      });
+
+      return result;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error('查询文件夹详情失败', err.stack);
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(`查询文件夹详情失败: ${err.message}`);
+    }
   }
 
   /**
@@ -329,9 +389,116 @@ export class FolderService {
    * @param updateFolderDto 更新数据
    * @returns 更新结果
    */
-  update(id: number, updateFolderDto: UpdateFolderDto) {
-    this.logger.log('更新文件夹请求', { id, updateFolderDto });
-    return `This action updates a #${id} folder`;
+  async update(
+    id: string,
+    updateFolderDto: UpdateFolderDto,
+  ): Promise<UpdateFolderResponseDto> {
+    try {
+      this.logger.log('开始更新文件夹', { id, updateData: updateFolderDto });
+
+      // 验证文件夹ID格式
+      if (!Types.ObjectId.isValid(id)) {
+        throw new BadRequestException('无效的文件夹ID格式');
+      }
+
+      // 查找要更新的文件夹
+      const existingFolder = await this.folderModel.findById(id);
+      if (!existingFolder) {
+        throw new BadRequestException('文件夹不存在');
+      }
+
+      // 如果要更新文件夹名称，需要验证同名检查
+      if (updateFolderDto.folderName) {
+        const trimmedName = updateFolderDto.folderName.trim();
+
+        // 验证文件夹名称不能为空
+        if (!trimmedName) {
+          throw new BadRequestException('文件夹名称不能为空');
+        }
+
+        // 检查同级目录下是否已存在同名文件夹（排除当前文件夹）
+        const duplicateFolder = await this.folderModel.findOne({
+          _id: { $ne: id }, // 排除当前文件夹
+          folderName: trimmedName,
+          userId: existingFolder.userId,
+          parentFolderIds: { $eq: existingFolder.parentFolderIds },
+        });
+
+        if (duplicateFolder) {
+          throw new BadRequestException('同级目录下已存在同名文件夹');
+        }
+
+        updateFolderDto.folderName = trimmedName;
+      }
+
+      // 准备更新数据
+      const updateData: Partial<{
+        folderName: string;
+        update_username: string;
+      }> = {};
+
+      if (updateFolderDto.folderName) {
+        updateData.folderName = updateFolderDto.folderName;
+      }
+
+      if (updateFolderDto.update_username) {
+        updateData.update_username = updateFolderDto.update_username;
+      }
+
+      // 如果没有提供任何更新字段，抛出错误
+      if (Object.keys(updateData).length === 0) {
+        throw new BadRequestException('请提供要更新的字段');
+      }
+
+      // 执行更新操作
+      const updatedFolder = await this.folderModel.findByIdAndUpdate(
+        id,
+        updateData,
+        {
+          new: true, // 返回更新后的文档
+          runValidators: true, // 运行模式验证器
+        },
+      );
+
+      if (!updatedFolder) {
+        throw new BadRequestException('文件夹更新失败');
+      }
+
+      const folderDoc = updatedFolder.toObject() as FolderDocument;
+
+      const result: UpdateFolderResponseDto = {
+        success: true,
+        message: '文件夹更新成功',
+        data: {
+          folderId: folderDoc._id.toString(),
+          folderName: folderDoc.folderName,
+          userId: folderDoc.userId.toString(),
+          create_username: folderDoc.create_username,
+          update_username: folderDoc.update_username,
+          parentFolderIds: folderDoc.parentFolderIds,
+          depth: folderDoc.depth,
+          create_time: folderDoc.create_time,
+          update_time: folderDoc.update_time,
+        },
+      };
+
+      this.logger.log('文件夹更新成功', {
+        folderId: folderDoc._id.toString(),
+        folderName: folderDoc.folderName,
+        updateFields: Object.keys(updateData),
+      });
+
+      return result;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error('更新文件夹失败', err.stack);
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(`更新文件夹失败: ${err.message}`);
+    }
   }
 
   /**
@@ -339,7 +506,64 @@ export class FolderService {
    * @param id 文件夹ID
    * @returns 删除结果
    */
-  remove(id: number) {
-    return `This action removes a #${id} folder`;
+  async remove(id: string) {
+    try {
+      this.logger.log('开始删除文件夹', { id });
+
+      // 验证文件夹ID格式
+      if (!Types.ObjectId.isValid(id)) {
+        throw new BadRequestException('无效的文件夹ID格式');
+      }
+
+      // 查找要删除的文件夹
+      const existingFolder = await this.folderModel.findById(id);
+      if (!existingFolder) {
+        throw new BadRequestException('文件夹不存在');
+      }
+
+      // 检查文件夹是否有子文件夹或文档
+      if (
+        (existingFolder.all_children_folderId &&
+          existingFolder.all_children_folderId.length > 0) ||
+        (existingFolder.all_children_documentId &&
+          existingFolder.all_children_documentId.length > 0)
+      ) {
+        throw new BadRequestException('文件夹不为空，请先删除子文件夹和文档');
+      }
+
+      // 删除文件夹
+      const deletedFolder = await this.folderModel.findByIdAndDelete(id);
+
+      if (!deletedFolder) {
+        throw new BadRequestException('文件夹删除失败');
+      }
+
+      const folderDoc = deletedFolder.toObject() as FolderDocument;
+
+      const result = {
+        success: true,
+        message: '文件夹删除成功',
+        data: {
+          folderId: folderDoc._id.toString(),
+          folderName: folderDoc.folderName,
+        },
+      };
+
+      this.logger.log('文件夹删除成功', {
+        folderId: folderDoc._id.toString(),
+        folderName: folderDoc.folderName,
+      });
+
+      return result;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error('删除文件夹失败', err.stack);
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(`删除文件夹失败: ${err.message}`);
+    }
   }
 }
