@@ -5,20 +5,21 @@ import styles from './editor.module.less';
 import 'quill/dist/quill.core.css';
 
 // 导入配置和工具函数
-import { TOOLBAR_CONFIG, USER_COLORS } from './toolbarConfig.js';
-import { addToolbarStyles, addToolbarTooltips } from './toolbarUtils.js';
-import { calculateStats } from './textStats.js';
 import {
+  TOOLBAR_CONFIG,
+  USER_COLORS,
+  addToolbarStyles,
+  addToolbarTooltips,
+  calculateStats,
   handleSave,
   handleShare,
   copyShareUrl,
   showDownloadMenu,
-} from './documentActions.js';
-import {
   initCollaboration,
   updateUsername,
   cleanupCollaboration,
-} from './collaboration.js';
+  showPDFMenu,
+} from '../../../../utils/index.js';
 
 // 导入UI组件
 import EditorHeader from './EditorHeader.jsx';
@@ -135,6 +136,7 @@ const Editor = () => {
   const onShare = () => handleShare(setShareUrl, setShareModalVisible);
   const onDownload = () => showDownloadMenu(quillRef.current);
   const onCopyUrl = () => copyShareUrl(shareUrl);
+  const onGenerateSummary = () => showPDFMenu();
 
   return (
     <div className={styles.editorContainer}>
@@ -148,6 +150,7 @@ const Editor = () => {
         onSave={onSave}
         onShare={onShare}
         onDownload={onDownload}
+        onGenerateSummary={onGenerateSummary}
       />
 
       <div className={styles.editorWrapper}>

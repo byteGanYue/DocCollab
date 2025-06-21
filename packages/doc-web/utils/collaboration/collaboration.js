@@ -2,7 +2,7 @@ import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 import { QuillBinding } from 'y-quill';
 import DoUsername from 'do_username';
-import { USER_COLORS } from './toolbarConfig.js';
+import { USER_COLORS } from '../toolbar/toolbarConfig.js';
 
 // 初始化协同编辑
 export const initCollaboration = (quill, setUsername, setUsers, myColor) => {

@@ -5,6 +5,7 @@ import {
   ShareAltOutlined,
   DownloadOutlined,
   DownOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import styles from './editor.module.less';
 
@@ -18,6 +19,7 @@ const EditorHeader = ({
   onSave,
   onShare,
   onDownload,
+  onGenerateSummary,
 }) => {
   return (
     <>
@@ -55,6 +57,16 @@ const EditorHeader = ({
               style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
             >
               下载
+              <DownOutlined style={{ fontSize: '12px' }} />
+            </Button>
+          </Tooltip>
+          <Tooltip title="生成功能总结PDF (支持中英文)">
+            <Button
+              icon={<FileTextOutlined />}
+              onClick={onGenerateSummary}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
+              功能总结
               <DownOutlined style={{ fontSize: '12px' }} />
             </Button>
           </Tooltip>
