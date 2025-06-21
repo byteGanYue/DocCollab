@@ -51,7 +51,7 @@ export const recentVisitsAPI = {
 
   // 根据用户ID获取最近访问记录（分页）
   getUserVisits: data =>
-    get(`/recent-visits/user/${data.userId}`, {
+    get(`/recent-visits/getRecentVisitsByUserId/${data.userId}`, {
       page: data.page,
       pageSize: data.pageSize,
     }),
@@ -60,16 +60,18 @@ export const recentVisitsAPI = {
   getAllVisits: () => get('/recent-visits'),
 
   // 获取单个访问记录
-  getVisit: id => get(`/recent-visits/${id}`),
+  getVisit: id => get(`/recent-visits/getRecentVisitsById/${id}`),
 
   // 更新访问记录
-  updateVisit: (id, data) => patch(`/recent-visits/${id}`, data),
+  updateVisit: (id, data) =>
+    patch(`/recent-visits/updateRecentVisits/${id}`, data),
 
   // 删除访问记录
-  deleteVisit: id => del(`/recent-visits/${id}`),
+  deleteVisit: id => del(`/recent-visits/deleteRecentVisits/${id}`),
 
   // 清空用户的所有访问记录
-  clearUserVisits: userId => del(`/recent-visits/user/${userId}/clear`),
+  clearUserVisits: userId =>
+    del(`/recent-visits/deleteAllRecentVisits/${userId}/clear`),
 };
 
 /**

@@ -38,7 +38,7 @@ export class RecentVisitsController {
     return this.recentVisitsService.findAll();
   }
 
-  @Get('user/:userId')
+  @Get('getRecentVisitsByUserId/:userId')
   @ApiOperation({ summary: '根据用户ID获取最近访问记录（通过visitId匹配）' })
   @ApiResponse({
     status: 200,
@@ -69,7 +69,7 @@ export class RecentVisitsController {
     return this.recentVisitsService.findByUserId(userId, page, pageSize);
   }
 
-  @Get(':id')
+  @Get('getRecentVisitsById/:id')
   @ApiOperation({ summary: '获取指定访问记录' })
   @ApiResponse({ status: 200, description: '返回指定访问记录信息' })
   @ApiParam({
@@ -81,7 +81,7 @@ export class RecentVisitsController {
     return this.recentVisitsService.findOne(id);
   }
 
-  @Patch(':id')
+  @Patch('updateRecentVisits/:id')
   @ApiOperation({ summary: '更新访问记录信息' })
   @ApiResponse({ status: 200, description: '访问记录信息更新成功' })
   @ApiParam({
@@ -96,7 +96,7 @@ export class RecentVisitsController {
     return this.recentVisitsService.update(id, updateRecentVisitDto);
   }
 
-  @Delete(':id')
+  @Delete('deleteRecentVisits/:id')
   @ApiOperation({ summary: '删除访问记录' })
   @ApiResponse({ status: 200, description: '访问记录删除成功' })
   @ApiParam({
@@ -108,7 +108,7 @@ export class RecentVisitsController {
     return this.recentVisitsService.remove(id);
   }
 
-  @Delete('user/:userId/clear')
+  @Delete('deleteAllRecentVisits/:userId/clear')
   @ApiOperation({ summary: '清空用户的所有访问记录' })
   @ApiResponse({ status: 200, description: '用户访问记录清空成功' })
   @ApiParam({
