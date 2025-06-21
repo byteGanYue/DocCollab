@@ -1,17 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { FolderController } from './folder.controller';
-import { FolderService } from './folder.service';
+import { FoldersController } from './folder.controller';
+import { FoldersService } from './folder.service';
 
-describe('FolderController', () => {
-  let controller: FolderController;
+describe('FoldersController', () => {
+  let controller: FoldersController;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [FolderController],
-      providers: [FolderService],
+      controllers: [FoldersController],
+      providers: [FoldersService],
     }).compile();
 
-    controller = module.get<FolderController>(FolderController);
+    controller = module.get<FoldersController>(FoldersController);
   });
 
   it('should be defined', () => {
