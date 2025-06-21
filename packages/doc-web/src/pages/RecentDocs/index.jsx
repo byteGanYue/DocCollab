@@ -98,7 +98,6 @@ const RecentDocs = () => {
       setLoading(true);
 
       try {
-        console.log('userInfo', userInfo);
         // 调用API获取用户的最近访问记录（分页）
         const response = await recentVisitsAPI.getUserVisits({
           userId: userInfo.userId,
@@ -114,7 +113,7 @@ const RecentDocs = () => {
             title: visit.documentName,
             type: 'document', // 默认类型，可以根据需要扩展
             owner: {
-              name: userInfo.username || '未知用户',
+              name: userInfo.username,
               avatar: '',
             },
             lastModified: visit.visitTime,
@@ -276,7 +275,7 @@ const RecentDocs = () => {
       ),
     },
     {
-      title: '最后编辑时间',
+      title: '最后访问时间',
       dataIndex: 'lastModified',
       key: 'lastModified',
       width: '20%',
