@@ -44,7 +44,7 @@ const RecentDocs = () => {
   // 分页状态
   const [pagination, setPagination] = useState({
     current: 1,
-    pageSize: 10,
+    pageSize: 20,
     total: 0,
   });
 
@@ -344,14 +344,11 @@ const RecentDocs = () => {
             current: pagination.current,
             pageSize: pagination.pageSize,
             total: pagination.total,
-            showSizeChanger: true,
             showQuickJumper: true,
             position: ['bottomCenter'],
             showTotal: (total, range) =>
               `共 ${total} 个文档，显示 ${range[0]}-${range[1]} 个`,
             onChange: handlePageChange,
-            onShowSizeChange: handlePageChange,
-            pageSizeOptions: ['5', '10', '20', '50'],
           }}
           className={styles.table}
           onRow={record => ({
