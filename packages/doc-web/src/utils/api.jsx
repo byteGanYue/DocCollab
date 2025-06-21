@@ -115,29 +115,29 @@ export const documentAPI = {
  */
 export const folderAPI = {
   // 获取文件夹树形结构列表
-  getFolders: params => get('/v1/folder', params),
+  getFolders: params => get('/folder/getFoldersList', params),
 
   // 获取文件夹树形结构（备用接口）
-  getFolderTree: params => get('/v1/folder/tree', params),
+  getFolderTree: params => get('/folder/getFoldersTree', params),
 
   // 获取单个文件夹详情
-  getFolder: id => get(`/v1/folder/${id}`),
+  getFolder: id => get(`/folder/getFolderDetailById/${id}`),
 
   // 创建文件夹
-  createFolder: data => post('/v1/folder', data),
+  createFolder: data => post('/folder/create', data),
 
   // 更新文件夹
-  updateFolder: (id, data) => patch(`/v1/folder/${id}`, data),
+  updateFolder: (id, data) => patch(`/folder/update/${id}`, data),
 
   // 删除文件夹
-  deleteFolder: id => del(`/v1/folder/${id}`),
+  deleteFolder: id => del(`/folder/deleteFolderById/${id}`),
 
   // 移动文件夹（保留，后续可能实现）
   moveFolder: (id, targetParentFolderIds) =>
-    patch(`/v1/folder/${id}/move`, { parentFolderIds: targetParentFolderIds }),
+    patch(`/folder/${id}/move`, { parentFolderIds: targetParentFolderIds }),
 
   // 获取文件夹内容（保留，后续可能实现）
-  getFolderContents: id => get(`/v1/folder/${id}/contents`),
+  getFolderContents: id => get(`/folder/${id}/contents`),
 };
 
 /**
