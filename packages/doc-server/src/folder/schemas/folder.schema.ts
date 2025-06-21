@@ -15,14 +15,14 @@ export class Folder extends Document {
   @Prop({ type: String, default: '' })
   update_username: string; // 更新者用户名
 
-  @Prop({ type: String, default: '0' })
-  parentFolderId: string; // 父文件夹ID (0 表示根目录)
+  @Prop({ type: String, default: 'null' })
+  parentFolderId: string; // 父文件夹ID (null 表示根目录)
 
   @Prop({
     type: [{ type: Types.ObjectId, ref: 'Document' }],
     default: [],
   })
-  all_children_documentId: Types.ObjectId[]; // 所有子文件ID
+  all_children_documentId: Types.ObjectId[]; // 所有子文档ID
 
   @Prop({
     type: [{ type: Types.ObjectId, ref: 'Folder' }],
