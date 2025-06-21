@@ -9,14 +9,7 @@ import {
   message,
   Modal,
 } from 'antd';
-import {
-  FileTextOutlined,
-  MoreOutlined,
-  TableOutlined,
-  FileImageOutlined,
-  BranchesOutlined,
-  CalculatorOutlined,
-} from '@ant-design/icons';
+import { FileTextOutlined, MoreOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { recentVisitsAPI } from '@/utils/api';
 import styles from './index.module.css';
@@ -56,10 +49,6 @@ const RecentDocs = () => {
   const getDocTypeIcon = type => {
     const iconMap = {
       document: <FileTextOutlined style={{ color: '#1890ff' }} />,
-      spreadsheet: <TableOutlined style={{ color: '#52c41a' }} />,
-      presentation: <FileImageOutlined style={{ color: '#ff7a45' }} />,
-      mindmap: <BranchesOutlined style={{ color: '#722ed1' }} />,
-      form: <CalculatorOutlined style={{ color: '#13c2c2' }} />,
     };
     return iconMap[type] || <FileTextOutlined style={{ color: '#1890ff' }} />;
   };
@@ -124,7 +113,7 @@ const RecentDocs = () => {
             title: visit.documentName,
             type: 'document', // 默认类型，可以根据需要扩展
             owner: {
-              name: userInfo.username || '未知用户',
+              name: userInfo.username,
               avatar: '',
             },
             lastModified: visit.visitTime,
@@ -286,7 +275,7 @@ const RecentDocs = () => {
       ),
     },
     {
-      title: '最后编辑时间',
+      title: '最后访问时间',
       dataIndex: 'lastModified',
       key: 'lastModified',
       width: '20%',

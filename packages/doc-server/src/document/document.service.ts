@@ -233,9 +233,9 @@ export class DocumentService {
       // 处理最近访问记录
       try {
         await this.recentVisitsService.create({
-          visitId: userId.toString(),
-          userId: document.userId.toString(),
-          documentId: documentId.toString(),
+          visitId: userId,
+          userId: document.userId,
+          documentId: documentId,
           documentName: document.documentName,
         });
 
