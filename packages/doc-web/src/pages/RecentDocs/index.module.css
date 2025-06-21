@@ -194,13 +194,13 @@
   background-color: var(--color-bg-container, #fafafa);
 }
 
-/* 表格头部样式 */
-.table :global(.ant-table-thead) th {
+/* 表格头部样式 - 现在由 ConfigProvider 统一管理 */
+/* .table :global(.ant-table-thead) th  {
   background-color: var(--color-bg-container, #fafafa);
   color: var(--color-text, #000000);
   font-weight: 600;
   border-bottom: 2px solid var(--color-border, #f0f0f0);
-}
+} */
 
 /* 表格单元格样式 */
 .table :global(.ant-table-tbody) td {

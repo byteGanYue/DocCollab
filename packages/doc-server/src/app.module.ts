@@ -4,6 +4,8 @@ import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { FolderModule } from './folder/folder.module';
+import { RecentVisitsModule } from './recent-visits/recent-visits.module';
+
 @Module({
   imports: [
     MongooseModule.forRoot(
@@ -11,6 +13,7 @@ import { FolderModule } from './folder/folder.module';
     ),
     UserModule,
     FolderModule,
+    RecentVisitsModule,
   ],
 
   controllers: [AppController],

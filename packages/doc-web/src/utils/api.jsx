@@ -40,6 +40,36 @@ export const userAPI = {
 };
 
 /**
+ * 最近访问记录相关API
+ */
+export const recentVisitsAPI = {
+  // 创建最近访问记录
+  createVisit: data => post('/recent-visits', data),
+
+  // 根据用户ID获取最近访问记录（分页）
+  getUserVisits: data =>
+    get(`/recent-visits/user/${data.userId}`, {
+      page: data.page,
+      pageSize: data.pageSize,
+    }),
+
+  // 获取所有最近访问记录
+  getAllVisits: () => get('/recent-visits'),
+
+  // 获取单个访问记录
+  getVisit: id => get(`/recent-visits/${id}`),
+
+  // 更新访问记录
+  updateVisit: (id, data) => patch(`/recent-visits/${id}`, data),
+
+  // 删除访问记录
+  deleteVisit: id => del(`/recent-visits/${id}`),
+
+  // 清空用户的所有访问记录
+  clearUserVisits: userId => del(`/recent-visits/user/${userId}/clear`),
+};
+
+/**
  * 文档相关API
  */
 export const documentAPI = {

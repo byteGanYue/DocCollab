@@ -13,6 +13,9 @@ export const themes = {
       success: '#48BB78',
       warning: '#ED8936',
       error: '#F56565',
+      info: '#3182CE',
+      bgContainer: '#FFFFFF',
+      bgLayout: '#F7FAFC',
     },
   },
   blue: {
@@ -28,6 +31,9 @@ export const themes = {
       success: '#48BB78',
       warning: '#ED8936',
       error: '#F56565',
+      info: '#3182CE',
+      bgContainer: '#FFFFFF',
+      bgLayout: '#F7FAFC',
     },
   },
   green: {
@@ -43,6 +49,9 @@ export const themes = {
       success: '#38A169',
       warning: '#ED8936',
       error: '#F56565',
+      info: '#3182CE',
+      bgContainer: '#FFFFFF',
+      bgLayout: '#F7FAFC',
     },
   },
 };

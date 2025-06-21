@@ -1,8 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { Table, Avatar, Button, Dropdown, Space, Tag, Typography } from 'antd';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Table,
+  Button,
+  Dropdown,
+  Space,
+  Tag,
+  Typography,
+  message,
+  Modal,
+} from 'antd';
 import {
   FileTextOutlined,
-  UserOutlined,
   MoreOutlined,
   TableOutlined,
   FileImageOutlined,
@@ -10,7 +18,9 @@ import {
   CalculatorOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { recentVisitsAPI } from '@/utils/api';
 import styles from './index.module.css';
+import { useUser } from '@/hooks/useAuth';
 
 const { Text } = Typography;
 
@@ -25,10 +35,18 @@ const { Text } = Typography;
  */
 const RecentDocs = () => {
   const navigate = useNavigate();
+  const { userInfo } = useUser(); // 获取用户信息和登出方法
 
   // 文档数据状态
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // 分页状态
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
   /**
    * 获取文档类型图标
@@ -75,104 +93,102 @@ const RecentDocs = () => {
   };
 
   /**
-   * 模拟获取最近访问文档数据
-   * 实际项目中这里应该调用API接口
+   * 获取最近访问文档数据
+   * 调用后端API获取用户的最近访问记录（分页）
+   * @param {number} page - 页码
+   * @param {number} pageSize - 每页数量
    */
-  const fetchRecentDocs = async () => {
-    setLoading(true);
+  const fetchRecentDocs = useCallback(
+    async (page = 1, pageSize = 10) => {
+      if (!userInfo) {
+        console.warn('用户未登录');
+        setLoading(false);
+        return;
+      }
 
-    // 模拟API调用延迟
-    await new Promise(resolve => setTimeout(resolve, 800));
+      setLoading(true);
 
-    // 模拟文档数据
-    const mockDocs = [
-      {
-        id: 1,
-        title: '思维导图',
-        type: 'mindmap',
-        owner: { name: 'Ni0duann', avatar: '' },
-        lastModified: new Date(Date.now() - 16 * 60 * 1000).toISOString(), // 16分钟前
-        isTemplate: false,
-      },
-      {
-        id: 2,
-        title: '富文本知识库系统',
-        type: 'document',
-        owner: { name: '邱志锋', avatar: '' },
-        lastModified: new Date(Date.now() - 13 * 60 * 1000).toISOString(), // 13分钟前
-        isTemplate: false,
-        hasAttachment: true,
-      },
-      {
-        id: 3,
-        title: '部门TOKR与周报',
-        type: 'spreadsheet',
-        owner: { name: 'Ni0duann', avatar: '' },
-        lastModified: new Date(Date.now() - 22 * 60 * 60 * 1000).toISOString(), // 22小时前
-        isTemplate: false,
-      },
-      {
-        id: 4,
-        title: 'DocCollab',
-        type: 'document',
-        owner: { name: 'Ni0duann', avatar: '' },
-        lastModified: new Date(Date.now() - 22 * 60 * 60 * 1000).toISOString(), // 22小时前
-        isTemplate: false,
-      },
-      {
-        id: 5,
-        title: '智能纪要：前端训练营启动会 2025年6月19日',
-        type: 'document',
-        owner: { name: '邱志锋', avatar: '' },
-        lastModified: new Date(Date.now() - 22 * 60 * 60 * 1000).toISOString(), // 22小时前
-        isTemplate: false,
-      },
-      {
-        id: 6,
-        title: '智能纪要：前端训练营启动会 2025年6月14日',
-        type: 'document',
-        owner: { name: '邱志锋', avatar: '' },
-        lastModified: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 24小时前
-        isTemplate: false,
-      },
-      {
-        id: 7,
-        title: '经营分析（仅表态）',
-        type: 'form',
-        owner: { name: '云文档助手', avatar: '' },
-        lastModified: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 24小时前
-        isTemplate: true,
-      },
-      {
-        id: 8,
-        title: '数据库连接文档',
-        type: 'document',
-        owner: { name: '巫祖奇', avatar: '' },
-        lastModified: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 24小时前
-        isTemplate: false,
-      },
-      {
-        id: 9,
-        title: '训练营问题统计',
-        type: 'form',
-        owner: { name: '巫祖奇', avatar: '' },
-        lastModified: new Date(
-          Date.now() - 7 * 24 * 60 * 60 * 1000,
-        ).toISOString(), // 7天前
-        isTemplate: false,
-      },
-    ];
+      try {
+        // 调用API获取用户的最近访问记录（分页）
+        const response = await recentVisitsAPI.getUserVisits({
+          userId: userInfo.userId,
+          page,
+          pageSize,
+        });
 
-    setDocuments(mockDocs);
-    setLoading(false);
-  };
+        if (response.code === 200) {
+          const { list, pagination: paginationInfo } = response.data;
+          // 将后端数据转换为前端需要的格式
+          const formattedDocs = list.map(visit => ({
+            id: visit.documentId,
+            title: visit.documentName,
+            type: 'document', // 默认类型，可以根据需要扩展
+            owner: {
+              name: userInfo.username || '未知用户',
+              avatar: '',
+            },
+            lastModified: visit.visitTime,
+            isTemplate: false,
+            visitRecordId: visit._id, // 保存访问记录ID，用于删除操作
+          }));
+
+          setDocuments(formattedDocs);
+
+          // 更新分页信息
+          setPagination({
+            current: paginationInfo.page,
+            pageSize: paginationInfo.pageSize,
+            total: paginationInfo.total,
+          });
+        } else {
+          message.error('获取最近访问记录失败');
+          setDocuments([]);
+          setPagination(prev => ({ ...prev, total: 0 }));
+        }
+      } catch (error) {
+        console.error('获取最近访问记录时出错:', error);
+        message.error('获取最近访问记录失败，请稍后重试');
+        setDocuments([]);
+        setPagination(prev => ({ ...prev, total: 0 }));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [userInfo],
+  );
 
   /**
    * 处理文档点击，跳转到文档编辑页面
    * @param {Object} doc - 文档对象
    */
-  const handleDocClick = doc => {
+  const handleDocClick = async doc => {
+    // 跳转到文档编辑页面
     navigate(`/doc-editor/${doc.id}`);
+  };
+
+  /**
+   * 从最近访问中移除文档
+   * @param {Object} doc - 文档对象
+   */
+  const removeFromRecent = async doc => {
+    if (!doc.visitRecordId) {
+      message.error('无法移除该记录：缺少访问记录ID');
+      return;
+    }
+
+    try {
+      const response = await recentVisitsAPI.deleteVisit(doc.visitRecordId);
+
+      if (response && response.code === 200) {
+        message.success('已从最近访问中移除');
+        // 刷新列表
+        fetchRecentDocs(pagination.current, pagination.pageSize);
+      } else {
+        message.error(`移除失败：${response?.message || '请稍后重试'}`);
+      }
+    } catch (error) {
+      message.error(`移除失败：${error.message || '请稍后重试'}`);
+    }
   };
 
   /**
@@ -183,30 +199,37 @@ const RecentDocs = () => {
   const getMoreActions = doc => {
     const menuItems = [
       {
-        key: 'open',
-        label: '打开',
-        onClick: () => handleDocClick(doc),
-      },
-      {
-        key: 'share',
-        label: '分享',
-        onClick: () => console.log('分享文档', doc.id),
-      },
-      {
         key: 'copy',
         label: '复制链接',
-        onClick: () => console.log('复制链接', doc.id),
       },
       {
         key: 'remove',
         label: '从最近访问中移除',
-        onClick: () => console.log('移除文档', doc.id),
       },
     ];
 
+    // 处理菜单点击事件
+    const handleMenuClick = ({ key, domEvent }) => {
+      console.log('菜单项被点击:', {
+        key,
+        doc: doc.title,
+        visitRecordId: doc.visitRecordId,
+      });
+      domEvent.stopPropagation(); // 阻止事件冒泡
+
+      if (key === 'copy') {
+        message.info('复制链接功能开发中...');
+      } else if (key === 'remove') {
+        removeFromRecent(doc);
+      }
+    };
+
     return (
       <Dropdown
-        menu={{ items: menuItems }}
+        menu={{
+          items: menuItems,
+          onClick: handleMenuClick,
+        }}
         trigger={['click']}
         placement="bottomRight"
       >
@@ -258,7 +281,6 @@ const RecentDocs = () => {
       width: '25%',
       render: owner => (
         <div className={styles.ownerCell}>
-          <Avatar size="small" src={owner.avatar} icon={<UserOutlined />} />
           <Text className={styles.ownerName}>{owner.name}</Text>
         </div>
       ),
@@ -280,10 +302,24 @@ const RecentDocs = () => {
     },
   ];
 
+  /**
+   * 处理分页变化
+   * @param {number} page - 新页码
+   * @param {number} pageSize - 新的每页数量
+   */
+  const handlePageChange = (page, pageSize) => {
+    fetchRecentDocs(page, pageSize);
+  };
   // 组件挂载时获取数据
   useEffect(() => {
-    fetchRecentDocs();
-  }, []);
+    if (userInfo) {
+      fetchRecentDocs(1, 10); // 重置到第一页，每页10条
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userInfo]); // 依赖用户信息，用户登录后重新获取数据
+
+  // 组件挂载时获取数据
 
   return (
     <div className={styles.container}>
@@ -299,12 +335,23 @@ const RecentDocs = () => {
           dataSource={documents}
           loading={loading}
           rowKey="id"
+          locale={{
+            emptyText: userInfo
+              ? '暂无最近访问的文档'
+              : '请先登录查看最近访问记录',
+          }}
           pagination={{
-            pageSize: 20,
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
             showSizeChanger: true,
             showQuickJumper: true,
+            position: ['bottomCenter'],
             showTotal: (total, range) =>
               `共 ${total} 个文档，显示 ${range[0]}-${range[1]} 个`,
+            onChange: handlePageChange,
+            onShowSizeChange: handlePageChange,
+            pageSizeOptions: ['5', '10', '20', '50'],
           }}
           className={styles.table}
           onRow={record => ({
