@@ -4,6 +4,7 @@ import {
   SaveOutlined,
   ShareAltOutlined,
   DownloadOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 import styles from './editor.module.less';
 
@@ -47,9 +48,14 @@ const EditorHeader = ({
               分享
             </Button>
           </Tooltip>
-          <Tooltip title="下载文档">
-            <Button icon={<DownloadOutlined />} onClick={onDownload}>
+          <Tooltip title="下载文档 (支持多种格式)">
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={onDownload}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+            >
               下载
+              <DownOutlined style={{ fontSize: '12px' }} />
             </Button>
           </Tooltip>
         </div>

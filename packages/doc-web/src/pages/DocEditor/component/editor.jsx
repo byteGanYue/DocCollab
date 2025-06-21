@@ -12,7 +12,7 @@ import {
   handleSave,
   handleShare,
   copyShareUrl,
-  handleDownload,
+  showDownloadMenu,
 } from './documentActions.js';
 import {
   initCollaboration,
@@ -133,7 +133,7 @@ const Editor = () => {
   // 文档操作处理函数
   const onSave = () => handleSave(quillRef, documentTitle, setSaveLoading);
   const onShare = () => handleShare(setShareUrl, setShareModalVisible);
-  const onDownload = () => handleDownload(quillRef, documentTitle);
+  const onDownload = () => showDownloadMenu(quillRef.current);
   const onCopyUrl = () => copyShareUrl(shareUrl);
 
   return (
