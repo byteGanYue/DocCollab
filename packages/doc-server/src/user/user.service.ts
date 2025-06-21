@@ -72,8 +72,11 @@ export class UserService {
     }
     return {
       code: 200,
-      username: user.username,
       message: 'Login successful',
+      data: {
+        username: user.username,
+        userId: user._id,
+      },
     };
   }
 

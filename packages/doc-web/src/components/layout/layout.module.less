@@ -75,24 +75,32 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 12px;
-            border-radius: var(--border-radius-base);
-            cursor: pointer;
-            transition: var(--transition);
-            color: white;
 
-            &:hover {
-                background-color: rgba(255, 255, 255, 0.1);
-            }
-
-            .avatar {
-                border: 2px solid rgba(255, 255, 255, 0.3);
-            }
-
-            .userName {
+            .userDropdown {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 12px;
+                border-radius: var(--border-radius-base);
+                cursor: pointer;
+                transition: var(--transition);
                 color: white;
-                font-weight: 500;
-                margin-left: 8px;
+
+                &:hover {
+                    background-color: rgba(255, 255, 255, 0.1);
+                }
+
+                .userAvatar {
+                    border: 2px solid rgba(255, 255, 255, 0.3);
+                    background-color: rgba(255, 255, 255, 0.2);
+                }
+
+                .userName {
+                    color: white;
+                    font-weight: 500;
+                    font-size: 14px;
+                    white-space: nowrap;
+                }
             }
         }
 
