@@ -15,12 +15,4 @@ export class CreateUserDto {
   @IsString()
   @MinLength(6)
   password: string;
-
-  @ApiProperty({
-    description: '文件夹公开状态',
-    example: 'false',
-    required: false,
-  })
-  @IsBoolean()
-  isPublic: boolean;
 }
