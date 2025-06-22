@@ -391,7 +391,6 @@ const response = (typeof autoFolderId === 'number' && autoFolderId > 0)
    - `folderUtils.buildFolderDocumentTree()` - 构建完整的文件夹文档映射
    - `folderUtils.getDocumentsByFolderId()` - 根据文件夹ID获取文档列表
    - `folderUtils.isDocumentBelongToFolder()` - 验证文档归属关系
-   - `folderUtils.debugTreeStructure()` - 调试树形结构
 
 3. **树形结构构建逻辑**
    ```javascript
@@ -414,8 +413,6 @@ const response = (typeof autoFolderId === 'number' && autoFolderId > 0)
 ```javascript
 // 在folderMenu.jsx中的使用
 const convertBackendFoldersToMenuFormat = (backendFolders, documents) => {
-  // 添加调试信息
-  folderUtils.debugTreeStructure(backendFolders, documents);
   
   // 构建映射关系
   const { folderDocuments, rootDocuments } = folderUtils.buildFolderDocumentTree(
@@ -431,19 +428,7 @@ const convertBackendFoldersToMenuFormat = (backendFolders, documents) => {
 };
 ```
 
-### 调试功能
-通过`folderUtils.debugTreeStructure()`可以在控制台查看：
-- 文件夹结构分析
-- 文档结构分析  
-- 父子关系匹配情况
-- ID类型转换过程
 
-### 预期效果
-1. 正确显示文件夹树形结构
-2. 文档正确归属到对应文件夹
-3. 根级文档显示在"我的文件夹"下
-4. 支持多层级文件夹嵌套
-5. 菜单项点击正确跳转到编辑器
 
 ## 错误修复 (2024-12-22)
 

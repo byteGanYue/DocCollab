@@ -433,10 +433,6 @@ const FolderMenu = () => {
       } catch (error) {
         // 如果是用户信息不完整的错误，说明用户信息还没加载完成，静默跳过
         if (error.message.includes('用户信息不完整')) {
-          console.log('⚠️ 用户信息尚未加载完成，跳过请求', {
-            userInfo,
-            localUserId: localStorage.getItem('userId'),
-          });
           setLoading(false);
           return;
         }
@@ -444,29 +440,16 @@ const FolderMenu = () => {
         throw error;
       }
 
-      console.log('📁 使用的用户ID:', numericUserId);
-
       // 并行获取文件夹和文档数据
       const documentParams = {
         page: Number(1),
         pageSize: Number(1000), // 获取足够多的文档
       };
 
-      console.log('📄 文档查询参数:', documentParams);
-      console.log('📄 参数类型检查:', {
-        page: typeof documentParams.page,
-        pageSize: typeof documentParams.pageSize,
-        pageValue: documentParams.page,
-        pageSizeValue: documentParams.pageSize,
-      });
-
       const [folderResponse, documentResponse] = await Promise.all([
         folderAPI.getFolders({ userId: numericUserId }),
         documentAPI.getUserDocuments(numericUserId, documentParams),
       ]);
-
-      console.log('📁 从后端获取的文件夹数据:', folderResponse);
-      console.log('📄 从后端获取的文档数据:', documentResponse);
 
       // 转换后端数据为前端菜单格式
       const convertedFolders = convertBackendFoldersToMenuFormat(
@@ -541,12 +524,6 @@ const FolderMenu = () => {
     backendFolders,
     documents = [],
   ) => {
-    console.log('转换后端文件夹数据:', backendFolders);
-    console.log('转换后端文档数据:', documents);
-
-    // 添加详细的调试信息
-    folderUtils.debugTreeStructure(backendFolders, documents);
-
     // 使用工具函数构建文件夹和文档的映射关系
     const { folderDocuments, rootDocuments } =
       folderUtils.buildFolderDocumentTree(backendFolders, documents);
@@ -584,17 +561,6 @@ const FolderMenu = () => {
         folder.folderId,
       );
 
-      console.log('🔄 文件夹文档匹配:', {
-        folderName: folder.folderName,
-        folderId: folder.folderId,
-        autoFolderId: folder.autoFolderId,
-        matchedDocuments: folderDocumentList.map(doc => ({
-          name: doc.documentName,
-          id: doc.documentId,
-          parentIds: doc.parentFolderIds,
-        })),
-      });
-
       // 将文档转换为菜单项并添加到children中
       const documentMenuItems = folderDocumentList.map(doc => ({
         key: `doc_${doc.documentId}`,
@@ -617,13 +583,6 @@ const FolderMenu = () => {
 
       // 合并文件夹和文档（文件夹在前，文档在后）
       menuItem.children = [...(menuItem.children || []), ...documentMenuItems];
-
-      console.log('🔄 转换菜单项:', {
-        originalFolder: folder,
-        menuItem: menuItem,
-        childrenCount: menuItem.children.length,
-        documentCount: documentMenuItems.length,
-      });
 
       return menuItem;
     };
@@ -672,15 +631,6 @@ const FolderMenu = () => {
       },
     }));
 
-    console.log('📁 根级文档处理:', {
-      rootDocuments: rootDocuments.map(doc => ({
-        name: doc.documentName,
-        id: doc.documentId,
-        parentIds: doc.parentFolderIds,
-      })),
-      rootDocumentCount: rootDocuments.length,
-    });
-
     // 创建"我的文件夹"根节点，包含所有后端文件夹数据和根级文档
     const myFoldersRoot = {
       key: 'root',
@@ -689,13 +639,6 @@ const FolderMenu = () => {
       permission: userPermission || 'private', // 使用用户权限状态
       children: [...sortedFolderTree, ...rootDocumentMenuItems], // 将文件夹和根级文档作为子项
     };
-
-    console.log('📁 最终构建的文件夹树:', {
-      folderCount: sortedFolderTree.length,
-      rootDocumentCount: rootDocumentMenuItems.length,
-      totalChildren: myFoldersRoot.children.length,
-      finalTree: myFoldersRoot,
-    });
 
     return [myFoldersRoot];
   };
@@ -847,11 +790,8 @@ const FolderMenu = () => {
         parentFolderIds: parentFolderIds,
       };
 
-      console.log('创建文档请求数据:', createDocumentData);
-
       // 调用后端 API 创建文档
       const response = await documentAPI.createDocument(createDocumentData);
-      console.log('创建文档响应:', response);
 
       if (response.success) {
         message.success('新建文档成功');
@@ -880,12 +820,6 @@ const FolderMenu = () => {
           const newOpenKeys = [...new Set([...openKeys, 'root'])];
           setOpenKeys(newOpenKeys);
         }
-
-        console.log('创建文档成功，数据:', {
-          documentId: response.data.documentId,
-          documentName: response.data.documentName,
-          parentFolderIds: response.data.parentFolderIds,
-        });
 
         // 延迟一下再跳转，让用户看到文档创建的反馈
         setTimeout(() => {
@@ -990,11 +924,8 @@ const FolderMenu = () => {
         parentFolderIds: parentFolderIds,
       };
 
-      console.log('创建文件夹请求数据:', createFolderData);
-
       // 调用后端 API 创建文件夹
       const response = await folderAPI.createFolder(createFolderData);
-      console.log('创建文件夹响应:', response);
 
       if (response.success) {
         message.success('新建文件夹成功');
@@ -1010,12 +941,6 @@ const FolderMenu = () => {
 
         // 进入编辑状态
         setEditingKey(response.data.folderId);
-
-        console.log('创建文件夹成功，数据:', {
-          folderId: response.data.folderId,
-          autoFolderId: response.data.autoFolderId,
-          folderName: response.data.folderName,
-        });
 
         // 确保"我的文件夹"根节点展开
         if (!openKeys.includes('root')) {
@@ -1071,15 +996,6 @@ const FolderMenu = () => {
       let response;
 
       if (isDocument) {
-        // 重命名文档
-        console.log('重命名文档:', {
-          key,
-          targetItem,
-          documentId:
-            targetItem?.documentId || targetItem?.backendData?.documentId,
-          newName,
-        });
-
         // 获取文档ID（优先使用 documentId，如果没有则使用 autoDocumentId）
         const documentId =
           targetItem?.documentId ||
@@ -1107,18 +1023,6 @@ const FolderMenu = () => {
           typeof autoFolderId === 'number' && autoFolderId > 0
             ? autoFolderId
             : key;
-
-        console.log('重命名文件夹:', {
-          key,
-          folderItem: targetItem,
-          'folderItem.autoFolderId': targetItem?.autoFolderId,
-          'folderItem.backendData': targetItem?.backendData,
-          'backendData.autoFolderId': targetItem?.backendData?.autoFolderId,
-          'backendData.folderId': targetItem?.backendData?.folderId,
-          finalAutoFolderId: autoFolderId,
-          updateId,
-          newName,
-        });
 
         // 调用文件夹更新API - 使用自增ID
         response = await folderAPI.updateFolder(updateId, {
@@ -1174,8 +1078,6 @@ const FolderMenu = () => {
     try {
       // 使用用户上下文中的权限状态，如果没有则使用传入的权限状态
       const actualPermission = userPermission || currentPermission || 'private';
-      console.log('当前用户权限状态userPermission:', userPermission);
-      console.log('当前用户权限状态:', actualPermission);
 
       setPermissionModal({
         visible: true,
@@ -1217,11 +1119,6 @@ const FolderMenu = () => {
         return;
       }
 
-      console.log('调用权限修改API:', {
-        userEmail,
-        newPermission: permissionModal.permission,
-      });
-
       // 调用后端API修改用户公开状态
       const response = await userAPI.changePublicStatus(userEmail);
 
@@ -1252,8 +1149,6 @@ const FolderMenu = () => {
         const permissionText =
           permissionModal.permission === 'public' ? '公开空间' : '私有空间';
         message.success(`工作空间已设置为${permissionText}`);
-
-        console.log('权限修改成功:', response);
       } else {
         throw new Error(response.message || '权限修改失败');
       }
@@ -1292,14 +1187,6 @@ const FolderMenu = () => {
       let response;
 
       if (isDocument) {
-        // 删除文档
-        console.log('删除文档 - 调试信息:', {
-          key,
-          targetItem,
-          documentId:
-            targetItem?.documentId || targetItem?.backendData?.documentId,
-        });
-
         // 获取文档ID（优先使用 documentId，如果没有则使用 autoDocumentId）
         const documentId =
           targetItem?.documentId ||
@@ -1317,14 +1204,6 @@ const FolderMenu = () => {
           message.success('文档删除成功！');
         }
       } else {
-        // 删除文件夹
-        console.log('删除文件夹 - 调试信息:', {
-          key,
-          'folderItem.autoFolderId': targetItem?.autoFolderId,
-          'backendData.autoFolderId': targetItem?.backendData?.autoFolderId,
-          'backendData.folderId': targetItem?.backendData?.folderId,
-        });
-
         // 获取文件夹自增ID
         const autoFolderId =
           targetItem?.autoFolderId ||

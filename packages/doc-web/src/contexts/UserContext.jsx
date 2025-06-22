@@ -18,23 +18,22 @@ const UserProvider = ({ children }) => {
 
   // 获取用户完整信息包括权限状态
   const fetchUserInfo = useCallback(async userId => {
-    console.log('🔥 fetchUserInfo 被调用，userId:', userId);
     try {
-      console.log('🚀 开始调用 getUserInfo API');
       const response = await userAPI.getUserInfo(userId);
-      console.log('📥 API 响应:', response);
 
       if (response.success) {
         const userFullInfo = response.data;
         // 根据后端返回的isPublic字段设置权限状态
-        console.log('哈哈哈哈哈哈哈userFullInfo:', userFullInfo);
         const permission = userFullInfo.isPublic ? 'public' : 'private';
         setUserPermission(permission);
+
+        // 更新用户信息状态和localStorage
+        setUserInfo(userFullInfo);
+        localStorage.setItem('userInfo', JSON.stringify(userFullInfo));
 
         // 保存权限状态到localStorage
         localStorage.setItem('userPermission', permission);
 
-        console.log('用户权限状态:', permission);
         return userFullInfo;
       } else {
         console.warn('⚠️ API 响应 success 不为 true:', response);
@@ -47,11 +46,8 @@ const UserProvider = ({ children }) => {
 
   // 初始化用户信息，从 localStorage 中获取
   useEffect(() => {
-    console.log('🚀 UserContext useEffect 执行');
     const savedUserInfo = localStorage.getItem('userInfo');
     const savedPermission = localStorage.getItem('userPermission');
-    console.log('💾 savedUserInfo:', savedUserInfo);
-    console.log('💾 savedPermission:', savedPermission);
 
     if (savedUserInfo) {
       try {
@@ -63,21 +59,16 @@ const UserProvider = ({ children }) => {
           parsedUserInfo = savedUserInfo;
         }
 
-        console.log('📄 解析后的用户信息:', parsedUserInfo);
         setUserInfo(parsedUserInfo);
         setIsAuthenticated(true);
 
         // 恢复权限状态
         if (savedPermission) {
-          console.log('✅ 使用保存的权限状态:', savedPermission);
           setUserPermission(savedPermission);
         } else {
-          console.log('⚠️ 没有保存的权限状态，需要从后端获取');
           // 如果没有保存的权限状态，从后端获取
           const userId = parsedUserInfo?.userId || parsedUserInfo?._id;
-          console.log('🆔 准备获取权限的userId:', userId);
           if (userId) {
-            console.log('✅ 调用 fetchUserInfo 获取权限');
             fetchUserInfo(userId).catch(error => {
               console.error('初始化时获取用户权限失败:', error);
             });
@@ -91,14 +82,16 @@ const UserProvider = ({ children }) => {
         localStorage.removeItem('userInfo');
         localStorage.removeItem('userPermission');
       }
-    } else {
-      console.log('ℹ️ 没有保存的用户信息');
     }
   }, [fetchUserInfo]);
 
   // 登录：设置用户信息
   const login = async userData => {
-    console.log('🔑 用户登录，userData:', userData);
+    // 先清除旧的用户信息，确保完全替换
+    localStorage.removeItem('userInfo');
+    localStorage.removeItem('userPermission');
+
+    // 设置新的用户信息
     setUserInfo(userData);
     setIsAuthenticated(true);
     // 保存到 localStorage
@@ -106,9 +99,7 @@ const UserProvider = ({ children }) => {
 
     // 获取用户权限状态
     const userId = userData?.userId || userData?._id;
-    console.log('🆔 提取的userId:', userId);
     if (userId) {
-      console.log('✅ 准备调用 fetchUserInfo');
       await fetchUserInfo(userId);
     } else {
       console.warn('⚠️ 无法获取userId，跳过权限获取');
@@ -125,11 +116,11 @@ const UserProvider = ({ children }) => {
     localStorage.removeItem('userPermission');
   };
 
-  // 更新用户信息
+  // 更新用户信息 - 完全替换而不是合并
   const updateUserInfo = newUserInfo => {
-    const updatedInfo = { ...userInfo, ...newUserInfo };
-    setUserInfo(updatedInfo);
-    localStorage.setItem('userInfo', JSON.stringify(updatedInfo));
+    // 完全替换用户信息，而不是合并
+    setUserInfo(newUserInfo);
+    localStorage.setItem('userInfo', JSON.stringify(newUserInfo));
   };
 
   // 更新用户权限状态

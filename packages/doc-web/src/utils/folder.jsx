@@ -28,7 +28,7 @@ class folderUtils {
       }
       return item;
     });
-    console.log('重命名后新的目录结构:', result); // 添加调试信息
+
     return result;
   }
 
@@ -47,7 +47,7 @@ class folderUtils {
       }
       return true;
     });
-    console.log('删除后新的目录结构:', result); // 添加调试信息
+
     return result;
   }
 
@@ -80,7 +80,7 @@ class folderUtils {
       }
       return item;
     });
-    console.log('插入新节点后新的目录结构:', result); // 添加调试信息
+
     return result;
   }
 
@@ -359,7 +359,7 @@ class folderUtils {
       }
       return item;
     });
-    console.log('更新工作空间权限后新的目录结构:', result); // 添加调试信息
+
     return result;
   }
 
@@ -434,7 +434,6 @@ class folderUtils {
       }
     });
 
-    console.log('协同文档列表:', collaborationDocs);
     return collaborationDocs;
   }
 
@@ -470,8 +469,6 @@ class folderUtils {
    * @returns {Object} 返回构建好的树形结构
    */
   static buildFolderDocumentTree(folders = [], documents = []) {
-    console.log('🌳 开始构建文件夹和文档树形结构:', { folders, documents });
-
     // 创建文件夹ID到文件夹对象的映射
     const folderMap = new Map();
 
@@ -505,8 +502,6 @@ class folderUtils {
 
     collectFolderIds(folders);
 
-    console.log('📂 文件夹ID映射表:', folderMap);
-
     // 为每个文件夹创建文档列表
     const folderDocuments = new Map();
 
@@ -514,25 +509,15 @@ class folderUtils {
     documents.forEach(doc => {
       const parentIds = doc.parentFolderIds || [];
 
-      console.log(`📄 处理文档: ${doc.documentName}`, {
-        parentIds,
-        parentIdsType: parentIds.map(id => ({ id, type: typeof id })),
-      });
-
       if (parentIds.length === 0) {
         // 根级文档
         if (!folderDocuments.has('ROOT')) {
           folderDocuments.set('ROOT', []);
         }
         folderDocuments.get('ROOT').push(doc);
-        console.log(`📄 文档"${doc.documentName}"被分配到根级`);
       } else {
         // 获取直接父文件夹ID
         const directParentId = parentIds[parentIds.length - 1];
-
-        console.log(
-          `📄 查找父文件夹 ID: ${directParentId} (类型: ${typeof directParentId})`,
-        );
 
         // 查找对应的文件夹，尝试多种ID匹配方式
         let parentFolder = folderMap.get(directParentId);
@@ -556,9 +541,6 @@ class folderUtils {
             folderDocuments.set(folderId, []);
           }
           folderDocuments.get(folderId).push(doc);
-          console.log(
-            `📄 文档"${doc.documentName}"被分配到文件夹"${parentFolder.folderName}"`,
-          );
         } else {
           console.warn('⚠️ 找不到父文件夹:', {
             doc: doc.documentName,
@@ -571,14 +553,9 @@ class folderUtils {
             folderDocuments.set('ROOT', []);
           }
           folderDocuments.get('ROOT').push(doc);
-          console.log(
-            `📄 文档"${doc.documentName}"被分配到根级（父文件夹未找到）`,
-          );
         }
       }
     });
-
-    console.log('📂 最终文件夹文档映射:', folderDocuments);
 
     return {
       folderMap,
@@ -625,71 +602,6 @@ class folderUtils {
       Number(directParentId) === Number(folder.autoFolderId)
     );
   }
-
-  /**
-   * 调试函数：打印树形结构的详细信息
-   * @param {Array} folders - 文件夹数据
-   * @param {Array} documents - 文档数据
-   */
-  static debugTreeStructure(folders, documents) {
-    console.log('🐛 调试：分析数据结构');
-    console.log('📁 文件夹数据:', folders);
-    console.log('📄 文档数据:', documents);
-
-    // 分析文件夹结构
-    if (folders.length > 0) {
-      console.log('📁 文件夹分析:');
-      folders.forEach((folder, index) => {
-        console.log(`  ${index + 1}. ${folder.folderName}`, {
-          folderId: folder.folderId,
-          autoFolderId: folder.autoFolderId,
-          parentFolderIds: folder.parentFolderIds,
-          depth: folder.depth,
-          childrenCount: folder.childrenCount,
-          hasChildren: folder.children?.length > 0,
-        });
-      });
-    }
-
-    // 分析文档结构
-    if (documents.length > 0) {
-      console.log('📄 文档分析:');
-      documents.forEach((doc, index) => {
-        console.log(`  ${index + 1}. ${doc.documentName}`, {
-          documentId: doc.documentId,
-          parentFolderIds: doc.parentFolderIds,
-          userId: doc.userId,
-          isRootLevel: !doc.parentFolderIds || doc.parentFolderIds.length === 0,
-        });
-      });
-    }
-
-    // 分析父子关系
-    console.log('🔗 父子关系分析:');
-    documents.forEach(doc => {
-      const parentIds = doc.parentFolderIds || [];
-      if (parentIds.length > 0) {
-        const directParentId = parentIds[parentIds.length - 1];
-        const matchedFolder = folders.find(
-          f =>
-            f.folderId === directParentId ||
-            f.autoFolderId === directParentId ||
-            String(f.folderId) === String(directParentId) ||
-            Number(f.autoFolderId) === Number(directParentId),
-        );
-
-        console.log(
-          `  文档"${doc.documentName}" -> 父文件夹ID: ${directParentId}`,
-          {
-            found: !!matchedFolder,
-            parentFolder: matchedFolder?.folderName || '未找到',
-          },
-        );
-      } else {
-        console.log(`  文档"${doc.documentName}" -> 根级文档`);
-      }
-    });
-  }
 }
 
 /**
@@ -712,6 +624,5 @@ class folderUtils {
  * - buildFolderDocumentTree: 构建完整的文件夹和文档树形结构
  * - getDocumentsByFolderId: 根据文件夹ID查找文档列表
  * - isDocumentBelongToFolder: 验证文档是否应该属于指定文件夹
- * - debugTreeStructure: 调试函数：打印树形结构的详细信息
  */
 export default folderUtils;
