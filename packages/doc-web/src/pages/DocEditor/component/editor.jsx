@@ -106,6 +106,8 @@ const Editor = () => {
   const [blockToolbarVisible, setBlockToolbarVisible] = useState(false);
   const [blockToolbarPos, setBlockToolbarPos] = useState({ top: 0, left: 0 });
   const [blockLineIndex, setBlockLineIndex] = useState(null);
+  // 新增：展开状态
+  const [blockToolbarExpanded, setBlockToolbarExpanded] = useState(false);
 
   // 添加工具栏提示样式
   useEffect(() => {
@@ -283,7 +285,7 @@ const Editor = () => {
       const line = e.target.closest('p, div, li');
       if (line && editor.contains(line)) {
         const rect = line.getBoundingClientRect();
-        // 鼠标靠近左侧时显示
+        // 鼠标靠近左侧时显示加号+
         if (e.clientX - rect.left < 32) {
           setBlockToolbarVisible(true);
           setBlockToolbarPos({
@@ -300,9 +302,11 @@ const Editor = () => {
           }
         } else {
           setBlockToolbarVisible(false);
+          setBlockToolbarExpanded(false); // 鼠标移出时收起
         }
       } else {
         setBlockToolbarVisible(false);
+        setBlockToolbarExpanded(false);
       }
     };
     editor.addEventListener('mousemove', handleMouseMove);
@@ -356,12 +360,14 @@ const Editor = () => {
     quill.insertText(blockLineIndex, '\n', 'user');
     quill.setSelection(blockLineIndex + 1, 0, 'user');
     setBlockToolbarVisible(false);
+    setBlockToolbarExpanded(false);
   };
   const handleBlockFormat = (format, value) => {
     const quill = quillRef.current;
     if (!quill || blockLineIndex == null) return;
     quill.formatLine(blockLineIndex, 1, format, value, 'user');
     setBlockToolbarVisible(false);
+    setBlockToolbarExpanded(false);
   };
 
   return (
@@ -373,6 +379,8 @@ const Editor = () => {
         left={blockToolbarPos.left}
         onInsert={handleBlockInsert}
         onFormat={handleBlockFormat}
+        expanded={blockToolbarExpanded}
+        onExpand={() => setBlockToolbarExpanded(exp => !exp)}
       />
       {/* 浮动工具栏 */}
       <FloatingToolbar visible={toolbarVisible} position={toolbarPosition}>
