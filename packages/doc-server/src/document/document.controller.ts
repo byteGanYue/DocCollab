@@ -156,10 +156,10 @@ export class DocumentController {
    * @param updateDocumentDto 更新数据
    * @returns 更新结果
    */
-  @Patch('update/:id')
+  @Patch('update/:documentId')
   @ApiOperation({ summary: '根据文档documentId更新文档' })
   update(
-    @Param('id', ParseIntPipe) documentId: number,
+    @Param('documentId', ParseIntPipe) documentId: number,
     @Body() updateDocumentDto: UpdateDocumentDto,
   ) {
     this.logger.log('接收到更新文档请求', { documentId, ...updateDocumentDto });

@@ -554,7 +554,7 @@ const FolderMenu = () => {
         documentId: doc.documentId,
         onClick: () => {
           // 点击文档时跳转到编辑器
-          navigate(`/editor/${doc.documentId}`);
+          navigate(`/doc-editor/${doc.documentId}`);
         },
       }));
 
@@ -611,7 +611,7 @@ const FolderMenu = () => {
       documentId: doc.documentId,
       onClick: () => {
         // 点击文档时跳转到编辑器
-        navigate(`/editor/${doc.documentId}`);
+        navigate(`/doc-editor/${doc.documentId}`);
       },
     }));
 
@@ -1051,37 +1051,69 @@ const FolderMenu = () => {
         }
       }
 
-      // 查找文件夹项，获取自增ID
-      const folderItem = folderUtils.findNodeByKey(folderList, key);
+      // 查找项目，获取相关信息
+      const targetItem = folderUtils.findNodeByKey(folderList, key);
 
-      // 优先使用自增ID，如果没有则使用MongoDB ID（兼容旧数据）
-      // 尝试从多个地方获取自增ID
-      const autoFolderId =
-        folderItem?.autoFolderId ||
-        folderItem?.backendData?.autoFolderId ||
-        folderItem?.backendData?.folderId;
+      // 判断是文档还是文件夹
+      const isDocument = key.startsWith('doc_') || key.startsWith('doc');
 
-      const updateId =
-        typeof autoFolderId === 'number' && autoFolderId > 0
-          ? autoFolderId
-          : key;
+      let response;
 
-      console.log('重命名文件夹:', {
-        key,
-        folderItem: folderItem,
-        'folderItem.autoFolderId': folderItem?.autoFolderId,
-        'folderItem.backendData': folderItem?.backendData,
-        'backendData.autoFolderId': folderItem?.backendData?.autoFolderId,
-        'backendData.folderId': folderItem?.backendData?.folderId,
-        finalAutoFolderId: autoFolderId,
-        updateId,
-        newName,
-      });
+      if (isDocument) {
+        // 重命名文档
+        console.log('重命名文档:', {
+          key,
+          targetItem,
+          documentId:
+            targetItem?.documentId || targetItem?.backendData?.documentId,
+          newName,
+        });
 
-      // 调用更新 API - 使用自增ID
-      const response = await folderAPI.updateFolder(updateId, {
-        folderName: newName,
-      });
+        // 获取文档ID（优先使用 documentId，如果没有则使用 autoDocumentId）
+        const documentId =
+          targetItem?.documentId ||
+          targetItem?.backendData?.documentId ||
+          targetItem?.backendData?.autoDocumentId;
+
+        if (!documentId) {
+          throw new Error('无法获取文档ID，重命名失败');
+        }
+
+        // 调用文档更新API
+        response = await documentAPI.updateDocument(documentId, {
+          documentName: newName,
+        });
+      } else {
+        // 重命名文件夹
+        // 优先使用自增ID，如果没有则使用MongoDB ID（兼容旧数据）
+        // 尝试从多个地方获取自增ID
+        const autoFolderId =
+          targetItem?.autoFolderId ||
+          targetItem?.backendData?.autoFolderId ||
+          targetItem?.backendData?.folderId;
+
+        const updateId =
+          typeof autoFolderId === 'number' && autoFolderId > 0
+            ? autoFolderId
+            : key;
+
+        console.log('重命名文件夹:', {
+          key,
+          folderItem: targetItem,
+          'folderItem.autoFolderId': targetItem?.autoFolderId,
+          'folderItem.backendData': targetItem?.backendData,
+          'backendData.autoFolderId': targetItem?.backendData?.autoFolderId,
+          'backendData.folderId': targetItem?.backendData?.folderId,
+          finalAutoFolderId: autoFolderId,
+          updateId,
+          newName,
+        });
+
+        // 调用文件夹更新API - 使用自增ID
+        response = await folderAPI.updateFolder(updateId, {
+          folderName: newName,
+        });
+      }
 
       if (response.success) {
         // 重新获取文件夹列表
