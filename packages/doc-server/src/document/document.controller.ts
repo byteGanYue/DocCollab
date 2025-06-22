@@ -259,4 +259,34 @@ export class DocumentController {
     this.logger.log('接收到移除协同编辑者请求', { documentId, userId });
     return this.documentService.removeEditor(documentId, userId);
   }
+
+  @Get('public-documents')
+  @ApiOperation({ summary: '获取所有公开用户的文档' })
+  @ApiResponse({
+    status: 200,
+    description: '成功获取所有公开用户的文档',
+  })
+  async getPublicDocuments(): Promise<
+    Awaited<ReturnType<DocumentService['findAllPublicDocuments']>>
+  > {
+    return this.documentService.findAllPublicDocuments();
+  }
+
+  @Get('public-documents/folder/:folderIds')
+  @ApiOperation({ summary: '获取指定文件夹下的公开文档' })
+  @ApiParam({
+    name: 'folderIds',
+    description: '文件夹ID数组，用逗号分隔',
+    example: '1,2,3',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '成功获取指定文件夹下的公开文档',
+  })
+  async getPublicDocumentsByFolder(@Param('folderIds') folderIds: string) {
+    const folderIdArray = folderIds
+      .split(',')
+      .map((id) => parseInt(id.trim(), 10));
+    return this.documentService.findPublicDocumentsByFolder(folderIdArray);
+  }
 }

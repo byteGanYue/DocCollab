@@ -19,7 +19,7 @@ import {
   UpdateFolderDto,
   UpdateFolderResponseDto,
 } from './dto/update-folder.dto';
-import { ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 @Controller('/folder')
 export class FolderController {
   constructor(private readonly folderService: FolderService) {}
@@ -188,5 +188,12 @@ export class FolderController {
   })
   removeByFolderId(@Param('folderId') folderId: number) {
     return this.folderService.removeByFolderId(Number(folderId));
+  }
+
+  @Get('/public-folders')
+  @ApiOperation({ summary: '获取所有公开用户的文件夹结构' })
+  @ApiResponse({ status: 200, description: '成功获取所有公开用户的文件夹结构' })
+  async getPublicFolders() {
+    return this.folderService.findAllPublicFolders();
   }
 }

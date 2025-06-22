@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-base-to-string */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types, FilterQuery } from 'mongoose';
@@ -1019,6 +1022,173 @@ export class FolderService {
     } catch (error) {
       this.logger.error('删除文档引用记录失败', error);
       throw error;
+    }
+  }
+
+  /**
+   * 获取所有公开用户的文件夹树形结构
+   * @returns 所有公开用户的文件夹结构
+   */
+  async findAllPublicFolders(): Promise<{
+    success: boolean;
+    message: string;
+    data: Array<{
+      userId: number;
+      username: string;
+      isPublic: boolean;
+      folders: FolderTreeItem[];
+    }>;
+  }> {
+    try {
+      this.logger.log('开始获取所有公开用户的文件夹');
+
+      // 首先获取所有设置为公开的用户
+      const userModel = this.folderModel.db.model('User');
+      const publicUsers = await userModel.find({ isPublic: true }).select({
+        userId: 1,
+        username: 1,
+        isPublic: 1,
+      });
+
+      if (publicUsers.length === 0) {
+        return {
+          success: true,
+          message: '当前没有公开的用户空间',
+          data: [],
+        };
+      }
+
+      // 为每个公开用户获取其文件夹树
+      const result: Array<{
+        userId: number;
+        username: string;
+        isPublic: boolean;
+        folders: FolderTreeItem[];
+      }> = [];
+
+      for (const user of publicUsers) {
+        try {
+          // 获取用户的根文件夹（depth为0的文件夹）
+          const rootFolders = await this.folderModel
+            .find({
+              userId: user.userId,
+              depth: 0,
+            })
+            .lean()
+            .exec();
+
+          // 构建该用户的文件夹树
+          const userFolderTree: FolderTreeItem[] = [];
+
+          for (const rootFolder of rootFolders) {
+            const folderTree = await this.buildUserFolderTree(
+              (rootFolder._id as Types.ObjectId).toString(),
+              user.userId,
+              0,
+            );
+            if (folderTree) {
+              userFolderTree.push(folderTree);
+            }
+          }
+
+          result.push({
+            userId: user.userId,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            username: user.username,
+            isPublic: user.isPublic,
+            folders: userFolderTree,
+          });
+        } catch (userError) {
+          this.logger.warn(
+            `获取用户 ${user.username} (ID: ${user.userId}) 的文件夹失败: ${userError.message}`,
+          );
+          // 继续处理其他用户，不中断整个流程
+        }
+      }
+
+      return {
+        success: true,
+        message: `成功获取 ${result.length} 个公开用户的文件夹结构`,
+        data: result,
+      };
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error('获取公开用户文件夹失败', err.stack);
+      throw new BadRequestException(`获取公开用户文件夹失败: ${err.message}`);
+    }
+  }
+
+  /**
+   * 构建单个用户的文件夹树（私有方法）
+   * @param folderId 文件夹ID
+   * @param userId 用户ID
+   * @param currentDepth 当前深度
+   * @returns 文件夹树节点
+   */
+  private async buildUserFolderTree(
+    folderId: string,
+    userId: number,
+    currentDepth: number,
+  ): Promise<FolderTreeItem | null> {
+    try {
+      // 获取当前文件夹信息
+      const folder = await this.folderModel.findById(folderId).lean().exec();
+
+      if (!folder || folder.userId !== userId) {
+        return null;
+      }
+
+      // 获取子文件夹
+      const childFolders = await this.folderModel
+        .find({
+          userId: userId,
+          parentFolderIds: { $in: [folderId] },
+        })
+        .lean()
+        .exec();
+
+      // 递归构建子文件夹树
+      const children: FolderTreeItem[] = [];
+      for (const childFolder of childFolders) {
+        const childTree = await this.buildUserFolderTree(
+          childFolder._id.toString(),
+          userId,
+          currentDepth + 1,
+        );
+        if (childTree) {
+          children.push(childTree);
+        }
+      }
+
+      // 获取当前文件夹下的文档数量
+      const documentModel = this.folderModel.db.model('DocumentEntity');
+      const documentsCount = await documentModel.countDocuments({
+        userId: userId,
+        parentFolderIds: { $in: [folder.folderId] },
+      });
+
+      return {
+        folderId: folder._id.toString(),
+        autoFolderId: folder.folderId,
+        folderName: folder.folderName,
+        userId: folder.userId,
+        create_username: folder.create_username,
+        update_username: folder.update_username,
+        parentFolderIds: folder.parentFolderIds,
+        depth: folder.depth,
+        childrenCount: {
+          documents: documentsCount,
+          folders: children.length,
+        },
+        children: children,
+        create_time: folder.create_time,
+        update_time: folder.update_time,
+      };
+    } catch (error) {
+      this.logger.error(
+        `构建用户 ${userId} 文件夹树失败 (folderId: ${folderId}): ${error.message}`,
+      );
+      return null;
     }
   }
 }

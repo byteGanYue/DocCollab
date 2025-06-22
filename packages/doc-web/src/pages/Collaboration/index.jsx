@@ -9,6 +9,8 @@ import {
   Typography,
   Empty,
   Input,
+  Spin,
+  Tree,
 } from 'antd';
 import {
   FileTextOutlined,
@@ -17,286 +19,325 @@ import {
   SearchOutlined,
   EditOutlined,
   EyeOutlined,
+  FolderOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import folderUtils from '@/utils/folder';
+import { folderAPI, documentAPI } from '../../utils/api';
 import styles from './index.module.less';
 
 const { Title, Text } = Typography;
 const { Search } = Input;
 
 /**
- * 协同文档页面组件
- * 展示所有可协同编辑的文档
+ * 协同文档页面
+ * 展示所有公开用户的文件夹和文档，允许用户查看和编辑
  */
 const Collaboration = () => {
   const navigate = useNavigate();
-  const [collaborationDocs, setCollaborationDocs] = useState([]);
-  const [filteredDocs, setFilteredDocs] = useState([]);
-  const [searchKeyword, setSearchKeyword] = useState('');
   const [loading, setLoading] = useState(true);
+  const [collaborationData, setCollaborationData] = useState([]);
 
-  // Mock数据：模拟从菜单中获取协同文档
-  const mockFolderList = [
-    {
-      key: 'collaboration',
-      children: [
-        {
-          key: 'collab_user_001',
-          owner: '张三',
-          ownerId: 'user_001',
-          children: [
-            {
-              key: 'collab_user_001_folder1',
-              children: [
-                {
-                  key: 'collab_user_001_doc1',
-                  label: { props: { text: 'React 最佳实践' } },
-                },
-                {
-                  key: 'collab_user_001_doc2',
-                  label: { props: { text: 'TypeScript 进阶指南' } },
-                },
-              ],
-            },
-            {
-              key: 'collab_user_001_folder2',
-              children: [
-                {
-                  key: 'collab_user_001_doc3',
-                  label: { props: { text: '需求分析文档' } },
-                },
-              ],
-            },
-          ],
-        },
-        {
-          key: 'collab_user_002',
-          owner: '李四',
-          ownerId: 'user_002',
-          children: [
-            {
-              key: 'collab_user_002_folder1',
-              children: [
-                {
-                  key: 'collab_user_002_doc1',
-                  label: { props: { text: 'UI设计规范' } },
-                },
-                {
-                  key: 'collab_user_002_doc2',
-                  label: { props: { text: '交互设计指南' } },
-                },
-              ],
-            },
-          ],
-        },
-        {
-          key: 'collab_user_003',
-          owner: '王五',
-          ownerId: 'user_003',
-          children: [
-            {
-              key: 'collab_user_003_folder1',
-              children: [
-                {
-                  key: 'collab_user_003_doc1',
-                  label: { props: { text: '微服务架构实践' } },
-                },
-                {
-                  key: 'collab_user_003_doc2',
-                  label: { props: { text: '数据库优化技巧' } },
-                },
-                {
-                  key: 'collab_user_003_doc3',
-                  label: { props: { text: 'DevOps 最佳实践' } },
-                },
-              ],
-            },
-            {
-              key: 'collab_user_003_folder2',
-              children: [
-                {
-                  key: 'collab_user_003_doc4',
-                  label: { props: { text: '算法与数据结构' } },
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    },
-  ];
-
-  // 获取协同文档列表
-  useEffect(() => {
-    setLoading(true);
+  /**
+   * 获取协同文档数据
+   */
+  const fetchCollaborationData = async () => {
     try {
-      // 使用工具函数获取协同文档
-      const docs = folderUtils.getCollaborationDocuments(
-        mockFolderList,
-        'current_user',
-      );
-      setCollaborationDocs(docs);
-      setFilteredDocs(docs);
+      setLoading(true);
+
+      // 获取所有公开用户的文件夹结构
+      const foldersResponse = await folderAPI.getPublicFolders();
+      // 获取所有公开用户的文档
+      const documentsResponse = await documentAPI.getPublicDocuments();
+
+      if (foldersResponse.success && documentsResponse.success) {
+        // 合并并转换数据
+        const mergedData = mergeUserData(
+          foldersResponse.data,
+          documentsResponse.data,
+        );
+        setCollaborationData(mergedData);
+      }
     } catch (error) {
-      console.error('获取协同文档失败:', error);
+      console.error('获取协同文档数据失败:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  /**
+   * 合并用户文件夹和文档数据
+   * @param {Array} publicFolders 公开用户文件夹数据
+   * @param {Array} publicDocuments 公开用户文档数据
+   * @returns {Array} 合并后的用户数据
+   */
+  const mergeUserData = (publicFolders, publicDocuments) => {
+    const userMap = new Map();
+
+    // 处理文件夹数据
+    publicFolders.forEach(userFolders => {
+      if (!userMap.has(userFolders.userId)) {
+        userMap.set(userFolders.userId, {
+          userId: userFolders.userId,
+          username: userFolders.username,
+          isPublic: userFolders.isPublic,
+          folders: [],
+          documents: [],
+          totalFolders: 0,
+          totalDocuments: 0,
+        });
+      }
+      const userData = userMap.get(userFolders.userId);
+      userData.folders = userFolders.folders;
+      userData.totalFolders = countTotalFolders(userFolders.folders);
+    });
+
+    // 处理文档数据
+    publicDocuments.forEach(userDocuments => {
+      if (!userMap.has(userDocuments.userId)) {
+        userMap.set(userDocuments.userId, {
+          userId: userDocuments.userId,
+          username: userDocuments.username,
+          isPublic: userDocuments.isPublic,
+          folders: [],
+          documents: [],
+          totalFolders: 0,
+          totalDocuments: 0,
+        });
+      }
+      const userData = userMap.get(userDocuments.userId);
+      userData.documents = userDocuments.documents;
+      userData.totalDocuments = userDocuments.documents.length;
+    });
+
+    return Array.from(userMap.values());
+  };
+
+  /**
+   * 递归计算总文件夹数量
+   * @param {Array} folders 文件夹数组
+   * @returns {number} 总文件夹数量
+   */
+  const countTotalFolders = folders => {
+    let count = folders.length;
+    folders.forEach(folder => {
+      if (folder.children && folder.children.length > 0) {
+        count += countTotalFolders(folder.children);
+      }
+    });
+    return count;
+  };
+
+  /**
+   * 将文件夹数据转换为Tree组件格式
+   * @param {Array} folders 文件夹数组
+   * @param {Array} documents 文档数组
+   * @param {Object} userInfo 用户信息
+   * @returns {Array} Tree格式数据
+   */
+  const convertToTreeData = (folders, documents, userInfo) => {
+    // 构建文档映射，按父文件夹ID分组
+    const documentsByFolder = new Map();
+
+    // 初始化根级文档数组
+    documentsByFolder.set('root', []);
+
+    documents.forEach(doc => {
+      if (doc.parentFolderIds && doc.parentFolderIds.length > 0) {
+        // 文档属于最后一个父文件夹ID（最直接的父级）
+        const directParentId =
+          doc.parentFolderIds[doc.parentFolderIds.length - 1];
+        if (!documentsByFolder.has(directParentId)) {
+          documentsByFolder.set(directParentId, []);
+        }
+        documentsByFolder.get(directParentId).push(doc);
+      } else {
+        // 根级文档
+        documentsByFolder.get('root').push(doc);
+      }
+    });
+
+    // 构建文件夹映射，方便查找
+    const folderMap = new Map();
+    const buildFolderMap = folders => {
+      folders.forEach(folder => {
+        folderMap.set(folder.autoFolderId, folder);
+        if (folder.children && folder.children.length > 0) {
+          buildFolderMap(folder.children);
+        }
+      });
+    };
+    buildFolderMap(folders);
+
+    // 递归转换文件夹
+    const convertFolder = folder => {
+      // 获取该文件夹下的直接文档
+      const folderDocs = documentsByFolder.get(folder.autoFolderId) || [];
+
+      const documentNodes = folderDocs.map(doc => ({
+        title: (
+          <Space>
+            <FileTextOutlined style={{ color: '#1890ff' }} />
+            <Text>{doc.documentName}</Text>
+            <Tag size="small" color="blue">
+              文档
+            </Tag>
+          </Space>
+        ),
+        key: `doc_${doc.documentId}`,
+        isLeaf: true,
+        documentId: doc.documentId,
+        userId: userInfo.userId,
+        userName: userInfo.username,
+      }));
+
+      // 递归处理子文件夹
+      const childFolders = folder.children
+        ? folder.children.map(convertFolder)
+        : [];
+
+      // 合并子文件夹和文档，文件夹在前，文档在后
+      const allChildren = [...childFolders, ...documentNodes];
+
+      return {
+        title: (
+          <Space>
+            <FolderOutlined style={{ color: '#faad14' }} />
+            <Text>{folder.folderName}</Text>
+            <Tag size="small" color="orange">
+              {folder.children?.length || 0}个子项
+            </Tag>
+          </Space>
+        ),
+        key: `folder_${folder.autoFolderId}`,
+        children: allChildren.length > 0 ? allChildren : undefined,
+      };
+    };
+
+    // 处理根级文件夹
+    const rootFolders = folders.map(convertFolder);
+
+    // 处理根级文档
+    const rootDocuments = documentsByFolder.get('root').map(doc => ({
+      title: (
+        <Space>
+          <FileTextOutlined style={{ color: '#1890ff' }} />
+          <Text>{doc.documentName}</Text>
+          <Tag size="small" color="blue">
+            文档
+          </Tag>
+        </Space>
+      ),
+      key: `doc_${doc.documentId}`,
+      isLeaf: true,
+      documentId: doc.documentId,
+      userId: userInfo.userId,
+      userName: userInfo.username,
+    }));
+
+    // 合并根级文件夹和文档
+    return [...rootFolders, ...rootDocuments];
+  };
+
+  /**
+   * 处理树节点点击事件
+   * @param {Array} selectedKeys 选中的节点key数组
+   * @param {Object} info 节点信息
+   */
+  const handleTreeSelect = (selectedKeys, info) => {
+    if (selectedKeys.length > 0) {
+      const key = selectedKeys[0];
+      if (key.startsWith('doc_')) {
+        const documentId = key.replace('doc_', '');
+        // 跳转到文档编辑器，并标记为协同文档
+        navigate(
+          `/doc-editor/${documentId}?collaborative=true&owner=${info.node.userName}`,
+        );
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchCollaborationData();
   }, []);
 
-  // 搜索功能
-  const handleSearch = value => {
-    setSearchKeyword(value);
-    if (!value.trim()) {
-      setFilteredDocs(collaborationDocs);
-      return;
-    }
+  if (loading) {
+    return (
+      <div className={styles.loadingContainer}>
+        <Spin size="large" />
+        <Text style={{ marginTop: 16 }}>正在加载协同文档...</Text>
+      </div>
+    );
+  }
 
-    const filtered = collaborationDocs.filter(doc => {
-      const docName = doc.label?.props?.text || '';
-      const ownerName = doc.ownerInfo || '';
-      return (
-        docName.toLowerCase().includes(value.toLowerCase()) ||
-        ownerName.toLowerCase().includes(value.toLowerCase())
-      );
-    });
-    setFilteredDocs(filtered);
-  };
-
-  // 处理文档点击
-  const handleDocumentClick = doc => {
-    navigate(`/doc-editor/${doc.key}?collaborative=true`);
-  };
-
-  // 获取用户头像
-  const getUserAvatar = ownerId => {
-    const avatarMap = {
-      user_001: '👨‍💻',
-      user_002: '👩‍💼',
-      user_003: '🧑‍🔬',
-    };
-    return avatarMap[ownerId] || '👤';
-  };
-
-  // 获取文档类型标签颜色
-  const getDocTypeColor = docName => {
-    if (docName.includes('React') || docName.includes('前端')) return 'blue';
-    if (docName.includes('设计') || docName.includes('UI')) return 'purple';
-    if (docName.includes('架构') || docName.includes('技术')) return 'green';
-    if (docName.includes('需求') || docName.includes('文档')) return 'orange';
-    return 'default';
-  };
+  if (collaborationData.length === 0) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <Title level={2}>协同文档</Title>
+          <Text type="secondary">与其他用户协同编辑文档</Text>
+        </div>
+        <Empty
+          description="暂无公开的协同文档"
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className={styles.collaborationContainer}>
+    <div className={styles.container}>
       <div className={styles.header}>
-        <div className={styles.titleSection}>
-          <TeamOutlined className={styles.titleIcon} />
-          <Title level={2} className={styles.title}>
-            协同文档
-          </Title>
-          <Text type="secondary" className={styles.subtitle}>
-            与团队成员协同编辑文档，实时同步更新
-          </Text>
-        </div>
-
-        <div className={styles.searchSection}>
-          <Search
-            placeholder="搜索文档名称或作者..."
-            allowClear
-            enterButton={<SearchOutlined />}
-            size="large"
-            onSearch={handleSearch}
-            onChange={e => handleSearch(e.target.value)}
-            className={styles.searchInput}
-          />
-        </div>
+        <Title level={2}>协同文档</Title>
+        <Text type="secondary">
+          发现 {collaborationData.length} 个用户的公开空间，
+          点击文档即可开始协同编辑
+        </Text>
       </div>
 
       <div className={styles.content}>
-        {filteredDocs.length === 0 ? (
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={
-              searchKeyword
-                ? `未找到包含"${searchKeyword}"的文档`
-                : '暂无协同文档'
+        {collaborationData.map(userInfo => (
+          <Card
+            key={userInfo.userId}
+            title={
+              <Space>
+                <Avatar
+                  icon={<UserOutlined />}
+                  style={{ backgroundColor: '#1890ff' }}
+                />
+                <span>{userInfo.username}的公开空间</span>
+                <Tag color="green">公开</Tag>
+              </Space>
             }
-          />
-        ) : (
-          <List
-            grid={{
-              gutter: 16,
-              xs: 1,
-              sm: 2,
-              md: 2,
-              lg: 3,
-              xl: 3,
-              xxl: 4,
-            }}
-            dataSource={filteredDocs}
-            loading={loading}
-            renderItem={doc => (
-              <List.Item>
-                <Card
-                  hoverable
-                  className={styles.docCard}
-                  actions={[
-                    <Button
-                      type="text"
-                      icon={<EyeOutlined />}
-                      onClick={() => handleDocumentClick(doc)}
-                    >
-                      查看
-                    </Button>,
-                    <Button
-                      type="text"
-                      icon={<EditOutlined />}
-                      onClick={() => handleDocumentClick(doc)}
-                    >
-                      编辑
-                    </Button>,
-                  ]}
-                >
-                  <Card.Meta
-                    avatar={
-                      <Avatar size={40} className={styles.userAvatar}>
-                        {getUserAvatar(doc.ownerId)}
-                      </Avatar>
-                    }
-                    title={
-                      <div className={styles.docTitle}>
-                        <FileTextOutlined className={styles.docIcon} />
-                        <span className={styles.docName}>
-                          {doc.label?.props?.text || '未命名文档'}
-                        </span>
-                      </div>
-                    }
-                    description={
-                      <div className={styles.docMeta}>
-                        <div className={styles.ownerInfo}>
-                          <UserOutlined className={styles.ownerIcon} />
-                          <span>{doc.ownerInfo}</span>
-                        </div>
-                        <div className={styles.tags}>
-                          <Tag
-                            color={getDocTypeColor(
-                              doc.label?.props?.text || '',
-                            )}
-                            className={styles.docTag}
-                          >
-                            可协同编辑
-                          </Tag>
-                        </div>
-                      </div>
-                    }
-                  />
-                </Card>
-              </List.Item>
+            extra={
+              <Space>
+                <Text type="secondary">{userInfo.totalFolders} 个文件夹</Text>
+                <Text type="secondary">{userInfo.totalDocuments} 个文档</Text>
+              </Space>
+            }
+            className={styles.userCard}
+          >
+            {userInfo.folders.length > 0 || userInfo.documents.length > 0 ? (
+              <Tree
+                showLine
+                showIcon={false}
+                defaultExpandAll
+                onSelect={handleTreeSelect}
+                treeData={convertToTreeData(
+                  userInfo.folders,
+                  userInfo.documents,
+                  userInfo,
+                )}
+                className={styles.tree}
+              />
+            ) : (
+              <Empty
+                description="该用户暂无公开内容"
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                style={{ margin: '20px 0' }}
+              />
             )}
-          />
-        )}
+          </Card>
+        ))}
       </div>
     </div>
   );

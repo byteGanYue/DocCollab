@@ -142,6 +142,13 @@ export const documentAPI = {
     formData.append('file', file);
     return upload(`/document/${documentId}/attachments`, formData);
   },
+
+  // 获取所有公开用户的文档
+  getPublicDocuments: () => get('/document/public-documents'),
+
+  // 获取指定文件夹下的公开文档
+  getPublicDocumentsByFolder: folderIds =>
+    get(`/document/public-documents/folder/${folderIds.join(',')}`),
 };
 
 /**
@@ -183,6 +190,9 @@ export const folderAPI = {
 
   // 获取文件夹内容（保留，后续可能实现）
   getFolderContents: id => get(`/folder/${id}/contents`),
+
+  // 获取所有公开用户的文件夹结构
+  getPublicFolders: () => get('/folder/public-folders'),
 };
 
 /**

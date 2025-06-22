@@ -169,126 +169,6 @@ const buttonHoverStyle = {
     '0 4px 12px color-mix(in srgb, var(--color-primary) 40%, transparent)',
 };
 
-// Mock数据：模拟其他用户的公开文件夹
-const mockCollaborationUsers = [
-  {
-    userId: 'user_001',
-    username: '张三',
-    avatar: '👨‍💻',
-    folderData: {
-      key: 'collab_user_001',
-      icon: React.createElement(UserOutlined),
-      label: <EllipsisLabel text="张三的公开空间" />,
-      permission: 'public',
-      owner: '张三',
-      ownerId: 'user_001',
-      children: [
-        {
-          key: 'collab_user_001_folder1',
-          icon: React.createElement(FolderOpenOutlined),
-          label: <EllipsisLabel text="前端开发资料" />,
-          children: [
-            {
-              key: 'collab_user_001_doc1',
-              label: <EllipsisLabel text="React 最佳实践" />,
-            },
-            {
-              key: 'collab_user_001_doc2',
-              label: <EllipsisLabel text="TypeScript 进阶指南" />,
-            },
-          ],
-        },
-        {
-          key: 'collab_user_001_folder2',
-          icon: React.createElement(FolderOpenOutlined),
-          label: <EllipsisLabel text="项目文档" />,
-          children: [
-            {
-              key: 'collab_user_001_doc3',
-              label: <EllipsisLabel text="需求分析文档" />,
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    userId: 'user_002',
-    username: '李四',
-    avatar: '👩‍💼',
-    folderData: {
-      key: 'collab_user_002',
-      icon: React.createElement(UserOutlined),
-      label: <EllipsisLabel text="李四的公开空间" />,
-      permission: 'public',
-      owner: '李四',
-      ownerId: 'user_002',
-      children: [
-        {
-          key: 'collab_user_002_folder1',
-          icon: React.createElement(FolderOpenOutlined),
-          label: <EllipsisLabel text="设计规范" />,
-          children: [
-            {
-              key: 'collab_user_002_doc1',
-              label: <EllipsisLabel text="UI设计规范" />,
-            },
-            {
-              key: 'collab_user_002_doc2',
-              label: <EllipsisLabel text="交互设计指南" />,
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    userId: 'user_003',
-    username: '王五',
-    avatar: '🧑‍🔬',
-    folderData: {
-      key: 'collab_user_003',
-      icon: React.createElement(UserOutlined),
-      label: <EllipsisLabel text="王五的公开空间" />,
-      permission: 'public',
-      owner: '王五',
-      ownerId: 'user_003',
-      children: [
-        {
-          key: 'collab_user_003_folder1',
-          icon: React.createElement(FolderOpenOutlined),
-          label: <EllipsisLabel text="技术分享" />,
-          children: [
-            {
-              key: 'collab_user_003_doc1',
-              label: <EllipsisLabel text="微服务架构实践" />,
-            },
-            {
-              key: 'collab_user_003_doc2',
-              label: <EllipsisLabel text="数据库优化技巧" />,
-            },
-            {
-              key: 'collab_user_003_doc3',
-              label: <EllipsisLabel text="DevOps 最佳实践" />,
-            },
-          ],
-        },
-        {
-          key: 'collab_user_003_folder2',
-          icon: React.createElement(FolderOpenOutlined),
-          label: <EllipsisLabel text="学习笔记" />,
-          children: [
-            {
-              key: 'collab_user_003_doc4',
-              label: <EllipsisLabel text="算法与数据结构" />,
-            },
-          ],
-        },
-      ],
-    },
-  },
-];
-
 /**
  * FolderMenu 组件
  *
@@ -301,6 +181,212 @@ const FolderMenu = () => {
   // 使用用户上下文获取用户信息和权限状态
   const { userInfo, userPermission, updateUserPermission } =
     useContext(UserContext);
+
+  // 协同文档用户数据状态管理
+  const [collaborationUsers, setCollaborationUsers] = useState([]);
+
+  /**
+   * 获取协同文档数据（所有公开用户的文件夹和文档）
+   */
+  const fetchCollaborationData = useCallback(async () => {
+    try {
+      // 获取所有公开用户的文件夹结构
+      const foldersResponse = await folderAPI.getPublicFolders();
+      // 获取所有公开用户的文档
+      const documentsResponse = await documentAPI.getPublicDocuments();
+
+      if (foldersResponse.success && documentsResponse.success) {
+        // 转换数据格式
+        const collaborationData = convertPublicDataToCollaboration(
+          foldersResponse.data,
+          documentsResponse.data,
+        );
+        setCollaborationUsers(collaborationData);
+      }
+    } catch (error) {
+      console.error('获取协同文档数据失败:', error);
+      // 失败时设置为空数组
+      setCollaborationUsers([]);
+    }
+  }, []);
+
+  /**
+   * 将公开用户数据转换为协同文档格式
+   * @param {Array} publicFolders 公开用户文件夹数据
+   * @param {Array} publicDocuments 公开用户文档数据
+   * @returns {Array} 转换后的协同文档数据
+   */
+  const convertPublicDataToCollaboration = (publicFolders, publicDocuments) => {
+    const collaborationData = [];
+
+    // 合并文件夹和文档数据，按用户分组
+    const userMap = new Map();
+
+    // 处理文件夹数据
+    publicFolders.forEach(userFolders => {
+      if (!userMap.has(userFolders.userId)) {
+        userMap.set(userFolders.userId, {
+          userId: userFolders.userId,
+          username: userFolders.username,
+          isPublic: userFolders.isPublic,
+          folders: [],
+          documents: [],
+        });
+      }
+      userMap.get(userFolders.userId).folders = userFolders.folders;
+    });
+
+    // 处理文档数据
+    publicDocuments.forEach(userDocuments => {
+      if (!userMap.has(userDocuments.userId)) {
+        userMap.set(userDocuments.userId, {
+          userId: userDocuments.userId,
+          username: userDocuments.username,
+          isPublic: userDocuments.isPublic,
+          folders: [],
+          documents: [],
+        });
+      }
+      userMap.get(userDocuments.userId).documents = userDocuments.documents;
+    });
+
+    // 转换为前端菜单格式
+    userMap.forEach(userData => {
+      const folderData = convertUserDataToMenuFormat(userData);
+      collaborationData.push({
+        userId: userData.userId,
+        username: userData.username,
+        avatar: getAvatarByUserId(userData.userId),
+        folderData: folderData,
+      });
+    });
+
+    return collaborationData;
+  };
+
+  /**
+   * 根据用户ID获取头像
+   * @param {number} userId 用户ID
+   * @returns {string} 头像表情
+   */
+  const getAvatarByUserId = userId => {
+    const avatars = ['👨‍💻', '👩‍💼', '🧑‍🔬', '👨‍🎨', '👩‍🚀', '🧑‍💼', '👨‍🔧', '👩‍⚕️'];
+    return avatars[userId % avatars.length];
+  };
+
+  /**
+   * 将用户数据转换为菜单格式
+   * @param {Object} userData 用户数据
+   * @returns {Object} 菜单格式数据
+   */
+  const convertUserDataToMenuFormat = userData => {
+    // 构建文档映射，按父文件夹ID分组
+    const documentsByFolder = new Map();
+
+    // 初始化根级文档数组
+    documentsByFolder.set('root', []);
+
+    userData.documents.forEach(doc => {
+      if (doc.parentFolderIds && doc.parentFolderIds.length > 0) {
+        // 文档有父文件夹，使用最后一个父文件夹ID（最直接的父级）
+        const directParentId =
+          doc.parentFolderIds[doc.parentFolderIds.length - 1];
+        if (!documentsByFolder.has(directParentId)) {
+          documentsByFolder.set(directParentId, []);
+        }
+        documentsByFolder.get(directParentId).push(doc);
+      } else {
+        // 根级文档
+        documentsByFolder.get('root').push(doc);
+      }
+    });
+
+    // 构建文件夹映射，方便查找
+    const folderMap = new Map();
+    const buildFolderMap = folders => {
+      folders.forEach(folder => {
+        folderMap.set(folder.autoFolderId, folder);
+        if (folder.children && folder.children.length > 0) {
+          buildFolderMap(folder.children);
+        }
+      });
+    };
+    buildFolderMap(userData.folders);
+
+    // 递归转换文件夹为菜单项
+    const convertFolderToMenuItem = folder => {
+      const folderKey = `collab_user_${userData.userId}_folder_${folder.autoFolderId}`;
+
+      // 获取该文件夹下的直接文档
+      const folderDocuments = documentsByFolder.get(folder.autoFolderId) || [];
+
+      // 转换文档为菜单项
+      const documentMenuItems = folderDocuments.map(doc => ({
+        key: `collab_user_${userData.userId}_doc_${doc.documentId}`,
+        label: <EllipsisLabel text={doc.documentName} />,
+        isLeaf: true,
+        backendData: doc,
+        documentId: doc.documentId,
+        userId: userData.userId,
+        userName: userData.username,
+        isCollaborative: true,
+      }));
+
+      // 递归处理子文件夹
+      const childFolders = folder.children
+        ? folder.children.map(child => convertFolderToMenuItem(child))
+        : [];
+
+      // 合并子文件夹和文档，文件夹在前，文档在后
+      const allChildren = [...childFolders, ...documentMenuItems];
+
+      return {
+        key: folderKey,
+        icon: React.createElement(FolderOpenOutlined),
+        label: <EllipsisLabel text={folder.folderName} />,
+        children: allChildren.length > 0 ? allChildren : undefined,
+        backendData: folder,
+        userId: userData.userId,
+        userName: userData.username,
+        isCollaborative: true,
+      };
+    };
+
+    // 处理根级文件夹
+    const rootFolders = userData.folders.map(folder =>
+      convertFolderToMenuItem(folder),
+    );
+
+    // 处理根级文档
+    const rootDocuments = documentsByFolder.get('root').map(doc => ({
+      key: `collab_user_${userData.userId}_doc_${doc.documentId}`,
+      label: <EllipsisLabel text={doc.documentName} />,
+      isLeaf: true,
+      backendData: doc,
+      documentId: doc.documentId,
+      userId: userData.userId,
+      userName: userData.username,
+      isCollaborative: true,
+    }));
+
+    // 合并根级文件夹和文档
+    const allChildren = [...rootFolders, ...rootDocuments];
+
+    return {
+      key: `collab_user_${userData.userId}`,
+      icon: React.createElement(UserOutlined),
+      label: <EllipsisLabel text={`${userData.username}的公开空间`} />,
+      permission: 'public',
+      owner: userData.username,
+      ownerId: userData.userId,
+      children: allChildren.length > 0 ? allChildren : undefined,
+    };
+  };
+
+  // 组件挂载时获取协同文档数据
+  useEffect(() => {
+    fetchCollaborationData();
+  }, [fetchCollaborationData]);
 
   /**
    * 获取当前用户ID的统一函数
@@ -457,6 +543,28 @@ const FolderMenu = () => {
         documentResponse.data?.documents || [],
       );
 
+      // 构建协同文档菜单项
+      const collaborationMenuItem = {
+        key: 'collaboration',
+        icon: React.createElement(TeamOutlined),
+        label: (
+          <div className={styles.menuLabelContainer}>
+            <div className={styles.labelContent}>
+              <EllipsisLabel text="协同文档" />
+              {/* 协同文档主目录显示公开空间图标 */}
+              <Tooltip title="公开协同空间 - 所有公开用户的文档">
+                <TeamOutlined
+                  style={{ color: '#52c41a', marginLeft: 4, fontSize: '12px' }}
+                />
+              </Tooltip>
+            </div>
+          </div>
+        ),
+        children: collaborationUsers
+          .map(user => user.folderData)
+          .filter(Boolean),
+      };
+
       // 合并基础菜单项（首页、最近访问等）和用户文件夹
       const baseMenuItems = [
         {
@@ -471,12 +579,7 @@ const FolderMenu = () => {
           label: <EllipsisLabel text="最近访问文档列表" />,
           children: null,
         },
-        {
-          key: 'collaboration',
-          icon: React.createElement(TeamOutlined),
-          label: <EllipsisLabel text="协同文档" />,
-          children: mockCollaborationUsers.map(user => user.folderData),
-        },
+        collaborationMenuItem,
       ];
 
       setFolderList([...baseMenuItems, ...convertedFolders]);
@@ -485,6 +588,27 @@ const FolderMenu = () => {
       message.error('获取文件夹列表失败');
 
       // 失败时使用基础菜单项
+      const collaborationMenuItem = {
+        key: 'collaboration',
+        icon: React.createElement(TeamOutlined),
+        label: (
+          <div className={styles.menuLabelContainer}>
+            <div className={styles.labelContent}>
+              <EllipsisLabel text="协同文档" />
+              {/* 协同文档主目录显示公开空间图标 */}
+              <Tooltip title="公开协同空间 - 所有公开用户的文档">
+                <TeamOutlined
+                  style={{ color: '#52c41a', marginLeft: 4, fontSize: '12px' }}
+                />
+              </Tooltip>
+            </div>
+          </div>
+        ),
+        children: collaborationUsers
+          .map(user => user.folderData)
+          .filter(Boolean),
+      };
+
       const baseMenuItems = [
         {
           key: 'home',
@@ -498,12 +622,7 @@ const FolderMenu = () => {
           label: <EllipsisLabel text="最近访问文档列表" />,
           children: null,
         },
-        {
-          key: 'collaboration',
-          icon: React.createElement(TeamOutlined),
-          label: <EllipsisLabel text="协同文档" />,
-          children: mockCollaborationUsers.map(user => user.folderData),
-        },
+        collaborationMenuItem,
         {
           key: 'root',
           icon: React.createElement(FolderOpenOutlined),
@@ -517,7 +636,7 @@ const FolderMenu = () => {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userInfo]);
+  }, [userInfo, collaborationUsers]);
 
   // 将后端文件夹数据转换为前端菜单格式
   const convertBackendFoldersToMenuFormat = (
@@ -653,13 +772,6 @@ const FolderMenu = () => {
 
     const selectedKey = selectedKeys[0];
 
-    // 处理文档点击导航
-    if (selectedKey && selectedKey.startsWith('doc_')) {
-      const documentId = selectedKey.replace('doc_', '');
-      navigate(`/doc-editor/${documentId}`);
-      return;
-    }
-
     // 处理首页点击导航
     if (selectedKey === 'home') {
       navigate('/home');
@@ -672,16 +784,34 @@ const FolderMenu = () => {
     else if (selectedKey === 'collaboration') {
       navigate('/collaboration');
     }
-    // 处理文档点击导航 - 以doc开头的key表示文档（包括协同文档）
+    // 处理协同文档中的文档点击
     else if (
       selectedKey &&
-      (selectedKey.startsWith('doc') || selectedKey.includes('_doc'))
+      selectedKey.includes('collab_user_') &&
+      selectedKey.includes('_doc_')
     ) {
-      // 如果是协同文档，添加协同标识
-      if (selectedKey.includes('collab_user_')) {
-        navigate(`/doc-editor/${selectedKey}?collaborative=true`);
-      } else {
-        navigate(`/doc-editor/${selectedKey}`);
+      // 解析协同文档的key: collab_user_{userId}_doc_{documentId}
+      const parts = selectedKey.split('_');
+      const documentId = parts[parts.length - 1]; // 获取文档ID
+
+      // 跳转到协同编辑器，添加协同标识
+      navigate(`/doc-editor/${documentId}?collaborative=true`);
+    }
+    // 处理普通文档点击导航
+    else if (selectedKey && selectedKey.startsWith('doc_')) {
+      const documentId = selectedKey.replace('doc_', '');
+      navigate(`/doc-editor/${documentId}`);
+    }
+    // 处理以doc开头的其他文档格式
+    else if (
+      selectedKey &&
+      selectedKey.startsWith('doc') &&
+      !selectedKey.includes('collab_user_')
+    ) {
+      // 处理格式如 "doc123" 的文档key
+      const documentId = selectedKey.replace('doc', '');
+      if (documentId && !isNaN(documentId)) {
+        navigate(`/doc-editor/${documentId}`);
       }
     }
     // 处理文件夹点击 - 以sub开头的key表示文件夹，不需要导航，只是展开/折叠
@@ -1301,12 +1431,14 @@ const FolderMenu = () => {
               onSave={() => {}}
               onCancel={() => {}}
             />
-            {/* 显示公开空间图标 */}
-            <Tooltip title={`${item.owner}的公开空间 - 可协同编辑`}>
-              <TeamOutlined
-                style={{ color: '#52c41a', marginLeft: 4, fontSize: '12px' }}
-              />
-            </Tooltip>
+            {/* 只有协同文档根目录的用户空间才显示公开空间图标 */}
+            {item.key.match(/^collab_user_\d+$/) && (
+              <Tooltip title={`${item.owner}的公开空间 - 可协同编辑`}>
+                <TeamOutlined
+                  style={{ color: '#52c41a', marginLeft: 4, fontSize: '12px' }}
+                />
+              </Tooltip>
+            )}
           </div>
         </div>
       );
