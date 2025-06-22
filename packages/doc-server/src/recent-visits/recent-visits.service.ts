@@ -79,12 +79,12 @@ export class RecentVisitsService {
   /**
    * 根据用户ID获取最近访问记录（分页）
    * 使用visitId字段进行匹配
-   * @param userId 用户ID（用于匹配visitId字段）
+   * @param userId 用户ID（用于匹配visitId字段）(number类型)
    * @param page 页码（从1开始），默认第1页
    * @param pageSize 每页记录数，默认10条
    * @returns 最近访问记录列表（分页）
    */
-  async findByUserId(userId: string, page: number = 1, pageSize: number = 10) {
+  async findByUserId(userId: number, page: number = 1, pageSize: number = 10) {
     try {
       // 参数验证和默认值设置
       const currentPage = Math.max(1, page || 1);
@@ -93,12 +93,12 @@ export class RecentVisitsService {
 
       // 获取总记录数
       const total = await this.recentVisitModel.countDocuments({
-        visitId: userId,
+        visitId: userId, // 现在是number类型
       });
 
       // 获取分页数据
       const visits = await this.recentVisitModel
-        .find({ visitId: userId }) // 使用visitId字段进行匹配
+        .find({ visitId: userId }) // 使用visitId字段进行匹配，现在是number类型
         .sort({ visitTime: -1 }) // 按访问时间倒序排列
         .skip(skip)
         .limit(size)
@@ -291,13 +291,13 @@ export class RecentVisitsService {
   /**
    * 清空用户的所有访问记录
    * 使用visitId字段进行匹配
-   * @param userId 用户ID（用于匹配visitId字段）
+   * @param userId 用户ID（用于匹配visitId字段）(number类型)
    * @returns 删除结果
    */
-  async clearUserVisits(userId: string) {
+  async clearUserVisits(userId: number) {
     try {
       const result = await this.recentVisitModel.deleteMany({
-        visitId: userId,
+        visitId: userId, // 现在是number类型
       });
 
       this.logger.log(
