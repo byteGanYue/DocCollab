@@ -1,5 +1,9 @@
 // 工具栏相关
-export { TOOLBAR_CONFIG, USER_COLORS } from './toolbar/toolbarConfig.js';
+export {
+  TOOLBAR_CONFIG,
+  USER_COLORS,
+  TOOLBAR_TOOLTIPS,
+} from './toolbar/toolbarConfig.js';
 export {
   addToolbarStyles,
   addToolbarTooltips,

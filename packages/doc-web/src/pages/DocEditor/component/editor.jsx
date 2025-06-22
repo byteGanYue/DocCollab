@@ -8,9 +8,30 @@ import {
   BoldOutlined,
   ItalicOutlined,
   UnderlineOutlined,
+  StrikethroughOutlined,
+  FontSizeOutlined,
+  FontColorsOutlined,
+  BgColorsOutlined,
+  AlignLeftOutlined,
+  AlignCenterOutlined,
+  AlignRightOutlined,
+  OrderedListOutlined,
+  UnorderedListOutlined,
+  LinkOutlined,
+  BlockOutlined,
+  CodeOutlined,
+  TableOutlined,
+  PictureOutlined,
+  VideoCameraOutlined,
+  ClearOutlined,
+  FontSizeOutlined as FontIcon,
+  FontColorsOutlined as ColorIcon,
+  BgColorsOutlined as BgColorIcon,
+  DownOutlined,
 } from '@ant-design/icons';
 import BlockToolbar from './BlockToolbar.jsx';
-
+import { Dropdown, Menu, Tooltip, Input, Button } from 'antd';
+import 'antd/dist/reset.css';
 // 导入配置和工具函数
 import {
   TOOLBAR_CONFIG,
@@ -26,6 +47,7 @@ import {
   updateUsername,
   cleanupCollaboration,
   showPDFMenu,
+  TOOLBAR_TOOLTIPS,
 } from '../../../../utils/index.js';
 
 // 注册 Quill 光标模块
@@ -311,10 +333,61 @@ const Editor = () => {
   }, [blockToolbarHover]);
 
   // 浮动工具栏操作
-  const handleFormat = format => {
+  const handleFormat = (format, value) => {
     const quill = quillRef.current;
     if (!quill) return;
-    quill.format(format, !quill.getFormat()[format]);
+    if (typeof value !== 'undefined') {
+      quill.format(format, value);
+    } else {
+      quill.format(format, !quill.getFormat()[format]);
+    }
+  };
+
+  const handleInsert = type => {
+    const quill = quillRef.current;
+    if (!quill) return;
+    const range = quill.getSelection();
+    if (!range) return;
+    if (type === 'image') {
+      const url = window.prompt('请输入图片URL');
+      if (url) quill.insertEmbed(range.index, 'image', url, 'user');
+    } else if (type === 'video') {
+      const url = window.prompt('请输入视频URL');
+      if (url) quill.insertEmbed(range.index, 'video', url, 'user');
+    } else if (type === 'table') {
+      // 需要quill-table扩展支持，这里简单插入markdown表格
+      quill.insertText(
+        range.index,
+        '\n| 表头1 | 表头2 |\n| --- | --- |\n| 内容1 | 内容2 |\n',
+        'user',
+      );
+    }
+  };
+
+  const handleFont = font => handleFormat('font', font);
+  const handleSize = size => handleFormat('size', size);
+  const handleHeader = header => handleFormat('header', header);
+  const handleAlign = align => handleFormat('align', align);
+  const handleColor = color => handleFormat('color', color);
+  const handleBgColor = color => handleFormat('background', color);
+  const handleList = type => handleFormat('list', type);
+  const handleIndent = type => handleFormat('indent', type);
+  const handleLink = () => {
+    const quill = quillRef.current;
+    if (!quill) return;
+    const range = quill.getSelection();
+    if (!range) return;
+    const url = window.prompt('请输入链接URL');
+    if (url) quill.format('link', url);
+  };
+  const handleBlockquote = () => handleFormat('blockquote');
+  const handleCodeBlock = () => handleFormat('code-block');
+  const handleClear = () => {
+    const quill = quillRef.current;
+    if (!quill) return;
+    const range = quill.getSelection();
+    if (!range) return;
+    quill.removeFormat(range.index, range.length);
   };
 
   // 处理用户名变化
@@ -367,6 +440,54 @@ const Editor = () => {
     setBlockToolbarExpanded(false);
   };
 
+  // 工具栏按钮渲染映射
+  const TOOLBAR_BUTTONS = {
+    bold: {
+      icon: <BoldOutlined />,
+      handler: () => handleFormat('bold'),
+    },
+    italic: {
+      icon: <ItalicOutlined />,
+      handler: () => handleFormat('italic'),
+    },
+    underline: {
+      icon: <UnderlineOutlined />,
+      handler: () => handleFormat('underline'),
+    },
+    strike: {
+      icon: <StrikethroughOutlined />,
+      handler: () => handleFormat('strike'),
+    },
+    link: {
+      icon: <LinkOutlined />,
+      handler: handleLink,
+    },
+    blockquote: {
+      icon: <BlockOutlined />,
+      handler: handleBlockquote,
+    },
+    'code-block': {
+      icon: <CodeOutlined />,
+      handler: handleCodeBlock,
+    },
+    table: {
+      icon: <TableOutlined />,
+      handler: () => handleInsert('table'),
+    },
+    image: {
+      icon: <PictureOutlined />,
+      handler: () => handleInsert('image'),
+    },
+    video: {
+      icon: <VideoCameraOutlined />,
+      handler: () => handleInsert('video'),
+    },
+    clean: {
+      icon: <ClearOutlined />,
+      handler: handleClear,
+    },
+  };
+
   return (
     <div className={styles.editorContainer}>
       {/* 块级浮动工具栏 */}
@@ -387,27 +508,193 @@ const Editor = () => {
       />
       {/* 浮动工具栏 */}
       <FloatingToolbar visible={toolbarVisible} position={toolbarPosition}>
-        <BoldOutlined
-          onMouseDown={e => {
-            e.preventDefault();
-            handleFormat('bold');
-          }}
-          style={{ cursor: 'pointer', fontSize: 18 }}
-        />
-        <ItalicOutlined
-          onMouseDown={e => {
-            e.preventDefault();
-            handleFormat('italic');
-          }}
-          style={{ cursor: 'pointer', fontSize: 18 }}
-        />
-        <UnderlineOutlined
-          onMouseDown={e => {
-            e.preventDefault();
-            handleFormat('underline');
-          }}
-          style={{ cursor: 'pointer', fontSize: 18 }}
-        />
+        {TOOLBAR_CONFIG.flat().map((item, idx) => {
+          if (typeof item === 'string') {
+            // 普通按钮
+            const btn = TOOLBAR_BUTTONS[item];
+            if (!btn) return null;
+            return (
+              <Tooltip title={TOOLBAR_TOOLTIPS[item] || item} key={item + idx}>
+                <span
+                  style={{ cursor: 'pointer', fontSize: 18 }}
+                  onClick={btn.handler}
+                >
+                  {btn.icon}
+                </span>
+              </Tooltip>
+            );
+          } else if (typeof item === 'object') {
+            // 下拉类
+            if (item.font) {
+              return (
+                <Dropdown
+                  key={'font' + idx}
+                  overlay={
+                    <Menu onClick={({ key }) => handleFont(key)}>
+                      <Menu.Item key="sans-serif">默认</Menu.Item>
+                      <Menu.Item key="serif">衬线</Menu.Item>
+                      <Menu.Item key="monospace">等宽</Menu.Item>
+                    </Menu>
+                  }
+                >
+                  <Tooltip title="字体">
+                    <FontIcon style={{ fontSize: 18, cursor: 'pointer' }} />
+                  </Tooltip>
+                </Dropdown>
+              );
+            }
+            if (item.header) {
+              return (
+                <Dropdown
+                  key={'header' + idx}
+                  overlay={
+                    <Menu onClick={({ key }) => handleHeader(Number(key))}>
+                      <Menu.Item key="1">H1</Menu.Item>
+                      <Menu.Item key="2">H2</Menu.Item>
+                      <Menu.Item key="3">H3</Menu.Item>
+                      <Menu.Item key="4">H4</Menu.Item>
+                      <Menu.Item key="5">H5</Menu.Item>
+                      <Menu.Item key="6">H6</Menu.Item>
+                      <Menu.Item key="0">正文</Menu.Item>
+                    </Menu>
+                  }
+                >
+                  <Tooltip title="标题">
+                    <FontSizeOutlined
+                      style={{ fontSize: 18, cursor: 'pointer' }}
+                    />
+                  </Tooltip>
+                </Dropdown>
+              );
+            }
+            if (item.size) {
+              return (
+                <Dropdown
+                  key={'size' + idx}
+                  overlay={
+                    <Menu onClick={({ key }) => handleSize(key)}>
+                      <Menu.Item key="small">小</Menu.Item>
+                      <Menu.Item key="normal">正常</Menu.Item>
+                      <Menu.Item key="large">大</Menu.Item>
+                      <Menu.Item key="huge">特大</Menu.Item>
+                    </Menu>
+                  }
+                >
+                  <Tooltip title="字号">
+                    <FontSizeOutlined
+                      style={{ fontSize: 18, cursor: 'pointer' }}
+                    />
+                  </Tooltip>
+                </Dropdown>
+              );
+            }
+            if (item.color) {
+              return (
+                <Dropdown
+                  key={'color' + idx}
+                  overlay={
+                    <Menu onClick={({ key }) => handleColor(key)}>
+                      <Menu.Item key="#000000">黑色</Menu.Item>
+                      <Menu.Item key="#e60000">红色</Menu.Item>
+                      <Menu.Item key="#ff9900">橙色</Menu.Item>
+                      <Menu.Item key="#ffff00">黄色</Menu.Item>
+                      <Menu.Item key="#008a00">绿色</Menu.Item>
+                      <Menu.Item key="#0066cc">蓝色</Menu.Item>
+                      <Menu.Item key="#9933ff">紫色</Menu.Item>
+                    </Menu>
+                  }
+                >
+                  <Tooltip title="文字颜色">
+                    <ColorIcon style={{ fontSize: 18, cursor: 'pointer' }} />
+                  </Tooltip>
+                </Dropdown>
+              );
+            }
+            if (item.background) {
+              return (
+                <Dropdown
+                  key={'background' + idx}
+                  overlay={
+                    <Menu onClick={({ key }) => handleBgColor(key)}>
+                      <Menu.Item key="#ffffff">白色</Menu.Item>
+                      <Menu.Item key="#f4cccc">浅红</Menu.Item>
+                      <Menu.Item key="#fff2cc">浅黄</Menu.Item>
+                      <Menu.Item key="#d9ead3">浅绿</Menu.Item>
+                      <Menu.Item key="#cfe2f3">浅蓝</Menu.Item>
+                      <Menu.Item key="#ead1dc">浅紫</Menu.Item>
+                    </Menu>
+                  }
+                >
+                  <Tooltip title="背景色">
+                    <BgColorIcon style={{ fontSize: 18, cursor: 'pointer' }} />
+                  </Tooltip>
+                </Dropdown>
+              );
+            }
+            if (item.align) {
+              return (
+                <Dropdown
+                  key={'align' + idx}
+                  overlay={
+                    <Menu onClick={({ key }) => handleAlign(key)}>
+                      <Menu.Item key="left">左对齐</Menu.Item>
+                      <Menu.Item key="center">居中</Menu.Item>
+                      <Menu.Item key="right">右对齐</Menu.Item>
+                      <Menu.Item key="justify">两端对齐</Menu.Item>
+                    </Menu>
+                  }
+                >
+                  <Tooltip title="对齐方式">
+                    <AlignLeftOutlined
+                      style={{ fontSize: 18, cursor: 'pointer' }}
+                    />
+                  </Tooltip>
+                </Dropdown>
+              );
+            }
+            if (item.list) {
+              return item.list === 'ordered' ? (
+                <Tooltip title="有序列表" key={'list-ordered' + idx}>
+                  <OrderedListOutlined
+                    onClick={() => handleList('ordered')}
+                    style={{ fontSize: 18, cursor: 'pointer' }}
+                  />
+                </Tooltip>
+              ) : (
+                <Tooltip title="无序列表" key={'list-bullet' + idx}>
+                  <UnorderedListOutlined
+                    onClick={() => handleList('bullet')}
+                    style={{ fontSize: 18, cursor: 'pointer' }}
+                  />
+                </Tooltip>
+              );
+            }
+            if (item.indent) {
+              return item.indent === '+1' ? (
+                <Tooltip title="增加缩进" key={'indent+1' + idx}>
+                  <Button
+                    size="small"
+                    shape="circle"
+                    icon={<DownOutlined />}
+                    onClick={() => handleIndent('+1')}
+                  />
+                </Tooltip>
+              ) : (
+                <Tooltip title="减少缩进" key={'indent-1' + idx}>
+                  <Button
+                    size="small"
+                    shape="circle"
+                    icon={<DownOutlined />}
+                    onClick={() => handleIndent('-1')}
+                  />
+                </Tooltip>
+              );
+            }
+            // 其他未覆盖的类型
+            return null;
+          }
+          return null;
+        })}
       </FloatingToolbar>
       <EditorHeader
         documentTitle={documentTitle}
