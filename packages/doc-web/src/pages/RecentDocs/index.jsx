@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Table,
   Button,
@@ -87,64 +87,61 @@ const RecentDocs = () => {
    * @param {number} page - 页码
    * @param {number} pageSize - 每页数量
    */
-  const fetchRecentDocs = useCallback(
-    async (page = 1, pageSize = 10) => {
-      if (!userInfo) {
-        console.warn('用户未登录');
-        setLoading(false);
-        return;
-      }
+  const fetchRecentDocs = async (page = 1, pageSize = 10) => {
+    if (!userInfo) {
+      console.warn('用户未登录');
+      setLoading(false);
+      return;
+    }
 
-      setLoading(true);
+    setLoading(true);
 
-      try {
-        // 调用API获取用户的最近访问记录（分页）
-        const response = await recentVisitsAPI.getUserVisits({
-          userId: userInfo.userId,
-          page,
-          pageSize,
+    try {
+      // 调用API获取用户的最近访问记录（分页）
+      const response = await recentVisitsAPI.getUserVisits({
+        userId: userInfo.userId,
+        page,
+        pageSize,
+      });
+
+      if (response.code === 200) {
+        const { list, pagination: paginationInfo } = response.data;
+        // 将后端数据转换为前端需要的格式
+        const formattedDocs = list.map(visit => ({
+          id: visit.documentId,
+          title: visit.documentName,
+          type: 'document', // 默认类型，可以根据需要扩展
+          owner: {
+            name: visit.documentUser,
+            avatar: '',
+          },
+          lastModified: visit.visitTime,
+          isTemplate: false,
+          visitRecordId: visit._id, // 保存访问记录ID，用于删除操作
+        }));
+
+        setDocuments(formattedDocs);
+
+        // 更新分页信息
+        setPagination({
+          current: paginationInfo.page,
+          pageSize: paginationInfo.pageSize,
+          total: paginationInfo.total,
         });
-
-        if (response.code === 200) {
-          const { list, pagination: paginationInfo } = response.data;
-          // 将后端数据转换为前端需要的格式
-          const formattedDocs = list.map(visit => ({
-            id: visit.documentId,
-            title: visit.documentName,
-            type: 'document', // 默认类型，可以根据需要扩展
-            owner: {
-              name: userInfo.username,
-              avatar: '',
-            },
-            lastModified: visit.visitTime,
-            isTemplate: false,
-            visitRecordId: visit._id, // 保存访问记录ID，用于删除操作
-          }));
-
-          setDocuments(formattedDocs);
-
-          // 更新分页信息
-          setPagination({
-            current: paginationInfo.page,
-            pageSize: paginationInfo.pageSize,
-            total: paginationInfo.total,
-          });
-        } else {
-          message.error('获取最近访问记录失败');
-          setDocuments([]);
-          setPagination(prev => ({ ...prev, total: 0 }));
-        }
-      } catch (error) {
-        console.error('获取最近访问记录时出错:', error);
-        message.error('获取最近访问记录失败，请稍后重试');
+      } else {
+        message.error('获取最近访问记录失败');
         setDocuments([]);
         setPagination(prev => ({ ...prev, total: 0 }));
-      } finally {
-        setLoading(false);
       }
-    },
-    [userInfo],
-  );
+    } catch (error) {
+      console.error('获取最近访问记录时出错:', error);
+      message.error('获取最近访问记录失败，请稍后重试');
+      setDocuments([]);
+      setPagination(prev => ({ ...prev, total: 0 }));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   /**
    * 处理文档点击，跳转到文档编辑页面
