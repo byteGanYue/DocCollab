@@ -25,23 +25,25 @@ export class RecentVisitsService {
    */
   async create(createRecentVisitDto: CreateRecentVisitDto) {
     try {
-      const { userId, documentId } = createRecentVisitDto;
+      const { visitId, documentId, userId } = createRecentVisitDto;
 
-      // 检查是否已存在该用户对该文档的访问记录
+      // 检查是否已存在该访问者对该文档的访问记录
+      // 使用 visitId 和 documentId 作为唯一键
       const existingVisit = await this.recentVisitModel.findOne({
-        userId,
+        visitId,
         documentId,
       });
 
       if (existingVisit) {
-        // 如果存在，更新访问时间
+        // 如果存在，更新访问时间和其他字段
         existingVisit.visitTime = new Date();
         existingVisit.documentName = createRecentVisitDto.documentName;
-        existingVisit.visitId = createRecentVisitDto.visitId;
+        existingVisit.documentUser = createRecentVisitDto.documentUser; // 更新文档创建人
+        existingVisit.userId = userId; // 更新文档拥有者ID
         await existingVisit.save();
 
         this.logger.log(
-          `Updated visit time for user ${userId} and document ${documentId}`,
+          `Updated visit time for visitId ${visitId} and document ${documentId}`,
         );
         return {
           code: 200,
@@ -49,20 +51,65 @@ export class RecentVisitsService {
           data: existingVisit,
         };
       } else {
-        // 如果不存在，创建新记录
-        const newVisit = await this.recentVisitModel.create({
-          ...createRecentVisitDto,
-          visitTime: new Date(),
-        });
+        // 如果不存在，尝试创建新记录
+        try {
+          const newVisit = await this.recentVisitModel.create({
+            ...createRecentVisitDto,
+            visitTime: new Date(),
+          });
 
-        this.logger.log(
-          `Created new visit record for user ${userId} and document ${documentId}`,
-        );
-        return {
-          code: 200,
-          message: '访问记录创建成功',
-          data: newVisit,
-        };
+          this.logger.log(
+            `Created new visit record for visitId ${visitId} and document ${documentId}`,
+          );
+          return {
+            code: 200,
+            message: '访问记录创建成功',
+            data: newVisit,
+          };
+        } catch (createError: unknown) {
+          // 如果创建失败，可能是由于索引冲突，尝试用其他方式查找并更新
+          const mongoError = createError as { code?: number };
+          if (mongoError.code === 11000) {
+            this.logger.warn(
+              `Duplicate key error, trying to find and update existing record`,
+            );
+
+            // 尝试通过多种方式查找现有记录
+            let existingRecord = await this.recentVisitModel.findOne({
+              visitId,
+              documentId,
+            });
+
+            if (!existingRecord) {
+              // 如果通过visitId+documentId找不到，尝试通过userId+documentId查找
+              existingRecord = await this.recentVisitModel.findOne({
+                userId,
+                documentId,
+              });
+            }
+
+            if (existingRecord) {
+              // 更新找到的记录
+              existingRecord.visitTime = new Date();
+              existingRecord.documentName = createRecentVisitDto.documentName;
+              existingRecord.documentUser = createRecentVisitDto.documentUser;
+              existingRecord.visitId = visitId; // 更新visitId
+              existingRecord.userId = userId; // 更新userId
+              await existingRecord.save();
+
+              this.logger.log(
+                `Updated existing record after duplicate key error for visitId ${visitId} and document ${documentId}`,
+              );
+              return {
+                code: 200,
+                message: '访问记录更新成功',
+                data: existingRecord,
+              };
+            }
+          }
+          // 如果不是重复键错误或找不到记录，重新抛出错误
+          throw createError;
+        }
       }
     } catch (error: unknown) {
       const errorMessage =
@@ -107,10 +154,9 @@ export class RecentVisitsService {
           userId: 1,
           documentId: 1,
           documentName: 1,
+          documentUser: 1,
           visitTime: 1,
           visitId: 1,
-          createdAt: 1,
-          updatedAt: 1,
         });
 
       // 计算总页数
@@ -161,10 +207,9 @@ export class RecentVisitsService {
           userId: 1,
           documentId: 1,
           documentName: 1,
+          documentUser: 1,
           visitTime: 1,
           visitId: 1,
-          createdAt: 1,
-          updatedAt: 1,
         });
 
       return {

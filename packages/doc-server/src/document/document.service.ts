@@ -331,6 +331,7 @@ export class DocumentService {
           userId: document.userId,
           documentId: documentId,
           documentName: document.documentName,
+          documentUser: document.create_username, // 文档创建人用户名
         });
 
         this.logger.log('最近访问记录处理成功', { documentId, userId });

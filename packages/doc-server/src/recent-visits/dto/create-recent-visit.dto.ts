@@ -30,6 +30,14 @@ export class CreateRecentVisitDto {
   documentName: string;
 
   @ApiProperty({
+    description: '文档创建人用户名',
+    example: 'admin',
+  })
+  @IsString()
+  @IsNotEmpty()
+  documentUser: string;
+
+  @ApiProperty({
     description: '访问者ID',
     example: 1,
   })
