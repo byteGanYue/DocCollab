@@ -1033,6 +1033,8 @@ const FolderMenu = () => {
         // 刷新文件夹列表以显示新文档
         try {
           await fetchFolders();
+          // 重新获取协同文档数据，因为用户文档数据发生了变化
+          await fetchCollaborationData();
         } catch (fetchError) {
           console.warn('刷新文件夹列表失败:', fetchError);
         }
@@ -1161,6 +1163,9 @@ const FolderMenu = () => {
         // 重新获取文件夹列表以显示最新数据
         await fetchFolders();
 
+        // 重新获取协同文档数据，因为用户文件夹数据发生了变化
+        await fetchCollaborationData();
+
         // 更新计数器
         setCounters(prev => ({ ...prev, folder: prev.folder + 1 }));
 
@@ -1258,6 +1263,8 @@ const FolderMenu = () => {
       if (response.success) {
         // 重新获取文件夹列表
         await fetchFolders();
+        // 重新获取协同文档数据，因为用户文件夹或文档数据发生了变化
+        await fetchCollaborationData();
         setEditingKey(null);
         message.success('重命名成功');
       } else {
@@ -1371,6 +1378,9 @@ const FolderMenu = () => {
           loading: false,
         });
 
+        // 重新获取协同文档数据，因为用户权限发生了变化
+        await fetchCollaborationData();
+
         const permissionText =
           permissionModal.permission === 'public' ? '公开空间' : '私有空间';
         message.success(`工作空间已设置为${permissionText}`);
@@ -1453,6 +1463,8 @@ const FolderMenu = () => {
       if (response.success) {
         // 重新获取文件夹列表以确保数据同步
         await fetchFolders();
+        // 重新获取协同文档数据，因为用户文件夹或文档数据发生了变化
+        await fetchCollaborationData();
       } else {
         throw new Error(response.message || '删除失败');
       }
