@@ -38,7 +38,7 @@ export const userAPI = {
   // 修改密码
   changePassword: data => patch('/user/password', data),
 
-  // 修改用户公开状态
+  // 修改用户公开状态 - 切换用户工作空间的公开/私有状态
   changePublicStatus: email => patch('/user/isPublic/' + email),
 
   // 用户登出
@@ -46,6 +46,9 @@ export const userAPI = {
 
   // 根据userId删除用户
   deleteUser: userId => del(`/user/userId/${userId}`),
+
+  //根据用户ID获取用户信息
+  getUserInfo: userId => get(`/user/getUserInfoByUserId/${userId}`),
 };
 
 /**
@@ -341,6 +344,22 @@ export const authUtils = {
  *     return folder;
  *   } catch (error) {
  *     console.error('获取文件夹详情失败:', error);
+ *     throw error;
+ *   }
+ * };
+ *
+ * // 9. 修改用户工作空间权限
+ * const changeUserPermission = async (email) => {
+ *   try {
+ *     const response = await userAPI.changePublicStatus(email);
+ *     if (response.success) {
+ *       console.log('用户权限修改成功:', response);
+ *       return response;
+ *     } else {
+ *       throw new Error(response.message || '权限修改失败');
+ *     }
+ *   } catch (error) {
+ *     console.error('修改用户权限失败:', error);
  *     throw error;
  *   }
  * };

@@ -34,7 +34,7 @@ import { useNavigate } from 'react-router-dom';
 import styles from './folderMenu.module.less';
 import folderUtils from '../../utils/folder';
 // 导入 API
-import { folderAPI, documentAPI } from '../../utils/api';
+import { folderAPI, documentAPI, userAPI } from '../../utils/api';
 // 导入用户上下文
 import { UserContext } from '../../contexts/UserContext';
 
@@ -298,8 +298,9 @@ const mockCollaborationUsers = [
  */
 const FolderMenu = () => {
   const navigate = useNavigate();
-  // 使用用户上下文获取用户信息
-  const { userInfo } = useContext(UserContext);
+  // 使用用户上下文获取用户信息和权限状态
+  const { userInfo, userPermission, updateUserPermission } =
+    useContext(UserContext);
 
   /**
    * 获取当前用户ID的统一函数
@@ -365,9 +366,10 @@ const FolderMenu = () => {
     key: '',
     name: '',
     permission: 'private',
+    loading: false,
   });
   // 新增：加载状态
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
 
   /**
    * 数据验证函数：确保菜单数据结构正确
@@ -531,6 +533,7 @@ const FolderMenu = () => {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userInfo]);
 
   // 将后端文件夹数据转换为前端菜单格式
@@ -683,7 +686,7 @@ const FolderMenu = () => {
       key: 'root',
       icon: React.createElement(FolderOpenOutlined),
       label: <EllipsisLabel text="我的文件夹" />,
-      permission: 'private',
+      permission: userPermission || 'private', // 使用用户权限状态
       children: [...sortedFolderTree, ...rootDocumentMenuItems], // 将文件夹和根级文档作为子项
     };
 
@@ -1167,40 +1170,98 @@ const FolderMenu = () => {
   };
 
   // 处理权限管理
-  const handlePermissionManage = (key, name, currentPermission) => {
-    setPermissionModal({
-      visible: true,
-      key,
-      name,
-      permission: currentPermission,
-    });
+  const handlePermissionManage = async (key, name, currentPermission) => {
+    try {
+      // 使用用户上下文中的权限状态，如果没有则使用传入的权限状态
+      const actualPermission = userPermission || currentPermission || 'private';
+      console.log('当前用户权限状态userPermission:', userPermission);
+      console.log('当前用户权限状态:', actualPermission);
+
+      setPermissionModal({
+        visible: true,
+        key,
+        name,
+        permission: actualPermission,
+        loading: false,
+      });
+    } catch (error) {
+      console.error('获取权限状态失败:', error);
+      // 即使获取失败，也显示弹窗，使用默认状态
+      setPermissionModal({
+        visible: true,
+        key,
+        name,
+        permission: userPermission || currentPermission || 'private',
+        loading: false,
+      });
+    }
   };
 
   // 处理权限保存
-  const handlePermissionSave = () => {
+  const handlePermissionSave = async () => {
     if (permissionModal.key !== 'root') {
       message.error('只能修改工作空间的权限设置');
       return;
     }
 
-    setFolderList(prev =>
-      folderUtils.updateNodePermission(
-        prev,
-        permissionModal.key,
-        permissionModal.permission,
-      ),
-    );
+    // 设置加载状态
+    setPermissionModal(prev => ({ ...prev, loading: true }));
 
-    setPermissionModal({
-      visible: false,
-      key: '',
-      name: '',
-      permission: 'private',
-    });
+    try {
+      // 获取用户邮箱
+      const userEmail = userInfo?.email || localStorage.getItem('userEmail');
 
-    const permissionText =
-      permissionModal.permission === 'public' ? '公开空间' : '私有空间';
-    message.success(`工作空间已设置为${permissionText}`);
+      if (!userEmail) {
+        message.error('无法获取用户邮箱信息，请重新登录');
+        setPermissionModal(prev => ({ ...prev, loading: false }));
+        return;
+      }
+
+      console.log('调用权限修改API:', {
+        userEmail,
+        newPermission: permissionModal.permission,
+      });
+
+      // 调用后端API修改用户公开状态
+      const response = await userAPI.changePublicStatus(userEmail);
+
+      // 检查响应状态 - API成功返回时通常有success字段或者直接检查message
+      const isSuccess = response.success === true || response.success !== false;
+
+      if (isSuccess) {
+        // 更新用户上下文中的权限状态
+        updateUserPermission(permissionModal.permission);
+
+        // 更新前端状态
+        setFolderList(prev =>
+          folderUtils.updateNodePermission(
+            prev,
+            permissionModal.key,
+            permissionModal.permission,
+          ),
+        );
+
+        setPermissionModal({
+          visible: false,
+          key: '',
+          name: '',
+          permission: 'private',
+          loading: false,
+        });
+
+        const permissionText =
+          permissionModal.permission === 'public' ? '公开空间' : '私有空间';
+        message.success(`工作空间已设置为${permissionText}`);
+
+        console.log('权限修改成功:', response);
+      } else {
+        throw new Error(response.message || '权限修改失败');
+      }
+    } catch (error) {
+      console.error('修改权限失败:', error);
+      message.error(error.message || '修改权限失败，请重试');
+      setPermissionModal(prev => ({ ...prev, loading: false }));
+    }
   };
 
   // 处理权限弹窗取消
@@ -1210,6 +1271,7 @@ const FolderMenu = () => {
       key: '',
       name: '',
       permission: 'private',
+      loading: false,
     });
   };
 
@@ -1430,71 +1492,71 @@ const FolderMenu = () => {
     // 判断是否为文件（以doc开头的key为文件）
     const isFile = item.key.startsWith('doc');
 
-    // Dropdown 菜单内容
-    const dropdownMenu = (
-      <AntdMenu>
-        <AntdMenu.Item
-          key="rename"
-          onClick={e => {
-            e.domEvent.stopPropagation();
-            setEditingKey(item.key);
-          }}
-        >
-          重命名
-        </AntdMenu.Item>
-        {/* 只有根文件夹才显示权限管理选项 */}
-        {item.key === 'root' && (
-          <AntdMenu.Item
-            key="permission"
-            onClick={e => {
-              e.domEvent.stopPropagation();
-              handlePermissionManage(
-                item.key,
-                text,
-                item.permission || 'private',
-              );
-            }}
-          >
-            <Space>
-              {item.permission === 'public' ? (
-                <UnlockOutlined />
-              ) : (
-                <LockOutlined />
-              )}
-              空间权限管理
-            </Space>
-          </AntdMenu.Item>
-        )}
-        {/* 只有文件才显示历史版本记录选项 */}
-        {isFile && (
-          <AntdMenu.Item
-            key="history"
-            onClick={e => {
-              e.domEvent.stopPropagation();
-              // TODO: 处理历史版本记录的逻辑
-              message.info('查看历史版本记录');
-            }}
-          >
-            历史版本记录
-          </AntdMenu.Item>
-        )}
-        <AntdMenu.Item
-          key="delete"
-          danger
-          onClick={e => {
-            e.domEvent.stopPropagation();
-            setDeleteModal({
-              visible: true,
-              key: item.key,
-              name: text,
-              loading: false,
-            });
-          }}
-        >
-          删除
-        </AntdMenu.Item>
-      </AntdMenu>
-    );
+    // Dropdown 菜单项配置
+    const dropdownMenuItems = [
+      {
+        key: 'rename',
+        label: '重命名',
+        onClick: e => {
+          e.domEvent && e.domEvent.stopPropagation();
+          setEditingKey(item.key);
+        },
+      },
+      // 只有根文件夹才显示权限管理选项
+      ...(item.key === 'root'
+        ? [
+            {
+              key: 'permission',
+              label: (
+                <Space>
+                  {item.permission === 'public' ? (
+                    <UnlockOutlined />
+                  ) : (
+                    <LockOutlined />
+                  )}
+                  空间权限管理
+                </Space>
+              ),
+              onClick: e => {
+                e.domEvent && e.domEvent.stopPropagation();
+                handlePermissionManage(
+                  item.key,
+                  text,
+                  item.permission || 'private',
+                );
+              },
+            },
+          ]
+        : []),
+      // 只有文件才显示历史版本记录选项
+      ...(isFile
+        ? [
+            {
+              key: 'history',
+              label: '历史版本记录',
+              onClick: e => {
+                e.domEvent && e.domEvent.stopPropagation();
+                // TODO: 处理历史版本记录的逻辑
+                message.info('查看历史版本记录');
+              },
+            },
+          ]
+        : []),
+      {
+        key: 'delete',
+        label: '删除',
+        danger: true,
+        onClick: e => {
+          e.domEvent && e.domEvent.stopPropagation();
+          setDeleteModal({
+            visible: true,
+            key: item.key,
+            name: text,
+            loading: false,
+          });
+        },
+      },
+    ];
 
     return (
       <div className={styles.menuLabelContainer}>
@@ -1509,7 +1571,7 @@ const FolderMenu = () => {
         </div>
         {editingKey !== item.key && (
           <Dropdown
-            overlay={dropdownMenu}
+            menu={{ items: dropdownMenuItems }}
             trigger={['click']}
             placement="bottomLeft"
           >
@@ -1536,8 +1598,22 @@ const FolderMenu = () => {
           return null;
         }
 
+        // 过滤掉不应该传递到DOM的属性
+        const {
+          autoFolderId: _autoFolderId,
+          backendData: _backendData,
+          parentFolderIds: _parentFolderIds,
+          childrenCount: _childrenCount,
+          isLeaf: _isLeaf,
+          documentId: _documentId,
+          depth: _depth,
+          create_time: _createTime,
+          update_time: _updateTime,
+          ...menuProps
+        } = item;
+
         const result = {
-          ...item,
+          ...menuProps,
           label: getMenuLabel(item),
           children: item.children ? withMenuActions(item.children) : undefined,
         };
@@ -1648,6 +1724,7 @@ const FolderMenu = () => {
         okText="保存"
         cancelText="取消"
         width={480}
+        confirmLoading={permissionModal.loading}
       >
         <div style={{ marginBottom: 24 }}>
           <h4 style={{ marginBottom: 12 }}>选择工作空间权限：</h4>
@@ -1708,7 +1785,6 @@ const FolderMenu = () => {
         items={withMenuActions(validateMenuData(folderList))}
         selectable={true}
         multiple={false}
-        loading={loading}
       />
     </Layout.Sider>
   );

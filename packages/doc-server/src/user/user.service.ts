@@ -112,9 +112,12 @@ export class UserService {
     return {
       code: 200,
       message: 'User public status updated successfully',
+      success: true,
       data: {
         userId: user.userId,
         isPublic: user.isPublic,
+        username: user.username,
+        email: user.email,
       },
     };
   }
@@ -142,7 +145,7 @@ export class UserService {
    * @returns 返回一个包含用户信息的Promise对象，如果未找到则返回null
    */
   async findOne(userId: number) {
-    return this.userModel.findOne({ userId }, { __v: 0 }).select({
+    const user = await this.userModel.findOne({ userId }, { __v: 0 }).select({
       userId: 1,
       username: 1,
       email: 1,
@@ -151,6 +154,17 @@ export class UserService {
       createdAt: 1,
       updatedAt: 1,
     });
+
+    if (!user) {
+      throw new Error(`User with userId ${userId} not found`);
+    }
+
+    return {
+      code: 200,
+      message: 'User information retrieved successfully',
+      success: true,
+      data: user,
+    };
   }
 
   /**
