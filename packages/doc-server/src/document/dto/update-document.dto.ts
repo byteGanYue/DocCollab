@@ -1,25 +1,53 @@
 import { IsString, IsOptional, IsArray } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateDocumentDto {
+  @ApiPropertyOptional({
+    description: '文档名称',
+    example: '更新后的文档名称',
+    type: 'string',
+  })
   @IsString()
   @IsOptional()
-  documentName?: string; // 文档名称
+  documentName?: string;
 
+  @ApiPropertyOptional({
+    description: '文档内容',
+    example: '更新后的文档内容...',
+    type: 'string',
+  })
   @IsString()
   @IsOptional()
-  content?: string; // 文档内容
+  content?: string;
 
+  @ApiPropertyOptional({
+    description: '更新者用户名',
+    example: 'user456',
+    type: 'string',
+  })
   @IsString()
   @IsOptional()
-  update_username?: string; // 更新者用户名
+  update_username?: string;
 
+  @ApiPropertyOptional({
+    description: '正在协同编辑人的用户ID数组',
+    example: [1, 2, 3],
+    type: [Number],
+    isArray: true,
+  })
   @IsArray()
   @IsOptional()
-  editorId?: number[]; // 改为number数组，正在协同编辑人的userid数组
+  editorId?: number[];
 
+  @ApiPropertyOptional({
+    description: '父文件夹ID数组',
+    example: [1, 2, 3],
+    type: [Number],
+    isArray: true,
+  })
   @IsArray()
   @IsOptional()
-  parentFolderIds?: number[]; // 改为number数组，父文件夹ID数组
+  parentFolderIds?: number[];
 }
 
 export class UpdateDocumentResponseDto {

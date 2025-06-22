@@ -34,7 +34,7 @@ import { useNavigate } from 'react-router-dom';
 import styles from './folderMenu.module.less';
 import folderUtils from '../../utils/folder';
 // 导入 API
-import { folderAPI } from '../../utils/api';
+import { folderAPI, documentAPI, userAPI } from '../../utils/api';
 // 导入用户上下文
 import { UserContext } from '../../contexts/UserContext';
 
@@ -169,126 +169,6 @@ const buttonHoverStyle = {
     '0 4px 12px color-mix(in srgb, var(--color-primary) 40%, transparent)',
 };
 
-// Mock数据：模拟其他用户的公开文件夹
-const mockCollaborationUsers = [
-  {
-    userId: 'user_001',
-    username: '张三',
-    avatar: '👨‍💻',
-    folderData: {
-      key: 'collab_user_001',
-      icon: React.createElement(UserOutlined),
-      label: <EllipsisLabel text="张三的公开空间" />,
-      permission: 'public',
-      owner: '张三',
-      ownerId: 'user_001',
-      children: [
-        {
-          key: 'collab_user_001_folder1',
-          icon: React.createElement(FolderOpenOutlined),
-          label: <EllipsisLabel text="前端开发资料" />,
-          children: [
-            {
-              key: 'collab_user_001_doc1',
-              label: <EllipsisLabel text="React 最佳实践" />,
-            },
-            {
-              key: 'collab_user_001_doc2',
-              label: <EllipsisLabel text="TypeScript 进阶指南" />,
-            },
-          ],
-        },
-        {
-          key: 'collab_user_001_folder2',
-          icon: React.createElement(FolderOpenOutlined),
-          label: <EllipsisLabel text="项目文档" />,
-          children: [
-            {
-              key: 'collab_user_001_doc3',
-              label: <EllipsisLabel text="需求分析文档" />,
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    userId: 'user_002',
-    username: '李四',
-    avatar: '👩‍💼',
-    folderData: {
-      key: 'collab_user_002',
-      icon: React.createElement(UserOutlined),
-      label: <EllipsisLabel text="李四的公开空间" />,
-      permission: 'public',
-      owner: '李四',
-      ownerId: 'user_002',
-      children: [
-        {
-          key: 'collab_user_002_folder1',
-          icon: React.createElement(FolderOpenOutlined),
-          label: <EllipsisLabel text="设计规范" />,
-          children: [
-            {
-              key: 'collab_user_002_doc1',
-              label: <EllipsisLabel text="UI设计规范" />,
-            },
-            {
-              key: 'collab_user_002_doc2',
-              label: <EllipsisLabel text="交互设计指南" />,
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    userId: 'user_003',
-    username: '王五',
-    avatar: '🧑‍🔬',
-    folderData: {
-      key: 'collab_user_003',
-      icon: React.createElement(UserOutlined),
-      label: <EllipsisLabel text="王五的公开空间" />,
-      permission: 'public',
-      owner: '王五',
-      ownerId: 'user_003',
-      children: [
-        {
-          key: 'collab_user_003_folder1',
-          icon: React.createElement(FolderOpenOutlined),
-          label: <EllipsisLabel text="技术分享" />,
-          children: [
-            {
-              key: 'collab_user_003_doc1',
-              label: <EllipsisLabel text="微服务架构实践" />,
-            },
-            {
-              key: 'collab_user_003_doc2',
-              label: <EllipsisLabel text="数据库优化技巧" />,
-            },
-            {
-              key: 'collab_user_003_doc3',
-              label: <EllipsisLabel text="DevOps 最佳实践" />,
-            },
-          ],
-        },
-        {
-          key: 'collab_user_003_folder2',
-          icon: React.createElement(FolderOpenOutlined),
-          label: <EllipsisLabel text="学习笔记" />,
-          children: [
-            {
-              key: 'collab_user_003_doc4',
-              label: <EllipsisLabel text="算法与数据结构" />,
-            },
-          ],
-        },
-      ],
-    },
-  },
-];
-
 /**
  * FolderMenu 组件
  *
@@ -298,8 +178,257 @@ const mockCollaborationUsers = [
  */
 const FolderMenu = () => {
   const navigate = useNavigate();
-  // 使用用户上下文获取用户信息
-  const { userInfo } = useContext(UserContext);
+  // 使用用户上下文获取用户信息和权限状态
+  const { userInfo, userPermission, updateUserPermission } =
+    useContext(UserContext);
+
+  // 协同文档用户数据状态管理
+  const [collaborationUsers, setCollaborationUsers] = useState([]);
+
+  /**
+   * 获取协同文档数据（所有公开用户的文件夹和文档）
+   */
+  const fetchCollaborationData = useCallback(async () => {
+    try {
+      // 获取所有公开用户的文件夹结构
+      const foldersResponse = await folderAPI.getPublicFolders();
+      // 获取所有公开用户的文档
+      const documentsResponse = await documentAPI.getPublicDocuments();
+
+      if (foldersResponse.success && documentsResponse.success) {
+        // 转换数据格式
+        const collaborationData = convertPublicDataToCollaboration(
+          foldersResponse.data,
+          documentsResponse.data,
+        );
+        setCollaborationUsers(collaborationData);
+      }
+    } catch (error) {
+      console.error('获取协同文档数据失败:', error);
+      // 失败时设置为空数组
+      setCollaborationUsers([]);
+    }
+  }, []);
+
+  /**
+   * 将公开用户数据转换为协同文档格式
+   * @param {Array} publicFolders 公开用户文件夹数据
+   * @param {Array} publicDocuments 公开用户文档数据
+   * @returns {Array} 转换后的协同文档数据
+   */
+  const convertPublicDataToCollaboration = (publicFolders, publicDocuments) => {
+    const collaborationData = [];
+
+    // 合并文件夹和文档数据，按用户分组
+    const userMap = new Map();
+
+    // 处理文件夹数据
+    publicFolders.forEach(userFolders => {
+      if (!userMap.has(userFolders.userId)) {
+        userMap.set(userFolders.userId, {
+          userId: userFolders.userId,
+          username: userFolders.username,
+          isPublic: userFolders.isPublic,
+          folders: [],
+          documents: [],
+        });
+      }
+      userMap.get(userFolders.userId).folders = userFolders.folders;
+    });
+
+    // 处理文档数据
+    publicDocuments.forEach(userDocuments => {
+      if (!userMap.has(userDocuments.userId)) {
+        userMap.set(userDocuments.userId, {
+          userId: userDocuments.userId,
+          username: userDocuments.username,
+          isPublic: userDocuments.isPublic,
+          folders: [],
+          documents: [],
+        });
+      }
+      userMap.get(userDocuments.userId).documents = userDocuments.documents;
+    });
+
+    // 转换为前端菜单格式
+    userMap.forEach(userData => {
+      const folderData = convertUserDataToMenuFormat(userData);
+      collaborationData.push({
+        userId: userData.userId,
+        username: userData.username,
+        avatar: getAvatarByUserId(userData.userId),
+        folderData: folderData,
+      });
+    });
+
+    return collaborationData;
+  };
+
+  /**
+   * 根据用户ID获取头像
+   * @param {number} userId 用户ID
+   * @returns {string} 头像表情
+   */
+  const getAvatarByUserId = userId => {
+    const avatars = ['👨‍💻', '👩‍💼', '🧑‍🔬', '👨‍🎨', '👩‍🚀', '🧑‍💼', '👨‍🔧', '👩‍⚕️'];
+    return avatars[userId % avatars.length];
+  };
+
+  /**
+   * 将用户数据转换为菜单格式
+   * @param {Object} userData 用户数据
+   * @returns {Object} 菜单格式数据
+   */
+  const convertUserDataToMenuFormat = userData => {
+    // 构建文档映射，按父文件夹ID分组
+    const documentsByFolder = new Map();
+
+    // 初始化根级文档数组
+    documentsByFolder.set('root', []);
+
+    userData.documents.forEach(doc => {
+      if (doc.parentFolderIds && doc.parentFolderIds.length > 0) {
+        // 文档有父文件夹，使用最后一个父文件夹ID（最直接的父级）
+        const directParentId =
+          doc.parentFolderIds[doc.parentFolderIds.length - 1];
+        if (!documentsByFolder.has(directParentId)) {
+          documentsByFolder.set(directParentId, []);
+        }
+        documentsByFolder.get(directParentId).push(doc);
+      } else {
+        // 根级文档
+        documentsByFolder.get('root').push(doc);
+      }
+    });
+
+    // 构建文件夹映射，方便查找
+    const folderMap = new Map();
+    const buildFolderMap = folders => {
+      folders.forEach(folder => {
+        folderMap.set(folder.autoFolderId, folder);
+        if (folder.children && folder.children.length > 0) {
+          buildFolderMap(folder.children);
+        }
+      });
+    };
+    buildFolderMap(userData.folders);
+
+    // 递归转换文件夹为菜单项
+    const convertFolderToMenuItem = folder => {
+      const folderKey = `collab_user_${userData.userId}_folder_${folder.autoFolderId}`;
+
+      // 获取该文件夹下的直接文档
+      const folderDocuments = documentsByFolder.get(folder.autoFolderId) || [];
+
+      // 转换文档为菜单项
+      const documentMenuItems = folderDocuments.map(doc => ({
+        key: `collab_user_${userData.userId}_doc_${doc.documentId}`,
+        label: <EllipsisLabel text={doc.documentName} />,
+        isLeaf: true,
+        backendData: doc,
+        documentId: doc.documentId,
+        userId: userData.userId,
+        userName: userData.username,
+        isCollaborative: true,
+      }));
+
+      // 递归处理子文件夹
+      const childFolders = folder.children
+        ? folder.children.map(child => convertFolderToMenuItem(child))
+        : [];
+
+      // 合并子文件夹和文档，文件夹在前，文档在后
+      const allChildren = [...childFolders, ...documentMenuItems];
+
+      return {
+        key: folderKey,
+        icon: React.createElement(FolderOpenOutlined),
+        label: <EllipsisLabel text={folder.folderName} />,
+        children: allChildren.length > 0 ? allChildren : undefined,
+        backendData: folder,
+        userId: userData.userId,
+        userName: userData.username,
+        isCollaborative: true,
+      };
+    };
+
+    // 处理根级文件夹
+    const rootFolders = userData.folders.map(folder =>
+      convertFolderToMenuItem(folder),
+    );
+
+    // 处理根级文档
+    const rootDocuments = documentsByFolder.get('root').map(doc => ({
+      key: `collab_user_${userData.userId}_doc_${doc.documentId}`,
+      label: <EllipsisLabel text={doc.documentName} />,
+      isLeaf: true,
+      backendData: doc,
+      documentId: doc.documentId,
+      userId: userData.userId,
+      userName: userData.username,
+      isCollaborative: true,
+    }));
+
+    // 合并根级文件夹和文档
+    const allChildren = [...rootFolders, ...rootDocuments];
+
+    return {
+      key: `collab_user_${userData.userId}`,
+      icon: React.createElement(UserOutlined),
+      label: <EllipsisLabel text={`${userData.username}的公开空间`} />,
+      permission: 'public',
+      owner: userData.username,
+      ownerId: userData.userId,
+      children: allChildren.length > 0 ? allChildren : undefined,
+    };
+  };
+
+  // 组件挂载时获取协同文档数据
+  useEffect(() => {
+    fetchCollaborationData();
+  }, [fetchCollaborationData]);
+
+  /**
+   * 获取当前用户ID的统一函数
+   * @returns {number} 数字类型的用户ID
+   * @throws {Error} 如果无法获取有效的用户ID
+   */
+  const getCurrentUserId = () => {
+    let userId = userInfo?.userId || userInfo?._id;
+
+    // 如果userInfo中没有userId，尝试从localStorage获取
+    if (!userId) {
+      const localUserId = localStorage.getItem('userId');
+
+      // 如果从localStorage获取的是对象字符串，尝试解析
+      if (typeof localUserId === 'string' && localUserId.startsWith('{')) {
+        try {
+          const userObj = JSON.parse(localUserId);
+          userId = userObj.userId || userObj._id;
+        } catch {
+          // 解析失败，使用原值
+          userId = localUserId;
+        }
+      } else {
+        userId = localUserId;
+      }
+    }
+
+    // 如果仍然没有有效的用户ID，则抛出错误
+    if (!userId) {
+      throw new Error('用户信息不完整，请重新登录');
+    }
+
+    // 确保userId是number类型（后端期望number类型）
+    const numericUserId = parseInt(userId, 10);
+
+    // 验证转换结果
+    if (isNaN(numericUserId) || numericUserId <= 0) {
+      throw new Error('无效的用户ID，请重新登录');
+    }
+
+    return numericUserId;
+  };
 
   const [folderList, setFolderList] = useState([]);
   const [selectedKeys, setSelectedKeys] = useState(['home']); // 默认选中首页
@@ -323,40 +452,118 @@ const FolderMenu = () => {
     key: '',
     name: '',
     permission: 'private',
+    loading: false,
   });
   // 新增：加载状态
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
+
+  /**
+   * 数据验证函数：确保菜单数据结构正确
+   * @param {Array} menuData - 菜单数据数组
+   * @returns {Array} 清理后的菜单数据
+   */
+  const validateMenuData = menuData => {
+    if (!Array.isArray(menuData)) {
+      console.warn('⚠️ 菜单数据不是数组:', menuData);
+      return [];
+    }
+
+    return menuData
+      .filter(item => {
+        if (!item) {
+          console.warn('⚠️ 发现空菜单项');
+          return false;
+        }
+        if (!item.key) {
+          console.warn('⚠️ 菜单项缺少key:', item);
+          return false;
+        }
+        return true;
+      })
+      .map(item => ({
+        ...item,
+        children: item.children ? validateMenuData(item.children) : undefined,
+      }));
+  };
 
   // 获取文件夹列表
   const fetchFolders = useCallback(async () => {
     try {
       setLoading(true);
-      // 使用用户上下文获取用户ID，支持多种格式
-      let userId =
-        userInfo?.userId ||
-        userInfo?._id ||
-        localStorage.getItem('userId') ||
-        'current_user';
 
-      // 如果从localStorage获取的是对象字符串，尝试解析
-      if (typeof userId === 'string' && userId.startsWith('{')) {
-        try {
-          const userObj = JSON.parse(userId);
-          userId = userObj.userId || userObj._id || userId;
-        } catch {
-          // 解析失败，继续使用原值
+      // 获取用户ID，优先从userInfo获取，然后从localStorage获取
+      let userId = userInfo?.userId || userInfo?._id;
+
+      // 如果userInfo中没有userId，尝试从localStorage获取
+      if (!userId) {
+        const localUserId = localStorage.getItem('userId');
+
+        // 如果从localStorage获取的是对象字符串，尝试解析
+        if (typeof localUserId === 'string' && localUserId.startsWith('{')) {
+          try {
+            const userObj = JSON.parse(localUserId);
+            userId = userObj.userId || userObj._id;
+          } catch {
+            // 解析失败，使用原值
+            userId = localUserId;
+          }
+        } else {
+          userId = localUserId;
         }
       }
 
-      console.log('📁 使用的用户ID:', userId);
+      // 尝试获取用户ID，如果获取不到则跳过请求
+      let numericUserId;
+      try {
+        numericUserId = getCurrentUserId();
+      } catch (error) {
+        // 如果是用户信息不完整的错误，说明用户信息还没加载完成，静默跳过
+        if (error.message.includes('用户信息不完整')) {
+          setLoading(false);
+          return;
+        }
+        // 其他错误直接抛出
+        throw error;
+      }
 
-      const response = await folderAPI.getFolders({ userId });
-      console.log('📁 从后端获取的文件夹数据:', response);
+      // 并行获取文件夹和文档数据
+      const documentParams = {
+        page: Number(1),
+        pageSize: Number(1000), // 获取足够多的文档
+      };
+
+      const [folderResponse, documentResponse] = await Promise.all([
+        folderAPI.getFolders({ userId: numericUserId }),
+        documentAPI.getUserDocuments(numericUserId, documentParams),
+      ]);
 
       // 转换后端数据为前端菜单格式
       const convertedFolders = convertBackendFoldersToMenuFormat(
-        response.data || [],
+        folderResponse.data || [],
+        documentResponse.data?.documents || [],
       );
+
+      // 构建协同文档菜单项
+      const collaborationMenuItem = {
+        key: 'collaboration',
+        icon: React.createElement(TeamOutlined),
+        label: (
+          <div className={styles.menuLabelContainer}>
+            <div className={styles.labelContent}>
+              <EllipsisLabel text="协同文档" />
+              {/* 协同文档主目录显示公开空间图标 */}
+              <Tooltip title="公开协同空间 - 所有公开用户的文档">
+                <TeamOutlined
+                  style={{ color: '#52c41a', marginLeft: 4, fontSize: '12px' }}
+                />
+              </Tooltip>
+            </div>
+          </div>
+        ),
+        children: collaborationUsers
+          .map(user => user.folderData)
+          .filter(Boolean),
+      };
 
       // 合并基础菜单项（首页、最近访问等）和用户文件夹
       const baseMenuItems = [
@@ -372,12 +579,7 @@ const FolderMenu = () => {
           label: <EllipsisLabel text="最近访问文档列表" />,
           children: null,
         },
-        {
-          key: 'collaboration',
-          icon: React.createElement(TeamOutlined),
-          label: <EllipsisLabel text="协同文档" />,
-          children: mockCollaborationUsers.map(user => user.folderData),
-        },
+        collaborationMenuItem,
       ];
 
       setFolderList([...baseMenuItems, ...convertedFolders]);
@@ -386,6 +588,27 @@ const FolderMenu = () => {
       message.error('获取文件夹列表失败');
 
       // 失败时使用基础菜单项
+      const collaborationMenuItem = {
+        key: 'collaboration',
+        icon: React.createElement(TeamOutlined),
+        label: (
+          <div className={styles.menuLabelContainer}>
+            <div className={styles.labelContent}>
+              <EllipsisLabel text="协同文档" />
+              {/* 协同文档主目录显示公开空间图标 */}
+              <Tooltip title="公开协同空间 - 所有公开用户的文档">
+                <TeamOutlined
+                  style={{ color: '#52c41a', marginLeft: 4, fontSize: '12px' }}
+                />
+              </Tooltip>
+            </div>
+          </div>
+        ),
+        children: collaborationUsers
+          .map(user => user.folderData)
+          .filter(Boolean),
+      };
+
       const baseMenuItems = [
         {
           key: 'home',
@@ -399,12 +622,7 @@ const FolderMenu = () => {
           label: <EllipsisLabel text="最近访问文档列表" />,
           children: null,
         },
-        {
-          key: 'collaboration',
-          icon: React.createElement(TeamOutlined),
-          label: <EllipsisLabel text="协同文档" />,
-          children: mockCollaborationUsers.map(user => user.folderData),
-        },
+        collaborationMenuItem,
         {
           key: 'root',
           icon: React.createElement(FolderOpenOutlined),
@@ -417,16 +635,23 @@ const FolderMenu = () => {
     } finally {
       setLoading(false);
     }
-  }, [userInfo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userInfo, collaborationUsers]);
 
   // 将后端文件夹数据转换为前端菜单格式
-  const convertBackendFoldersToMenuFormat = backendFolders => {
-    console.log('转换后端文件夹数据:', backendFolders);
+  const convertBackendFoldersToMenuFormat = (
+    backendFolders,
+    documents = [],
+  ) => {
+    // 使用工具函数构建文件夹和文档的映射关系
+    const { folderDocuments, rootDocuments } =
+      folderUtils.buildFolderDocumentTree(backendFolders, documents);
 
     // 递归转换后端文件夹数据为前端菜单格式
     const convertFolderToMenuItem = folder => {
       const menuItem = {
-        key: folder.folderId,
+        key: folder.folderId, // 使用MongoDB字符串ID作为key
+        autoFolderId: folder.autoFolderId, // 保存自增ID（如果有）
         icon: React.createElement(FolderOpenOutlined),
         label: <EllipsisLabel text={folder.folderName} />,
         children: [],
@@ -449,6 +674,32 @@ const FolderMenu = () => {
         );
       }
 
+      // 使用工具函数获取属于此文件夹的文档
+      const folderDocumentList = folderUtils.getDocumentsByFolderId(
+        folderDocuments,
+        folder.folderId,
+      );
+
+      // 将文档转换为菜单项并添加到children中
+      const documentMenuItems = folderDocumentList.map(doc => ({
+        key: `doc_${doc.documentId}`,
+        label: (
+          <EllipsisLabel
+            text={doc.documentName}
+            isEditing={false}
+            onSave={() => {}}
+            onCancel={() => {}}
+          />
+        ),
+        isLeaf: true,
+        backendData: doc,
+        documentId: doc.documentId,
+        // 移除onClick属性，因为Antd Menu不支持，改为在handleMenuSelect中处理
+      }));
+
+      // 合并文件夹和文档（文件夹在前，文档在后）
+      menuItem.children = [...(menuItem.children || []), ...documentMenuItems];
+
       return menuItem;
     };
 
@@ -463,7 +714,7 @@ const FolderMenu = () => {
         .sort((a, b) => {
           const nameA = a.label?.props?.text || a.label || '';
           const nameB = b.label?.props?.text || b.label || '';
-          return nameA.localeCompare(nameB);
+          return nameA.localeCompare(nameB, 'zh-CN');
         })
         .map(folder => ({
           ...folder,
@@ -476,13 +727,30 @@ const FolderMenu = () => {
 
     const sortedFolderTree = sortFolders(folderTree);
 
-    // 创建"我的文件夹"根节点，包含所有后端文件夹数据
+    // 将根级文档转换为菜单项
+    const rootDocumentMenuItems = rootDocuments.map(doc => ({
+      key: `doc_${doc.documentId}`,
+      label: (
+        <EllipsisLabel
+          text={doc.documentName}
+          isEditing={false}
+          onSave={() => {}}
+          onCancel={() => {}}
+        />
+      ),
+      isLeaf: true,
+      backendData: doc,
+      documentId: doc.documentId,
+      // 移除onClick属性，因为Antd Menu不支持，改为在handleMenuSelect中处理
+    }));
+
+    // 创建"我的文件夹"根节点，包含所有后端文件夹数据和根级文档
     const myFoldersRoot = {
       key: 'root',
       icon: React.createElement(FolderOpenOutlined),
       label: <EllipsisLabel text="我的文件夹" />,
-      permission: 'private',
-      children: sortedFolderTree, // 将所有文件夹作为子项
+      permission: userPermission || 'private', // 使用用户权限状态
+      children: [...sortedFolderTree, ...rootDocumentMenuItems], // 将文件夹和根级文档作为子项
     };
 
     return [myFoldersRoot];
@@ -492,6 +760,23 @@ const FolderMenu = () => {
   useEffect(() => {
     fetchFolders();
   }, [fetchFolders]);
+
+  // 调试：打印folderList的内容（开发时使用）
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      if (folderList.length > 0) {
+        // 查找并打印所有文档项
+        const findDocuments = (items, path = '') => {
+          items.forEach(item => {
+            if (item.children) {
+              findDocuments(item.children, path + '/' + item.key);
+            }
+          });
+        };
+        findDocuments(folderList);
+      }
+    }
+  }, [folderList]);
 
   const handleMenuSelect = ({ selectedKeys }) => {
     setSelectedKeys(selectedKeys);
@@ -510,21 +795,44 @@ const FolderMenu = () => {
     else if (selectedKey === 'collaboration') {
       navigate('/collaboration');
     }
-    // 处理文档点击导航 - 以doc开头的key表示文档（包括协同文档）
+    // 处理协同文档中的文档点击
     else if (
       selectedKey &&
-      (selectedKey.startsWith('doc') || selectedKey.includes('_doc'))
+      selectedKey.includes('collab_user_') &&
+      selectedKey.includes('_doc_')
     ) {
-      // 如果是协同文档，添加协同标识
-      if (selectedKey.includes('collab_user_')) {
-        navigate(`/doc-editor/${selectedKey}?collaborative=true`);
+      // 解析协同文档的key: collab_user_{userId}_doc_{documentId}
+      const parts = selectedKey.split('_');
+      const documentId = parts[parts.length - 1]; // 获取文档ID
+
+      // 跳转到协同编辑器，添加协同标识
+      navigate(`/doc-editor/${documentId}?collaborative=true`);
+    }
+    // 处理普通文档点击导航
+    else if (selectedKey && selectedKey.startsWith('doc_')) {
+      const documentId = selectedKey.replace('doc_', '');
+
+      if (documentId) {
+        navigate(`/doc-editor/${documentId}`);
       } else {
-        navigate(`/doc-editor/${selectedKey}`);
+        console.warn('⚠️ 无法从key中解析documentId:', selectedKey);
       }
     }
-    // 处理文件夹点击 - 以sub开头的key表示文件夹，不需要导航，只是展开/折叠
-    // 协同文档的用户空间和文件夹也不需要导航
-    // 其他情况暂不处理导航
+    // 处理以doc开头的其他文档格式
+    else if (
+      selectedKey &&
+      selectedKey.startsWith('doc') &&
+      !selectedKey.includes('collab_user_')
+    ) {
+      // 处理格式如 "doc123" 的文档key
+      const documentId = selectedKey.replace('doc', '');
+
+      if (documentId && !isNaN(documentId)) {
+        navigate(`/doc-editor/${documentId}`);
+      } else {
+        console.warn('⚠️ 无效的documentId:', documentId, 'key:', selectedKey);
+      }
+    }
   };
 
   const handleMenuOpenChange = newOpenKeys => {
@@ -540,9 +848,142 @@ const FolderMenu = () => {
     }
   };
 
-  // 新建文件功能（目前暂时只是占位，后续可以扩展）
-  const handleAddFile = () => {
-    message.info('新建文件功能开发中，请先创建文件夹');
+  // 新建文件功能
+  const handleAddFile = async () => {
+    try {
+      // 使用工具函数获取有效的目标文件夹
+      const targetKey = folderUtils.getValidTargetKey(
+        folderList,
+        selectedKeys[0],
+        openKeys,
+      );
+
+      // 检查是否选中了文件，如果是则给出提示
+      const currentKey = selectedKeys[0];
+      if (currentKey && currentKey.startsWith('doc')) {
+        const parentNode = folderUtils.findParentNodeByKey(
+          folderList,
+          currentKey,
+        );
+        const parentName = parentNode
+          ? parentNode.label?.props?.text || parentNode.label
+          : '我的文件夹';
+        message.info(`文档将在文件夹"${parentName}"中创建`);
+      }
+
+      // 生成默认名称
+      const defaultName = `新建文档${counters.file || 1}`;
+
+      // 获取当前用户ID
+      const numericUserId = getCurrentUserId();
+
+      const username =
+        userInfo?.username ||
+        userInfo?.name ||
+        localStorage.getItem('username') ||
+        '当前用户';
+
+      // 准备父文件夹ID数组
+      let parentFolderIds = [];
+
+      // 如果选中的是"我的文件夹"根节点，创建根级文档
+      if (targetKey === 'root') {
+        parentFolderIds = []; // 根级文档，parentFolderIds为空数组
+      } else if (targetKey && targetKey !== 'root') {
+        // 找到目标文件夹并构建父文件夹路径
+        const targetFolder = folderUtils.findNodeByKey(folderList, targetKey);
+        if (targetFolder && targetFolder.backendData) {
+          // 如果目标文件夹存在，继承其路径并添加自身
+          const targetFolderId =
+            targetFolder.backendData.autoFolderId || parseInt(targetKey, 10);
+
+          if (!isNaN(targetFolderId) && targetFolderId > 0) {
+            // 确保parentFolderIds数组中只包含数字类型的ID（过滤掉MongoDB ObjectId字符串）
+            const numericParentIds = (
+              targetFolder.backendData.parentFolderIds || []
+            )
+              .map(id => {
+                // 如果是数字，直接返回
+                if (typeof id === 'number') return id;
+                // 如果是字符串，尝试转换为数字
+                const numericId = parseInt(id, 10);
+                return !isNaN(numericId) && numericId > 0 ? numericId : null;
+              })
+              .filter(id => id !== null); // 过滤掉无效的ID
+
+            parentFolderIds = [...numericParentIds, targetFolderId];
+          } else {
+            // 如果无法解析文件夹ID，使用空数组（根级）
+            parentFolderIds = [];
+          }
+        } else {
+          // 如果找不到详细信息，尝试解析targetKey
+          const parsedTargetId = parseInt(targetKey, 10);
+          if (!isNaN(parsedTargetId) && parsedTargetId > 0) {
+            parentFolderIds = [parsedTargetId];
+          } else {
+            parentFolderIds = [];
+          }
+        }
+      }
+
+      // 准备创建文档的数据
+      const createDocumentData = {
+        documentName: defaultName,
+        content: '', // 新建文档的初始内容为空
+        userId: numericUserId,
+        create_username: username,
+        parentFolderIds: parentFolderIds,
+      };
+
+      // 调用后端 API 创建文档
+      const response = await documentAPI.createDocument(createDocumentData);
+
+      if (response.success) {
+        message.success('新建文档成功');
+
+        // 更新计数器
+        setCounters(prev => ({
+          ...prev,
+          file: (prev.file || 0) + 1,
+        }));
+
+        // 刷新文件夹列表以显示新文档
+        try {
+          await fetchFolders();
+        } catch (fetchError) {
+          console.warn('刷新文件夹列表失败:', fetchError);
+        }
+
+        // 确保父文件夹路径都展开
+        if (parentFolderIds.length > 0) {
+          const newOpenKeys = [
+            ...new Set([...openKeys, 'root', ...parentFolderIds.slice(0, -1)]),
+          ];
+          setOpenKeys(newOpenKeys);
+        } else {
+          // 如果是根级文档，只需要展开"我的文件夹"
+          const newOpenKeys = [...new Set([...openKeys, 'root'])];
+          setOpenKeys(newOpenKeys);
+        }
+
+        // 延迟一下再跳转，让用户看到文档创建的反馈
+        setTimeout(() => {
+          const documentId = response.data.documentId;
+          if (documentId) {
+            navigate(`/doc-editor/${documentId}`);
+          } else {
+            console.warn('创建文档成功但未返回documentId');
+            message.warning('文档创建成功，请刷新页面查看');
+          }
+        }, 500);
+      } else {
+        throw new Error(response.message || '创建文档失败');
+      }
+    } catch (error) {
+      console.error('创建文档失败:', error);
+      message.error(error.message || '创建文档失败，请重试');
+    }
   };
 
   // 修改：创建文件夹，调用后端 API
@@ -571,22 +1012,8 @@ const FolderMenu = () => {
       // 生成默认名称
       const defaultName = `新建文件夹${counters.folder}`;
 
-      // 获取当前用户ID和用户名
-      let userId =
-        userInfo?.userId ||
-        userInfo?._id ||
-        localStorage.getItem('userId') ||
-        'current_user';
-
-      // 如果从localStorage获取的是对象字符串，尝试解析
-      if (typeof userId === 'string' && userId.startsWith('{')) {
-        try {
-          const userObj = JSON.parse(userId);
-          userId = userObj.userId || userObj._id || userId;
-        } catch {
-          // 解析失败，继续使用原值
-        }
-      }
+      // 获取当前用户ID
+      const numericUserId = getCurrentUserId();
 
       const username =
         userInfo?.username ||
@@ -601,33 +1028,50 @@ const FolderMenu = () => {
       if (targetKey === 'root') {
         parentFolderIds = []; // 根级文件夹，parentFolderIds为空数组
       } else if (targetKey && targetKey !== 'root') {
-        // 找到目标文件夹并构建父文件夹路径
+        // 找到目标文件夹，新文件夹将在此文件夹内创建
         const targetFolder = folderUtils.findNodeByKey(folderList, targetKey);
         if (targetFolder && targetFolder.backendData) {
-          // 如果目标文件夹存在，继承其路径并添加自身
-          parentFolderIds = [
-            ...(targetFolder.backendData.parentFolderIds || []),
-            targetKey,
-          ];
+          // 获取目标文件夹的自增ID，这将成为新文件夹的直接父文件夹
+          const targetAutoFolderId =
+            targetFolder.backendData.autoFolderId ||
+            targetFolder.backendData.folderId;
+
+          if (
+            typeof targetAutoFolderId === 'number' &&
+            targetAutoFolderId > 0
+          ) {
+            // 新文件夹的parentFolderIds就是选中文件夹的自增ID
+            parentFolderIds = [targetAutoFolderId];
+          } else {
+            // 如果无法获取自增ID，尝试解析targetKey
+            const numericTargetKey = parseInt(targetKey, 10);
+            if (!isNaN(numericTargetKey) && numericTargetKey > 0) {
+              parentFolderIds = [numericTargetKey];
+            } else {
+              parentFolderIds = [];
+            }
+          }
         } else {
-          // 如果找不到详细信息，直接使用targetKey作为父级
-          parentFolderIds = [targetKey];
+          // 如果找不到详细信息，尝试将targetKey转换为数字作为父级
+          const numericTargetKey = parseInt(targetKey, 10);
+          if (!isNaN(numericTargetKey) && numericTargetKey > 0) {
+            parentFolderIds = [numericTargetKey];
+          } else {
+            parentFolderIds = [];
+          }
         }
       }
 
       // 准备创建文件夹的数据
       const createFolderData = {
         folderName: defaultName,
-        userId: userId,
+        userId: numericUserId,
         create_username: username,
         parentFolderIds: parentFolderIds,
       };
 
-      console.log('创建文件夹请求数据:', createFolderData);
-
       // 调用后端 API 创建文件夹
       const response = await folderAPI.createFolder(createFolderData);
-      console.log('创建文件夹响应:', response);
 
       if (response.success) {
         message.success('新建文件夹成功');
@@ -689,10 +1133,48 @@ const FolderMenu = () => {
         }
       }
 
-      // 调用更新 API
-      const response = await folderAPI.updateFolder(key, {
-        folderName: newName,
-      });
+      // 查找项目，获取相关信息
+      const targetItem = folderUtils.findNodeByKey(folderList, key);
+
+      // 判断是文档还是文件夹
+      const isDocument = key.startsWith('doc_') || key.startsWith('doc');
+
+      let response;
+
+      if (isDocument) {
+        // 获取文档ID（优先使用 documentId，如果没有则使用 autoDocumentId）
+        const documentId =
+          targetItem?.documentId ||
+          targetItem?.backendData?.documentId ||
+          targetItem?.backendData?.autoDocumentId;
+
+        if (!documentId) {
+          throw new Error('无法获取文档ID，重命名失败');
+        }
+
+        // 调用文档更新API
+        response = await documentAPI.updateDocument(documentId, {
+          documentName: newName,
+        });
+      } else {
+        // 重命名文件夹
+        // 优先使用自增ID，如果没有则使用MongoDB ID（兼容旧数据）
+        // 尝试从多个地方获取自增ID
+        const autoFolderId =
+          targetItem?.autoFolderId ||
+          targetItem?.backendData?.autoFolderId ||
+          targetItem?.backendData?.folderId;
+
+        const updateId =
+          typeof autoFolderId === 'number' && autoFolderId > 0
+            ? autoFolderId
+            : key;
+
+        // 调用文件夹更新API - 使用自增ID
+        response = await folderAPI.updateFolder(updateId, {
+          folderName: newName,
+        });
+      }
 
       if (response.success) {
         // 重新获取文件夹列表
@@ -714,7 +1196,19 @@ const FolderMenu = () => {
     const item = folderUtils.findNodeByKey(folderList, key);
     if (item?.isNew) {
       try {
-        await folderAPI.deleteFolder(key);
+        // 获取自增ID用于删除
+        const autoFolderId =
+          item?.autoFolderId ||
+          item?.backendData?.autoFolderId ||
+          item?.backendData?.folderId;
+
+        // 优先使用自增ID删除，如果没有则使用MongoDB ID（兼容性）
+        if (typeof autoFolderId === 'number' && autoFolderId > 0) {
+          await folderAPI.deleteFolderByFolderId(autoFolderId);
+        } else {
+          await folderAPI.deleteFolder(key);
+        }
+
         await fetchFolders();
         message.info('已取消创建');
       } catch (error) {
@@ -726,40 +1220,89 @@ const FolderMenu = () => {
   };
 
   // 处理权限管理
-  const handlePermissionManage = (key, name, currentPermission) => {
-    setPermissionModal({
-      visible: true,
-      key,
-      name,
-      permission: currentPermission,
-    });
+  const handlePermissionManage = async (key, name, currentPermission) => {
+    try {
+      // 使用用户上下文中的权限状态，如果没有则使用传入的权限状态
+      const actualPermission = userPermission || currentPermission || 'private';
+
+      setPermissionModal({
+        visible: true,
+        key,
+        name,
+        permission: actualPermission,
+        loading: false,
+      });
+    } catch (error) {
+      console.error('获取权限状态失败:', error);
+      // 即使获取失败，也显示弹窗，使用默认状态
+      setPermissionModal({
+        visible: true,
+        key,
+        name,
+        permission: userPermission || currentPermission || 'private',
+        loading: false,
+      });
+    }
   };
 
   // 处理权限保存
-  const handlePermissionSave = () => {
+  const handlePermissionSave = async () => {
     if (permissionModal.key !== 'root') {
       message.error('只能修改工作空间的权限设置');
       return;
     }
 
-    setFolderList(prev =>
-      folderUtils.updateNodePermission(
-        prev,
-        permissionModal.key,
-        permissionModal.permission,
-      ),
-    );
+    // 设置加载状态
+    setPermissionModal(prev => ({ ...prev, loading: true }));
 
-    setPermissionModal({
-      visible: false,
-      key: '',
-      name: '',
-      permission: 'private',
-    });
+    try {
+      // 获取用户邮箱
+      const userEmail = userInfo?.email || localStorage.getItem('userEmail');
 
-    const permissionText =
-      permissionModal.permission === 'public' ? '公开空间' : '私有空间';
-    message.success(`工作空间已设置为${permissionText}`);
+      if (!userEmail) {
+        message.error('无法获取用户邮箱信息，请重新登录');
+        setPermissionModal(prev => ({ ...prev, loading: false }));
+        return;
+      }
+
+      // 调用后端API修改用户公开状态
+      const response = await userAPI.changePublicStatus(userEmail);
+
+      // 检查响应状态 - API成功返回时通常有success字段或者直接检查message
+      const isSuccess = response.success === true || response.success !== false;
+
+      if (isSuccess) {
+        // 更新用户上下文中的权限状态
+        updateUserPermission(permissionModal.permission);
+
+        // 更新前端状态
+        setFolderList(prev =>
+          folderUtils.updateNodePermission(
+            prev,
+            permissionModal.key,
+            permissionModal.permission,
+          ),
+        );
+
+        setPermissionModal({
+          visible: false,
+          key: '',
+          name: '',
+          permission: 'private',
+          loading: false,
+        });
+
+        const permissionText =
+          permissionModal.permission === 'public' ? '公开空间' : '私有空间';
+        message.success(`工作空间已设置为${permissionText}`);
+      } else {
+        throw new Error(response.message || '权限修改失败');
+      }
+    } catch (error) {
+      console.error('修改权限失败:', error);
+      message.error(error.message || '修改权限失败，请重试');
+      setPermissionModal(prev => ({ ...prev, loading: false }));
+    }
   };
 
   // 处理权限弹窗取消
@@ -769,6 +1312,7 @@ const FolderMenu = () => {
       key: '',
       name: '',
       permission: 'private',
+      loading: false,
     });
   };
 
@@ -780,16 +1324,54 @@ const FolderMenu = () => {
     setDeleteModal(prev => ({ ...prev, loading: true }));
 
     try {
-      // 调用后端删除接口
-      const response = await folderAPI.deleteFolder(key);
+      // 获取要删除的项目信息
+      const targetItem = folderUtils.findNodeByKey(folderList, key);
+
+      // 判断是文档还是文件夹
+      const isDocument = key.startsWith('doc_') || key.startsWith('doc');
+
+      let response;
+
+      if (isDocument) {
+        // 获取文档ID（优先使用 documentId，如果没有则使用 autoDocumentId）
+        const documentId =
+          targetItem?.documentId ||
+          targetItem?.backendData?.documentId ||
+          targetItem?.backendData?.autoDocumentId;
+
+        if (!documentId) {
+          throw new Error('无法获取文档ID，删除失败');
+        }
+
+        // 调用删除文档API
+        response = await documentAPI.deleteDocument(documentId);
+
+        if (response.success) {
+          message.success('文档删除成功！');
+        }
+      } else {
+        // 获取文件夹自增ID
+        const autoFolderId =
+          targetItem?.autoFolderId ||
+          targetItem?.backendData?.autoFolderId ||
+          targetItem?.backendData?.folderId;
+
+        // 优先使用自增ID删除，如果没有则使用MongoDB ID（兼容性）
+        response =
+          typeof autoFolderId === 'number' && autoFolderId > 0
+            ? await folderAPI.deleteFolderByFolderId(autoFolderId)
+            : await folderAPI.deleteFolder(key);
+
+        if (response.success) {
+          // 显示删除统计信息
+          const { deletedFoldersCount, deletedDocumentsCount } = response.data;
+          message.success(
+            `删除成功！共删除 ${deletedFoldersCount} 个文件夹，${deletedDocumentsCount} 个文档`,
+          );
+        }
+      }
 
       if (response.success) {
-        // 显示删除统计信息
-        const { deletedFoldersCount, deletedDocumentsCount } = response.data;
-        message.success(
-          `删除成功！共删除 ${deletedFoldersCount} 个文件夹，${deletedDocumentsCount} 个文档`,
-        );
-
         // 如果删除的是当前选中的项，清空选中状态
         if (selectedKeys.includes(key)) {
           setSelectedKeys([]);
@@ -801,7 +1383,7 @@ const FolderMenu = () => {
         throw new Error(response.message || '删除失败');
       }
     } catch (error) {
-      console.error('删除文件夹失败:', error);
+      console.error('删除失败:', error);
       message.error(error.message || '删除失败，请重试');
     } finally {
       // 关闭弹窗并重置状态
@@ -831,6 +1413,12 @@ const FolderMenu = () => {
 
   // 生成带更多操作按钮的菜单项label
   const getMenuLabel = item => {
+    // 安全检查：确保item和item.key存在
+    if (!item || !item.key) {
+      console.warn('⚠️ getMenuLabel: item或item.key未定义', item);
+      return <span>未知项目</span>;
+    }
+
     // 获取原始文本（用于重命名弹窗）
     const text = item.label?.props?.text || item.label;
 
@@ -859,12 +1447,14 @@ const FolderMenu = () => {
               onSave={() => {}}
               onCancel={() => {}}
             />
-            {/* 显示公开空间图标 */}
-            <Tooltip title={`${item.owner}的公开空间 - 可协同编辑`}>
-              <TeamOutlined
-                style={{ color: '#52c41a', marginLeft: 4, fontSize: '12px' }}
-              />
-            </Tooltip>
+            {/* 只有协同文档根目录的用户空间才显示公开空间图标 */}
+            {item.key.match(/^collab_user_\d+$/) && (
+              <Tooltip title={`${item.owner}的公开空间 - 可协同编辑`}>
+                <TeamOutlined
+                  style={{ color: '#52c41a', marginLeft: 4, fontSize: '12px' }}
+                />
+              </Tooltip>
+            )}
           </div>
         </div>
       );
@@ -929,75 +1519,91 @@ const FolderMenu = () => {
     // 判断是否为文件（以doc开头的key为文件）
     const isFile = item.key.startsWith('doc');
 
-    // Dropdown 菜单内容
-    const dropdownMenu = (
-      <AntdMenu>
-        <AntdMenu.Item
-          key="rename"
-          onClick={e => {
-            e.domEvent.stopPropagation();
-            setEditingKey(item.key);
-          }}
-        >
-          重命名
-        </AntdMenu.Item>
-        {/* 只有根文件夹才显示权限管理选项 */}
-        {item.key === 'root' && (
-          <AntdMenu.Item
-            key="permission"
-            onClick={e => {
-              e.domEvent.stopPropagation();
-              handlePermissionManage(
-                item.key,
-                text,
-                item.permission || 'private',
-              );
-            }}
-          >
-            <Space>
-              {item.permission === 'public' ? (
-                <UnlockOutlined />
-              ) : (
-                <LockOutlined />
-              )}
-              空间权限管理
-            </Space>
-          </AntdMenu.Item>
-        )}
-        {/* 只有文件才显示历史版本记录选项 */}
-        {isFile && (
-          <AntdMenu.Item
-            key="history"
-            onClick={e => {
-              e.domEvent.stopPropagation();
-              // TODO: 处理历史版本记录的逻辑
-              message.info('查看历史版本记录');
-            }}
-          >
-            历史版本记录
-          </AntdMenu.Item>
-        )}
-        <AntdMenu.Item
-          key="delete"
-          danger
-          onClick={e => {
-            e.domEvent.stopPropagation();
-            setDeleteModal({
-              visible: true,
-              key: item.key,
-              name: text,
-              loading: false,
-            });
-          }}
-        >
-          删除
-        </AntdMenu.Item>
-      </AntdMenu>
-    );
+    // Dropdown 菜单项配置
+    const dropdownMenuItems = [
+      {
+        key: 'rename',
+        label: '重命名',
+        onClick: e => {
+          e.domEvent && e.domEvent.stopPropagation();
+          setEditingKey(item.key);
+        },
+      },
+      // 只有根文件夹才显示权限管理选项
+      ...(item.key === 'root'
+        ? [
+            {
+              key: 'permission',
+              label: (
+                <Space>
+                  {item.permission === 'public' ? (
+                    <UnlockOutlined />
+                  ) : (
+                    <LockOutlined />
+                  )}
+                  空间权限管理
+                </Space>
+              ),
+              onClick: e => {
+                e.domEvent && e.domEvent.stopPropagation();
+                handlePermissionManage(
+                  item.key,
+                  text,
+                  item.permission || 'private',
+                );
+              },
+            },
+          ]
+        : []),
+      // 只有文件才显示历史版本记录选项
+      ...(isFile
+        ? [
+            {
+              key: 'history',
+              label: '历史版本记录',
+              onClick: e => {
+                e.domEvent && e.domEvent.stopPropagation();
+                // TODO: 处理历史版本记录的逻辑
+                message.info('查看历史版本记录');
+              },
+            },
+          ]
+        : []),
+      {
+        key: 'delete',
+        label: '删除',
+        danger: true,
+        onClick: e => {
+          e.domEvent && e.domEvent.stopPropagation();
+          setDeleteModal({
+            visible: true,
+            key: item.key,
+            name: text,
+            loading: false,
+          });
+        },
+      },
+    ];
 
     return (
       <div className={styles.menuLabelContainer}>
-        <div className={styles.labelContent}>
+        <div
+          className={styles.labelContent}
+          onClick={() => {
+            // 如果是文档项，点击文档名可以直接跳转
+            if (isFile && !item.key.includes('collab_user_')) {
+              const documentId = item.key.replace('doc_', '');
+              if (documentId) {
+                navigate(`/doc-editor/${documentId}`);
+              }
+            }
+          }}
+          style={
+            isFile && !item.key.includes('collab_user_')
+              ? { cursor: 'pointer' }
+              : {}
+          }
+        >
           <EllipsisLabel
             text={text}
             isEditing={editingKey === item.key}
@@ -1008,7 +1614,7 @@ const FolderMenu = () => {
         </div>
         {editingKey !== item.key && (
           <Dropdown
-            overlay={dropdownMenu}
+            menu={{ items: dropdownMenuItems }}
             trigger={['click']}
             placement="bottomLeft"
           >
@@ -1027,53 +1633,80 @@ const FolderMenu = () => {
 
   // 递归为每个菜单项加上带操作按钮的label
   function withMenuActions(list) {
-    return list.map(item => {
-      const result = {
-        ...item,
-        label: getMenuLabel(item),
-        children: item.children ? withMenuActions(item.children) : undefined,
-      };
-
-      // 为所有菜单项添加 data-key 属性，用于CSS选择器
-      result['data-key'] = item.key;
-
-      // 为文件夹添加点击选中功能和权限样式
-      if (item.key && (item.key.startsWith('sub') || item.key === 'root')) {
-        result.onTitleClick = ({ key }) => {
-          setSelectedKeys([key]);
-        };
-
-        // 为文件夹添加权限相关的CSS类名
-        if (item.permission) {
-          result.className = `${item.permission}-folder`;
+    return list
+      .map(item => {
+        // 安全检查：确保item存在
+        if (!item) {
+          console.warn('⚠️ withMenuActions: item未定义', item);
+          return null;
         }
-      }
 
-      // 为协同文档的用户空间添加特殊样式
-      if (item.key && item.key.startsWith('collab_user_')) {
-        result.onTitleClick = ({ key }) => {
-          setSelectedKeys([key]);
+        // 过滤掉不应该传递到DOM的属性，但保留documentId用于文档导航
+        const {
+          autoFolderId: _autoFolderId,
+          backendData: _backendData,
+          parentFolderIds: _parentFolderIds,
+          childrenCount: _childrenCount,
+          isLeaf: _isLeaf,
+          depth: _depth,
+          create_time: _createTime,
+          update_time: _updateTime,
+          ...menuProps
+        } = item;
+
+        const result = {
+          ...menuProps,
+          label: getMenuLabel(item),
+          children: item.children ? withMenuActions(item.children) : undefined,
         };
 
-        // 添加协同用户空间的CSS类名
-        result.className = 'collaboration-user-space';
-      }
+        // 为所有菜单项添加 data-key 属性，用于CSS选择器
+        result['data-key'] = item.key;
 
-      // 为协同文档下的文件夹添加特殊样式
-      if (
-        item.key &&
-        item.key.includes('collab_user_') &&
-        item.key.includes('folder')
-      ) {
-        result.onTitleClick = ({ key }) => {
-          setSelectedKeys([key]);
-        };
+        // 特殊处理文档菜单项
+        if (item.key && item.key.startsWith('doc_')) {
+          result.disabled = false; // 确保文档菜单项不被禁用
+          result.children = undefined; // 文档项不应该有子项，强制设置为undefined
+        }
 
-        result.className = 'collaboration-folder';
-      }
+        // 为文件夹添加点击选中功能和权限样式
+        if (item.key && (item.key.startsWith('sub') || item.key === 'root')) {
+          result.onTitleClick = ({ key }) => {
+            setSelectedKeys([key]);
+          };
 
-      return result;
-    });
+          // 为文件夹添加权限相关的CSS类名
+          if (item.permission) {
+            result.className = `${item.permission}-folder`;
+          }
+        }
+
+        // 为协同文档的用户空间添加特殊样式
+        if (item.key && item.key.startsWith('collab_user_')) {
+          result.onTitleClick = ({ key }) => {
+            setSelectedKeys([key]);
+          };
+
+          // 添加协同用户空间的CSS类名
+          result.className = 'collaboration-user-space';
+        }
+
+        // 为协同文档下的文件夹添加特殊样式
+        if (
+          item.key &&
+          item.key.includes('collab_user_') &&
+          item.key.includes('folder')
+        ) {
+          result.onTitleClick = ({ key }) => {
+            setSelectedKeys([key]);
+          };
+
+          result.className = 'collaboration-folder';
+        }
+
+        return result;
+      })
+      .filter(Boolean); // 过滤掉null值
   }
 
   return (
@@ -1115,8 +1748,18 @@ const FolderMenu = () => {
         confirmLoading={deleteModal.loading}
       >
         <span>
-          确定要删除"{deleteModal.name}
-          "吗？此操作不可恢复，且会递归删除其下所有子文件夹和文档。
+          {(() => {
+            // 判断是否为文档
+            const isDocument =
+              deleteModal.key.startsWith('doc_') ||
+              deleteModal.key.startsWith('doc');
+
+            if (isDocument) {
+              return `确定要删除文档"${deleteModal.name}"吗？此操作不可恢复。`;
+            } else {
+              return `确定要删除文件夹"${deleteModal.name}"吗？此操作不可恢复，且会递归删除其下所有子文件夹和文档。`;
+            }
+          })()}
         </span>
       </Modal>
 
@@ -1129,6 +1772,7 @@ const FolderMenu = () => {
         okText="保存"
         cancelText="取消"
         width={480}
+        confirmLoading={permissionModal.loading}
       >
         <div style={{ marginBottom: 24 }}>
           <h4 style={{ marginBottom: 12 }}>选择工作空间权限：</h4>
@@ -1186,10 +1830,9 @@ const FolderMenu = () => {
         onSelect={handleMenuSelect}
         onOpenChange={handleMenuOpenChange}
         className={`${styles.menu} folder-menu-theme`}
-        items={withMenuActions(folderList)}
+        items={withMenuActions(validateMenuData(folderList))}
         selectable={true}
         multiple={false}
-        loading={loading}
       />
     </Layout.Sider>
   );

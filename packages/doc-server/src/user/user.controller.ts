@@ -55,7 +55,7 @@ export class UserController {
     return this.userService.findAll();
   }
 
-  @Get('/userId/:userId')
+  @Get('/getUserInfoByUserId/:userId')
   @ApiOperation({ summary: '根据用户ID获取指定用户' })
   @ApiResponse({ status: 200, description: '返回指定用户信息' })
   @ApiParam({ name: 'userId', description: '自增的用户ID', type: 'number' })

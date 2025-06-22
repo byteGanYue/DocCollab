@@ -6,6 +6,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
 import { FolderService } from './folder.service';
 import { Folder } from './schemas/folder.schema';
+import { Counter } from './schemas/counter.schema';
+import { CounterService } from './services/counter.service';
 import { BadRequestException } from '@nestjs/common';
 import { Types } from 'mongoose';
 
@@ -16,9 +18,15 @@ interface MockFolderModel {
   findByIdAndUpdate: jest.Mock;
 }
 
+// 定义模拟的CounterService类型
+interface MockCounterService {
+  getNextSequence: jest.Mock;
+}
+
 describe('FolderService', () => {
   let service: FolderService;
   let mockFolderModel: MockFolderModel;
+  let mockCounterService: MockCounterService;
 
   beforeEach(async () => {
     // 创建模拟的 Mongoose 模型
@@ -28,12 +36,25 @@ describe('FolderService', () => {
       findByIdAndUpdate: jest.fn(),
     };
 
+    // 创建模拟的 CounterService
+    mockCounterService = {
+      getNextSequence: jest.fn().mockResolvedValue(1), // 默认返回1
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FolderService,
         {
           provide: getModelToken(Folder.name),
           useValue: mockFolderModel,
+        },
+        {
+          provide: getModelToken(Counter.name),
+          useValue: {}, // Counter 模型的 mock（如果需要的话）
+        },
+        {
+          provide: CounterService,
+          useValue: mockCounterService,
         },
       ],
     }).compile();

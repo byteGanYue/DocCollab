@@ -23,8 +23,9 @@ export interface UpdateFolderResponseDto {
   message: string;
   data: {
     folderId: string;
+    autoFolderId: number; // 自增的文件夹ID，从1开始
     folderName: string;
-    userId: string;
+    userId: number;
     create_username: string;
     parentFolderIds: string[];
     depth: number;

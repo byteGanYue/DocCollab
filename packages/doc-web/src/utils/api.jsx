@@ -38,7 +38,7 @@ export const userAPI = {
   // 修改密码
   changePassword: data => patch('/user/password', data),
 
-  // 修改用户公开状态
+  // 修改用户公开状态 - 切换用户工作空间的公开/私有状态
   changePublicStatus: email => patch('/user/isPublic/' + email),
 
   // 用户登出
@@ -46,6 +46,9 @@ export const userAPI = {
 
   // 根据userId删除用户
   deleteUser: userId => del(`/user/userId/${userId}`),
+
+  //根据用户ID获取用户信息
+  getUserInfo: userId => get(`/user/getUserInfoByUserId/${userId}`),
 };
 
 /**
@@ -100,7 +103,7 @@ export const documentAPI = {
 
   // 删除文档
   deleteDocument: documentId =>
-    del(`/document/deleteDocumentById/${documentId}`),
+    del(`/document/deleteDocumentByDocumentId/${documentId}`),
 
   // 添加协同编辑者
   addCollaborator: (documentId, userId) =>
@@ -110,9 +113,9 @@ export const documentAPI = {
   removeCollaborator: (documentId, userId) =>
     del(`/document/${documentId}/editors/${userId}`),
 
-  // 根据用户ID获取文档列表
+  // 根据用户ID获取文档列表（使用新的专用接口）
   getUserDocuments: (userId, params = {}) =>
-    get('/document/getDocumentsList', { userId, ...params }),
+    get(`/document/getUserDocuments/${userId}`, params),
 
   // 根据父文件夹ID获取文档列表
   getFolderDocuments: (parentFolderId, params = {}) =>
@@ -139,6 +142,13 @@ export const documentAPI = {
     formData.append('file', file);
     return upload(`/document/${documentId}/attachments`, formData);
   },
+
+  // 获取所有公开用户的文档
+  getPublicDocuments: () => get('/document/public-documents'),
+
+  // 获取指定文件夹下的公开文档
+  getPublicDocumentsByFolder: folderIds =>
+    get(`/document/public-documents/folder/${folderIds.join(',')}`),
 };
 
 /**
@@ -151,17 +161,28 @@ export const folderAPI = {
   // 获取文件夹树形结构（备用接口）
   getFolderTree: params => get('/folder/getFoldersTree', params),
 
-  // 获取单个文件夹详情
+  // 获取单个文件夹详情（使用MongoDB ID）
   getFolder: id => get(`/folder/getFolderDetailById/${id}`),
+
+  // 根据自增folderId获取文件夹详情
+  getFolderByFolderId: folderId =>
+    get(`/folder/getFolderDetailByFolderId/${folderId}`),
 
   // 创建文件夹
   createFolder: data => post('/folder/create', data),
 
-  // 更新文件夹
-  updateFolder: (id, data) => patch(`/folder/update/${id}`, data),
+  // 更新文件夹（使用自增folderId）- 推荐使用此方法
+  updateFolder: (folderId, data) => patch(`/folder/update/${folderId}`, data),
 
-  // 删除文件夹
+  // 更新文件夹（使用MongoDB ID）- 兼容旧代码
+  updateFolderById: (id, data) => patch(`/folder/updateById/${id}`, data),
+
+  // 删除文件夹（使用MongoDB ID）- 兼容旧代码
   deleteFolder: id => del(`/folder/deleteFolderById/${id}`),
+
+  // 根据自增folderId删除文件夹（推荐使用此方法）
+  deleteFolderByFolderId: folderId =>
+    del(`/folder/deleteFolderByFolderId/${folderId}`),
 
   // 移动文件夹（保留，后续可能实现）
   moveFolder: (id, targetParentFolderIds) =>
@@ -169,6 +190,9 @@ export const folderAPI = {
 
   // 获取文件夹内容（保留，后续可能实现）
   getFolderContents: id => get(`/folder/${id}/contents`),
+
+  // 获取所有公开用户的文件夹结构
+  getPublicFolders: () => get('/folder/public-folders'),
 };
 
 /**
@@ -297,6 +321,55 @@ export const authUtils = {
  *     await documentAPI.exportDocument(documentId, format);
  *   } catch (error) {
  *     console.error('下载文档失败:', error);
+ *     throw error;
+ *   }
+ * };
+ *
+ * // 6. 文件夹操作示例
+ * const createFolder = async (folderData) => {
+ *   try {
+ *     const folder = await folderAPI.createFolder(folderData);
+ *     return folder;
+ *   } catch (error) {
+ *     console.error('创建文件夹失败:', error);
+ *     throw error;
+ *   }
+ * };
+ *
+ * // 7. 更新文件夹（使用自增folderId）
+ * const updateFolder = async (folderId, folderName) => {
+ *   try {
+ *     const result = await folderAPI.updateFolder(folderId, { folderName });
+ *     return result;
+ *   } catch (error) {
+ *     console.error('更新文件夹失败:', error);
+ *     throw error;
+ *   }
+ * };
+ *
+ * // 8. 获取文件夹详情（使用自增folderId）
+ * const getFolderDetails = async (folderId) => {
+ *   try {
+ *     const folder = await folderAPI.getFolderByFolderId(folderId);
+ *     return folder;
+ *   } catch (error) {
+ *     console.error('获取文件夹详情失败:', error);
+ *     throw error;
+ *   }
+ * };
+ *
+ * // 9. 修改用户工作空间权限
+ * const changeUserPermission = async (email) => {
+ *   try {
+ *     const response = await userAPI.changePublicStatus(email);
+ *     if (response.success) {
+ *       console.log('用户权限修改成功:', response);
+ *       return response;
+ *     } else {
+ *       throw new Error(response.message || '权限修改失败');
+ *     }
+ *   } catch (error) {
+ *     console.error('修改用户权限失败:', error);
  *     throw error;
  *   }
  * };

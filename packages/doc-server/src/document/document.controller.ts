@@ -11,9 +11,13 @@ import {
   Logger,
 } from '@nestjs/common';
 import { DocumentService } from './document.service';
-import { CreateDocumentDto, QueryDocumentDto } from './dto/create-document.dto';
+import {
+  CreateDocumentDto,
+  QueryDocumentDto,
+  UserDocumentQueryDto,
+} from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
-
+import { ApiOperation, ApiBody, ApiResponse, ApiParam } from '@nestjs/swagger';
 @Controller('document')
 export class DocumentController {
   private readonly logger = new Logger(DocumentController.name);
@@ -26,6 +30,71 @@ export class DocumentController {
    * @returns 创建结果
    */
   @Post('create')
+  @ApiOperation({
+    summary: '创建文档',
+    description: '创建一个新的文档，支持指定父文件夹',
+  })
+  @ApiBody({
+    type: CreateDocumentDto,
+    description: '创建文档的数据',
+    examples: {
+      example1: {
+        summary: '创建基本文档',
+        description: '创建一个基本的文档示例',
+        value: {
+          userId: 1,
+          documentName: '我的新文档',
+          content: '这是文档的初始内容',
+          create_username: 'user123',
+          parentFolderIds: [1, 2, 3],
+        },
+      },
+      example2: {
+        summary: '创建空白文档',
+        description: '创建一个空白文档',
+        value: {
+          userId: 1,
+          documentName: '空白文档',
+          create_username: 'user123',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: '文档创建成功',
+    schema: {
+      example: {
+        success: true,
+        message: '文档创建成功',
+        data: {
+          _id: '507f1f77bcf86cd799439011',
+          documentId: 1,
+          documentName: '我的新文档',
+          userId: 1,
+          content: '这是文档的初始内容',
+          create_username: 'user123',
+          update_username: 'user123',
+          editorId: [],
+          parentFolderIds: [1, 2, 3],
+          create_time: '2024-01-01T00:00:00.000Z',
+          update_time: '2024-01-01T00:00:00.000Z',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: '请求参数错误',
+    schema: {
+      example: {
+        success: false,
+        message: '文档名称不能为空',
+        statusCode: 400,
+        error: 'Bad Request',
+      },
+    },
+  })
   create(@Body() createDocumentDto: CreateDocumentDto) {
     this.logger.log('接收到创建文档请求', createDocumentDto);
     return this.documentService.create(createDocumentDto);
@@ -43,12 +112,36 @@ export class DocumentController {
   }
 
   /**
+   * 根据用户ID获取文档列表
+   * @param userId 用户ID
+   * @param query 其他查询参数（可选）
+   * @returns 用户的文档列表
+   */
+  @Get('getUserDocuments/:userId')
+  @ApiOperation({ summary: '根据用户userId获取文档列表' })
+  findDocumentsByUserId(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Query() query: UserDocumentQueryDto,
+  ) {
+    this.logger.log('接收到根据用户ID查询文档列表请求', {
+      userId,
+      queryParams: query,
+      pageType: typeof query.page,
+      pageSizeType: typeof query.pageSize,
+      pageValue: query.page,
+      pageSizeValue: query.pageSize,
+    });
+    return this.documentService.findAllByUserId(userId, query);
+  }
+
+  /**
    * 根据文档ID获取单个文档详情，并处理最近访问记录
    * @param documentId 文档ID
    * @param userId 访问用户ID（从查询参数获取）
    * @returns 文档详情
    */
   @Get('getDocumentById/:id')
+  @ApiOperation({ summary: '根据文档documentId获取单个文档详情' })
   findOne(
     @Param('id', ParseIntPipe) documentId: number,
     @Query('userId', ParseIntPipe) userId: number,
@@ -63,9 +156,10 @@ export class DocumentController {
    * @param updateDocumentDto 更新数据
    * @returns 更新结果
    */
-  @Patch('update/:id')
+  @Patch('update/:documentId')
+  @ApiOperation({ summary: '根据文档documentId更新文档' })
   update(
-    @Param('id', ParseIntPipe) documentId: number,
+    @Param('documentId', ParseIntPipe) documentId: number,
     @Body() updateDocumentDto: UpdateDocumentDto,
   ) {
     this.logger.log('接收到更新文档请求', { documentId, ...updateDocumentDto });
@@ -77,8 +171,57 @@ export class DocumentController {
    * @param documentId 文档ID
    * @returns 删除结果
    */
-  @Delete('deleteDocumentById/:id')
-  remove(@Param('id', ParseIntPipe) documentId: number) {
+  @Delete('deleteDocumentByDocumentId/:documentId')
+  @ApiOperation({
+    summary: '根据文档documentId删除文档',
+    description: '根据文档ID删除指定文档，删除后文档将无法恢复',
+  })
+  @ApiParam({
+    name: 'documentId',
+    description: '要删除的文档ID',
+    type: 'number',
+    example: 123,
+  })
+  @ApiResponse({
+    status: 200,
+    description: '文档删除成功',
+    schema: {
+      example: {
+        success: true,
+        message: '文档删除成功',
+        data: {
+          deletedCount: 1,
+          documentId: 123,
+          documentName: '已删除的文档名称',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: '文档不存在',
+    schema: {
+      example: {
+        success: false,
+        message: '文档不存在或已被删除',
+        statusCode: 404,
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: '请求参数错误',
+    schema: {
+      example: {
+        success: false,
+        message: '文档ID格式错误',
+        statusCode: 400,
+        error: 'Bad Request',
+      },
+    },
+  })
+  remove(@Param('documentId', ParseIntPipe) documentId: number) {
     this.logger.log('接收到删除文档请求', { documentId });
     return this.documentService.remove(documentId);
   }
@@ -90,6 +233,7 @@ export class DocumentController {
    * @returns 操作结果
    */
   @Post(':id/editors')
+  @ApiOperation({ summary: '根据文档documentId添加协同编辑者' })
   addEditor(
     @Param('id', ParseIntPipe) documentId: number,
     @Body() body: { userId: number },
@@ -114,5 +258,35 @@ export class DocumentController {
   ) {
     this.logger.log('接收到移除协同编辑者请求', { documentId, userId });
     return this.documentService.removeEditor(documentId, userId);
+  }
+
+  @Get('public-documents')
+  @ApiOperation({ summary: '获取所有公开用户的文档' })
+  @ApiResponse({
+    status: 200,
+    description: '成功获取所有公开用户的文档',
+  })
+  async getPublicDocuments(): Promise<
+    Awaited<ReturnType<DocumentService['findAllPublicDocuments']>>
+  > {
+    return this.documentService.findAllPublicDocuments();
+  }
+
+  @Get('public-documents/folder/:folderIds')
+  @ApiOperation({ summary: '获取指定文件夹下的公开文档' })
+  @ApiParam({
+    name: 'folderIds',
+    description: '文件夹ID数组，用逗号分隔',
+    example: '1,2,3',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '成功获取指定文件夹下的公开文档',
+  })
+  async getPublicDocumentsByFolder(@Param('folderIds') folderIds: string) {
+    const folderIdArray = folderIds
+      .split(',')
+      .map((id) => parseInt(id.trim(), 10));
+    return this.documentService.findPublicDocumentsByFolder(folderIdArray);
   }
 }
