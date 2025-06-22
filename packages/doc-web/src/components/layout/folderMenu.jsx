@@ -694,10 +694,7 @@ const FolderMenu = () => {
         isLeaf: true,
         backendData: doc,
         documentId: doc.documentId,
-        onClick: () => {
-          // 点击文档时跳转到编辑器
-          navigate(`/doc-editor/${doc.documentId}`);
-        },
+        // 移除onClick属性，因为Antd Menu不支持，改为在handleMenuSelect中处理
       }));
 
       // 合并文件夹和文档（文件夹在前，文档在后）
@@ -744,10 +741,7 @@ const FolderMenu = () => {
       isLeaf: true,
       backendData: doc,
       documentId: doc.documentId,
-      onClick: () => {
-        // 点击文档时跳转到编辑器
-        navigate(`/doc-editor/${doc.documentId}`);
-      },
+      // 移除onClick属性，因为Antd Menu不支持，改为在handleMenuSelect中处理
     }));
 
     // 创建"我的文件夹"根节点，包含所有后端文件夹数据和根级文档
@@ -766,6 +760,23 @@ const FolderMenu = () => {
   useEffect(() => {
     fetchFolders();
   }, [fetchFolders]);
+
+  // 调试：打印folderList的内容（开发时使用）
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      if (folderList.length > 0) {
+        // 查找并打印所有文档项
+        const findDocuments = (items, path = '') => {
+          items.forEach(item => {
+            if (item.children) {
+              findDocuments(item.children, path + '/' + item.key);
+            }
+          });
+        };
+        findDocuments(folderList);
+      }
+    }
+  }, [folderList]);
 
   const handleMenuSelect = ({ selectedKeys }) => {
     setSelectedKeys(selectedKeys);
@@ -800,7 +811,12 @@ const FolderMenu = () => {
     // 处理普通文档点击导航
     else if (selectedKey && selectedKey.startsWith('doc_')) {
       const documentId = selectedKey.replace('doc_', '');
-      navigate(`/doc-editor/${documentId}`);
+
+      if (documentId) {
+        navigate(`/doc-editor/${documentId}`);
+      } else {
+        console.warn('⚠️ 无法从key中解析documentId:', selectedKey);
+      }
     }
     // 处理以doc开头的其他文档格式
     else if (
@@ -810,13 +826,13 @@ const FolderMenu = () => {
     ) {
       // 处理格式如 "doc123" 的文档key
       const documentId = selectedKey.replace('doc', '');
+
       if (documentId && !isNaN(documentId)) {
         navigate(`/doc-editor/${documentId}`);
+      } else {
+        console.warn('⚠️ 无效的documentId:', documentId, 'key:', selectedKey);
       }
     }
-    // 处理文件夹点击 - 以sub开头的key表示文件夹，不需要导航，只是展开/折叠
-    // 协同文档的用户空间和文件夹也不需要导航
-    // 其他情况暂不处理导航
   };
 
   const handleMenuOpenChange = newOpenKeys => {
@@ -1571,7 +1587,23 @@ const FolderMenu = () => {
 
     return (
       <div className={styles.menuLabelContainer}>
-        <div className={styles.labelContent}>
+        <div
+          className={styles.labelContent}
+          onClick={() => {
+            // 如果是文档项，点击文档名可以直接跳转
+            if (isFile && !item.key.includes('collab_user_')) {
+              const documentId = item.key.replace('doc_', '');
+              if (documentId) {
+                navigate(`/doc-editor/${documentId}`);
+              }
+            }
+          }}
+          style={
+            isFile && !item.key.includes('collab_user_')
+              ? { cursor: 'pointer' }
+              : {}
+          }
+        >
           <EllipsisLabel
             text={text}
             isEditing={editingKey === item.key}
@@ -1609,14 +1641,13 @@ const FolderMenu = () => {
           return null;
         }
 
-        // 过滤掉不应该传递到DOM的属性
+        // 过滤掉不应该传递到DOM的属性，但保留documentId用于文档导航
         const {
           autoFolderId: _autoFolderId,
           backendData: _backendData,
           parentFolderIds: _parentFolderIds,
           childrenCount: _childrenCount,
           isLeaf: _isLeaf,
-          documentId: _documentId,
           depth: _depth,
           create_time: _createTime,
           update_time: _updateTime,
@@ -1631,6 +1662,12 @@ const FolderMenu = () => {
 
         // 为所有菜单项添加 data-key 属性，用于CSS选择器
         result['data-key'] = item.key;
+
+        // 特殊处理文档菜单项
+        if (item.key && item.key.startsWith('doc_')) {
+          result.disabled = false; // 确保文档菜单项不被禁用
+          result.children = undefined; // 文档项不应该有子项，强制设置为undefined
+        }
 
         // 为文件夹添加点击选中功能和权限样式
         if (item.key && (item.key.startsWith('sub') || item.key === 'root')) {
