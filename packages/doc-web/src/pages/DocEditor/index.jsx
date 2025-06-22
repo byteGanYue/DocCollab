@@ -7,7 +7,7 @@ const DocEditor = () => {
   const { id: documentId } = useParams(); // 从路由参数获取documentId
   const [documentData, setDocumentData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { userId } = JSON.parse(localStorage.getItem('userInfo'));
+  const { userId } = JSON.parse(localStorage.getItem('userInfo') || '{}'); // 从localStorage获取userId
 
   // 获取文档详情数据
   useEffect(() => {
