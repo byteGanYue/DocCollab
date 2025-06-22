@@ -301,6 +301,48 @@ const FolderMenu = () => {
   // 使用用户上下文获取用户信息
   const { userInfo } = useContext(UserContext);
 
+  /**
+   * 获取当前用户ID的统一函数
+   * @returns {number} 数字类型的用户ID
+   * @throws {Error} 如果无法获取有效的用户ID
+   */
+  const getCurrentUserId = () => {
+    let userId = userInfo?.userId || userInfo?._id;
+
+    // 如果userInfo中没有userId，尝试从localStorage获取
+    if (!userId) {
+      const localUserId = localStorage.getItem('userId');
+
+      // 如果从localStorage获取的是对象字符串，尝试解析
+      if (typeof localUserId === 'string' && localUserId.startsWith('{')) {
+        try {
+          const userObj = JSON.parse(localUserId);
+          userId = userObj.userId || userObj._id;
+        } catch {
+          // 解析失败，使用原值
+          userId = localUserId;
+        }
+      } else {
+        userId = localUserId;
+      }
+    }
+
+    // 如果仍然没有有效的用户ID，则抛出错误
+    if (!userId) {
+      throw new Error('用户信息不完整，请重新登录');
+    }
+
+    // 确保userId是number类型（后端期望number类型）
+    const numericUserId = parseInt(userId, 10);
+
+    // 验证转换结果
+    if (isNaN(numericUserId) || numericUserId <= 0) {
+      throw new Error('无效的用户ID，请重新登录');
+    }
+
+    return numericUserId;
+  };
+
   const [folderList, setFolderList] = useState([]);
   const [selectedKeys, setSelectedKeys] = useState(['home']); // 默认选中首页
   const [openKeys, setOpenKeys] = useState(['root']);
@@ -360,35 +402,47 @@ const FolderMenu = () => {
   const fetchFolders = useCallback(async () => {
     try {
       setLoading(true);
-      // 使用用户上下文获取用户ID，支持多种格式
-      let userId =
-        userInfo?.userId ||
-        userInfo?._id ||
-        localStorage.getItem('userId') ||
-        'current_user';
 
-      // 如果从localStorage获取的是对象字符串，尝试解析
-      if (typeof userId === 'string' && userId.startsWith('{')) {
-        try {
-          const userObj = JSON.parse(userId);
-          userId = userObj.userId || userObj._id || userId;
-        } catch {
-          // 解析失败，继续使用原值
+      // 获取用户ID，优先从userInfo获取，然后从localStorage获取
+      let userId = userInfo?.userId || userInfo?._id;
+
+      // 如果userInfo中没有userId，尝试从localStorage获取
+      if (!userId) {
+        const localUserId = localStorage.getItem('userId');
+
+        // 如果从localStorage获取的是对象字符串，尝试解析
+        if (typeof localUserId === 'string' && localUserId.startsWith('{')) {
+          try {
+            const userObj = JSON.parse(localUserId);
+            userId = userObj.userId || userObj._id;
+          } catch {
+            // 解析失败，使用原值
+            userId = localUserId;
+          }
+        } else {
+          userId = localUserId;
         }
       }
 
-      console.log('📁 使用的用户ID:', userId);
-
-      // 确保userId是number类型（后端期望number类型）
-      const numericUserId =
-        userId === 'current_user' ? 1 : parseInt(userId, 10);
-
-      // 验证转换结果
-      if (isNaN(numericUserId) || numericUserId <= 0) {
-        throw new Error('无效的用户ID，请重新登录');
+      // 尝试获取用户ID，如果获取不到则跳过请求
+      let numericUserId;
+      try {
+        numericUserId = getCurrentUserId();
+      } catch (error) {
+        // 如果是用户信息不完整的错误，说明用户信息还没加载完成，静默跳过
+        if (error.message.includes('用户信息不完整')) {
+          console.log('⚠️ 用户信息尚未加载完成，跳过请求', {
+            userInfo,
+            localUserId: localStorage.getItem('userId'),
+          });
+          setLoading(false);
+          return;
+        }
+        // 其他错误直接抛出
+        throw error;
       }
 
-      console.log('📁 转换后的用户ID:', numericUserId);
+      console.log('📁 使用的用户ID:', numericUserId);
 
       // 并行获取文件夹和文档数据
       const documentParams = {
@@ -728,31 +782,8 @@ const FolderMenu = () => {
       // 生成默认名称
       const defaultName = `新建文档${counters.file || 1}`;
 
-      // 获取当前用户ID和用户名
-      let userId =
-        userInfo?.userId ||
-        userInfo?._id ||
-        localStorage.getItem('userId') ||
-        'current_user';
-
-      // 如果从localStorage获取的是对象字符串，尝试解析
-      if (typeof userId === 'string' && userId.startsWith('{')) {
-        try {
-          const userObj = JSON.parse(userId);
-          userId = userObj.userId || userObj._id || userId;
-        } catch {
-          // 解析失败，继续使用原值
-        }
-      }
-
-      // 确保userId是number类型（后端期望number类型）
-      const numericUserId =
-        userId === 'current_user' ? 1 : parseInt(userId, 10);
-
-      // 验证转换结果
-      if (isNaN(numericUserId) || numericUserId <= 0) {
-        throw new Error('无效的用户ID，请重新登录');
-      }
+      // 获取当前用户ID
+      const numericUserId = getCurrentUserId();
 
       const username =
         userInfo?.username ||
@@ -898,31 +929,8 @@ const FolderMenu = () => {
       // 生成默认名称
       const defaultName = `新建文件夹${counters.folder}`;
 
-      // 获取当前用户ID和用户名
-      let userId =
-        userInfo?.userId ||
-        userInfo?._id ||
-        localStorage.getItem('userId') ||
-        'current_user';
-
-      // 如果从localStorage获取的是对象字符串，尝试解析
-      if (typeof userId === 'string' && userId.startsWith('{')) {
-        try {
-          const userObj = JSON.parse(userId);
-          userId = userObj.userId || userObj._id || userId;
-        } catch {
-          // 解析失败，继续使用原值
-        }
-      }
-
-      // 确保userId是number类型（后端期望number类型）
-      const numericUserId =
-        userId === 'current_user' ? 1 : parseInt(userId, 10);
-
-      // 验证转换结果
-      if (isNaN(numericUserId) || numericUserId <= 0) {
-        throw new Error('无效的用户ID，请重新登录');
-      }
+      // 获取当前用户ID
+      const numericUserId = getCurrentUserId();
 
       const username =
         userInfo?.username ||
