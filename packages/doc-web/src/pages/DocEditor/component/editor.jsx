@@ -3,6 +3,13 @@ import Quill from 'quill';
 import QuillCursors from 'quill-cursors';
 import styles from './editor.module.less';
 import 'quill/dist/quill.core.css';
+import FloatingToolbar from './FloatingToolbar.jsx';
+import {
+  BoldOutlined,
+  ItalicOutlined,
+  UnderlineOutlined,
+} from '@ant-design/icons';
+import BlockToolbar from './BlockToolbar.jsx';
 
 // 导入配置和工具函数
 import {
@@ -41,6 +48,8 @@ import {
 import EditorHeader from './EditorHeader.jsx';
 import TextStats from './TextStats.jsx';
 import ShareModal from './ShareModal.jsx';
+
+const TOOLBAR_HEIGHT = 40;
 
 const Editor = () => {
   // 使用 ref 来存储 Quill 实例和 DOM 元素
@@ -88,6 +97,15 @@ const Editor = () => {
   });
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [selectedTextForComment, setSelectedTextForComment] = useState('');
+
+  // 浮动工具栏状态
+  const [toolbarVisible, setToolbarVisible] = useState(false);
+  const [toolbarPosition, setToolbarPosition] = useState({ left: 0, top: 0 });
+
+  // 块级工具栏状态
+  const [blockToolbarVisible, setBlockToolbarVisible] = useState(false);
+  const [blockToolbarPos, setBlockToolbarPos] = useState({ top: 0, left: 0 });
+  const [blockLineIndex, setBlockLineIndex] = useState(null);
 
   // 添加工具栏提示样式
   useEffect(() => {
@@ -214,6 +232,90 @@ const Editor = () => {
     }
   }, [myColor]);
 
+  // 浮动工具栏逻辑
+  useEffect(() => {
+    const quill = quillRef.current;
+    if (!quill) return;
+
+    const updateToolbarPosition = range => {
+      if (range && range.length > 0) {
+        const bounds = quill.getBounds(range.index, range.length);
+        const editorRect = quill.container.getBoundingClientRect();
+        // 计算全局坐标
+        const left = editorRect.left + bounds.left + window.scrollX;
+        let top =
+          editorRect.top + bounds.top + window.scrollY - TOOLBAR_HEIGHT - 8;
+        // 边界处理：如果超出顶部则放在下方
+        if (top < 0) top = editorRect.top + bounds.bottom + window.scrollY + 8;
+        setToolbarPosition({ left, top });
+        setToolbarVisible(true);
+      } else {
+        setToolbarVisible(false);
+      }
+    };
+
+    const handleSelectionChange = range => {
+      updateToolbarPosition(range);
+    };
+
+    quill.on('selection-change', handleSelectionChange);
+    // 滚动/窗口变化时重新定位
+    const handleWindowUpdate = () => {
+      const range = quill.getSelection();
+      updateToolbarPosition(range);
+    };
+    window.addEventListener('scroll', handleWindowUpdate, true);
+    window.addEventListener('resize', handleWindowUpdate, true);
+
+    return () => {
+      quill.off('selection-change', handleSelectionChange);
+      window.removeEventListener('scroll', handleWindowUpdate, true);
+      window.removeEventListener('resize', handleWindowUpdate, true);
+    };
+  }, []);
+
+  // 块级工具栏逻辑
+  useEffect(() => {
+    const editor = document.querySelector('.ql-editor');
+    if (!editor) return;
+
+    const handleMouseMove = e => {
+      const line = e.target.closest('p, div, li');
+      if (line && editor.contains(line)) {
+        const rect = line.getBoundingClientRect();
+        // 鼠标靠近左侧时显示
+        if (e.clientX - rect.left < 32) {
+          setBlockToolbarVisible(true);
+          setBlockToolbarPos({
+            top: rect.top + rect.height / 2 - 60,
+            left: rect.left - 44,
+          });
+          // 计算当前行的 index
+          const quill = quillRef.current;
+          if (quill) {
+            const blot = Quill.find(line);
+            if (blot) {
+              setBlockLineIndex(quill.getIndex(blot));
+            }
+          }
+        } else {
+          setBlockToolbarVisible(false);
+        }
+      } else {
+        setBlockToolbarVisible(false);
+      }
+    };
+    editor.addEventListener('mousemove', handleMouseMove);
+    return () => editor.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
+  // 浮动工具栏操作
+  const handleFormat = format => {
+    const quill = quillRef.current;
+    if (!quill) return;
+    quill.format(format, !quill.getFormat()[format]);
+  };
+
   // 处理用户名变化
   const handleUsernameChange = e => {
     const newUsername = e.target.value;
@@ -247,8 +349,55 @@ const Editor = () => {
     }
   };
 
+  // 块级工具栏操作
+  const handleBlockInsert = () => {
+    const quill = quillRef.current;
+    if (!quill || blockLineIndex == null) return;
+    quill.insertText(blockLineIndex, '\n', 'user');
+    quill.setSelection(blockLineIndex + 1, 0, 'user');
+    setBlockToolbarVisible(false);
+  };
+  const handleBlockFormat = (format, value) => {
+    const quill = quillRef.current;
+    if (!quill || blockLineIndex == null) return;
+    quill.formatLine(blockLineIndex, 1, format, value, 'user');
+    setBlockToolbarVisible(false);
+  };
+
   return (
     <div className={styles.editorContainer}>
+      {/* 块级浮动工具栏 */}
+      <BlockToolbar
+        visible={blockToolbarVisible}
+        top={blockToolbarPos.top}
+        left={blockToolbarPos.left}
+        onInsert={handleBlockInsert}
+        onFormat={handleBlockFormat}
+      />
+      {/* 浮动工具栏 */}
+      <FloatingToolbar visible={toolbarVisible} position={toolbarPosition}>
+        <BoldOutlined
+          onMouseDown={e => {
+            e.preventDefault();
+            handleFormat('bold');
+          }}
+          style={{ cursor: 'pointer', fontSize: 18 }}
+        />
+        <ItalicOutlined
+          onMouseDown={e => {
+            e.preventDefault();
+            handleFormat('italic');
+          }}
+          style={{ cursor: 'pointer', fontSize: 18 }}
+        />
+        <UnderlineOutlined
+          onMouseDown={e => {
+            e.preventDefault();
+            handleFormat('underline');
+          }}
+          style={{ cursor: 'pointer', fontSize: 18 }}
+        />
+      </FloatingToolbar>
       <EditorHeader
         documentTitle={documentTitle}
         setDocumentTitle={setDocumentTitle}
