@@ -775,10 +775,20 @@ const FolderMenu = () => {
             targetFolder.backendData.autoFolderId || parseInt(targetKey, 10);
 
           if (!isNaN(targetFolderId) && targetFolderId > 0) {
-            parentFolderIds = [
-              ...(targetFolder.backendData.parentFolderIds || []),
-              targetFolderId,
-            ];
+            // 确保parentFolderIds数组中只包含数字类型的ID（过滤掉MongoDB ObjectId字符串）
+            const numericParentIds = (
+              targetFolder.backendData.parentFolderIds || []
+            )
+              .map(id => {
+                // 如果是数字，直接返回
+                if (typeof id === 'number') return id;
+                // 如果是字符串，尝试转换为数字
+                const numericId = parseInt(id, 10);
+                return !isNaN(numericId) && numericId > 0 ? numericId : null;
+              })
+              .filter(id => id !== null); // 过滤掉无效的ID
+
+            parentFolderIds = [...numericParentIds, targetFolderId];
           } else {
             // 如果无法解析文件夹ID，使用空数组（根级）
             parentFolderIds = [];
@@ -927,17 +937,37 @@ const FolderMenu = () => {
       if (targetKey === 'root') {
         parentFolderIds = []; // 根级文件夹，parentFolderIds为空数组
       } else if (targetKey && targetKey !== 'root') {
-        // 找到目标文件夹并构建父文件夹路径
+        // 找到目标文件夹，新文件夹将在此文件夹内创建
         const targetFolder = folderUtils.findNodeByKey(folderList, targetKey);
         if (targetFolder && targetFolder.backendData) {
-          // 如果目标文件夹存在，继承其路径并添加自身
-          parentFolderIds = [
-            ...(targetFolder.backendData.parentFolderIds || []),
-            targetKey,
-          ];
+          // 获取目标文件夹的自增ID，这将成为新文件夹的直接父文件夹
+          const targetAutoFolderId =
+            targetFolder.backendData.autoFolderId ||
+            targetFolder.backendData.folderId;
+
+          if (
+            typeof targetAutoFolderId === 'number' &&
+            targetAutoFolderId > 0
+          ) {
+            // 新文件夹的parentFolderIds就是选中文件夹的自增ID
+            parentFolderIds = [targetAutoFolderId];
+          } else {
+            // 如果无法获取自增ID，尝试解析targetKey
+            const numericTargetKey = parseInt(targetKey, 10);
+            if (!isNaN(numericTargetKey) && numericTargetKey > 0) {
+              parentFolderIds = [numericTargetKey];
+            } else {
+              parentFolderIds = [];
+            }
+          }
         } else {
-          // 如果找不到详细信息，直接使用targetKey作为父级
-          parentFolderIds = [targetKey];
+          // 如果找不到详细信息，尝试将targetKey转换为数字作为父级
+          const numericTargetKey = parseInt(targetKey, 10);
+          if (!isNaN(numericTargetKey) && numericTargetKey > 0) {
+            parentFolderIds = [numericTargetKey];
+          } else {
+            parentFolderIds = [];
+          }
         }
       }
 
@@ -1151,34 +1181,70 @@ const FolderMenu = () => {
     setDeleteModal(prev => ({ ...prev, loading: true }));
 
     try {
-      // 获取文件夹信息以使用自增ID进行删除
-      const folderItem = folderUtils.findNodeByKey(folderList, key);
-      const autoFolderId =
-        folderItem?.autoFolderId ||
-        folderItem?.backendData?.autoFolderId ||
-        folderItem?.backendData?.folderId;
+      // 获取要删除的项目信息
+      const targetItem = folderUtils.findNodeByKey(folderList, key);
 
-      console.log('删除文件夹 - 调试信息:', {
-        key,
-        'folderItem.autoFolderId': folderItem?.autoFolderId,
-        'backendData.autoFolderId': folderItem?.backendData?.autoFolderId,
-        'backendData.folderId': folderItem?.backendData?.folderId,
-        finalAutoFolderId: autoFolderId,
-      });
+      // 判断是文档还是文件夹
+      const isDocument = key.startsWith('doc_') || key.startsWith('doc');
 
-      // 优先使用自增ID删除，如果没有则使用MongoDB ID（兼容性）
-      const response =
-        typeof autoFolderId === 'number' && autoFolderId > 0
-          ? await folderAPI.deleteFolderByFolderId(autoFolderId)
-          : await folderAPI.deleteFolder(key);
+      let response;
+
+      if (isDocument) {
+        // 删除文档
+        console.log('删除文档 - 调试信息:', {
+          key,
+          targetItem,
+          documentId:
+            targetItem?.documentId || targetItem?.backendData?.documentId,
+        });
+
+        // 获取文档ID（优先使用 documentId，如果没有则使用 autoDocumentId）
+        const documentId =
+          targetItem?.documentId ||
+          targetItem?.backendData?.documentId ||
+          targetItem?.backendData?.autoDocumentId;
+
+        if (!documentId) {
+          throw new Error('无法获取文档ID，删除失败');
+        }
+
+        // 调用删除文档API
+        response = await documentAPI.deleteDocument(documentId);
+
+        if (response.success) {
+          message.success('文档删除成功！');
+        }
+      } else {
+        // 删除文件夹
+        console.log('删除文件夹 - 调试信息:', {
+          key,
+          'folderItem.autoFolderId': targetItem?.autoFolderId,
+          'backendData.autoFolderId': targetItem?.backendData?.autoFolderId,
+          'backendData.folderId': targetItem?.backendData?.folderId,
+        });
+
+        // 获取文件夹自增ID
+        const autoFolderId =
+          targetItem?.autoFolderId ||
+          targetItem?.backendData?.autoFolderId ||
+          targetItem?.backendData?.folderId;
+
+        // 优先使用自增ID删除，如果没有则使用MongoDB ID（兼容性）
+        response =
+          typeof autoFolderId === 'number' && autoFolderId > 0
+            ? await folderAPI.deleteFolderByFolderId(autoFolderId)
+            : await folderAPI.deleteFolder(key);
+
+        if (response.success) {
+          // 显示删除统计信息
+          const { deletedFoldersCount, deletedDocumentsCount } = response.data;
+          message.success(
+            `删除成功！共删除 ${deletedFoldersCount} 个文件夹，${deletedDocumentsCount} 个文档`,
+          );
+        }
+      }
 
       if (response.success) {
-        // 显示删除统计信息
-        const { deletedFoldersCount, deletedDocumentsCount } = response.data;
-        message.success(
-          `删除成功！共删除 ${deletedFoldersCount} 个文件夹，${deletedDocumentsCount} 个文档`,
-        );
-
         // 如果删除的是当前选中的项，清空选中状态
         if (selectedKeys.includes(key)) {
           setSelectedKeys([]);
@@ -1190,7 +1256,7 @@ const FolderMenu = () => {
         throw new Error(response.message || '删除失败');
       }
     } catch (error) {
-      console.error('删除文件夹失败:', error);
+      console.error('删除失败:', error);
       message.error(error.message || '删除失败，请重试');
     } finally {
       // 关闭弹窗并重置状态
@@ -1518,8 +1584,18 @@ const FolderMenu = () => {
         confirmLoading={deleteModal.loading}
       >
         <span>
-          确定要删除"{deleteModal.name}
-          "吗？此操作不可恢复，且会递归删除其下所有子文件夹和文档。
+          {(() => {
+            // 判断是否为文档
+            const isDocument =
+              deleteModal.key.startsWith('doc_') ||
+              deleteModal.key.startsWith('doc');
+
+            if (isDocument) {
+              return `确定要删除文档"${deleteModal.name}"吗？此操作不可恢复。`;
+            } else {
+              return `确定要删除文件夹"${deleteModal.name}"吗？此操作不可恢复，且会递归删除其下所有子文件夹和文档。`;
+            }
+          })()}
         </span>
       </Modal>
 

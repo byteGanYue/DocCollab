@@ -17,7 +17,7 @@ import {
   UserDocumentQueryDto,
 } from './dto/create-document.dto';
 import { UpdateDocumentDto } from './dto/update-document.dto';
-import { ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiBody, ApiResponse, ApiParam } from '@nestjs/swagger';
 @Controller('document')
 export class DocumentController {
   private readonly logger = new Logger(DocumentController.name);
@@ -171,9 +171,57 @@ export class DocumentController {
    * @param documentId 文档ID
    * @returns 删除结果
    */
-  @Delete('deleteDocumentById/:id')
-  @ApiOperation({ summary: '根据文档documentId删除文档' })
-  remove(@Param('id', ParseIntPipe) documentId: number) {
+  @Delete('deleteDocumentByDocumentId/:documentId')
+  @ApiOperation({
+    summary: '根据文档documentId删除文档',
+    description: '根据文档ID删除指定文档，删除后文档将无法恢复',
+  })
+  @ApiParam({
+    name: 'documentId',
+    description: '要删除的文档ID',
+    type: 'number',
+    example: 123,
+  })
+  @ApiResponse({
+    status: 200,
+    description: '文档删除成功',
+    schema: {
+      example: {
+        success: true,
+        message: '文档删除成功',
+        data: {
+          deletedCount: 1,
+          documentId: 123,
+          documentName: '已删除的文档名称',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: '文档不存在',
+    schema: {
+      example: {
+        success: false,
+        message: '文档不存在或已被删除',
+        statusCode: 404,
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: '请求参数错误',
+    schema: {
+      example: {
+        success: false,
+        message: '文档ID格式错误',
+        statusCode: 400,
+        error: 'Bad Request',
+      },
+    },
+  })
+  remove(@Param('documentId', ParseIntPipe) documentId: number) {
     this.logger.log('接收到删除文档请求', { documentId });
     return this.documentService.remove(documentId);
   }

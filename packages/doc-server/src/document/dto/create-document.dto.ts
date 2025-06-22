@@ -54,6 +54,7 @@ export class CreateDocumentDto {
   })
   @IsArray()
   @IsOptional()
+  @Type(() => Number)
   parentFolderIds?: number[];
 }
 

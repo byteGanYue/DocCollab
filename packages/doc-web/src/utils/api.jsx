@@ -100,7 +100,7 @@ export const documentAPI = {
 
   // 删除文档
   deleteDocument: documentId =>
-    del(`/document/deleteDocumentById/${documentId}`),
+    del(`/document/deleteDocumentByDocumentId/${documentId}`),
 
   // 添加协同编辑者
   addCollaborator: (documentId, userId) =>

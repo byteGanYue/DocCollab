@@ -76,19 +76,25 @@ export class FolderService {
       // 获取父文件夹路径并验证
       const parentFolderIds = createFolderDto.parentFolderIds || [];
       let depth = 0;
+      // eslint-disable-next-line prefer-const
+      let convertedParentFolderIds: string[] = [];
 
       if (parentFolderIds.length > 0) {
         // 验证父文件夹是否存在且属于同一用户
         const parentFolderId = parentFolderIds[parentFolderIds.length - 1];
+        let parentFolder: FolderDocument | null = null;
 
-        if (!Types.ObjectId.isValid(parentFolderId)) {
-          throw new BadRequestException('无效的父文件夹ID格式');
+        // 由于前端现在发送的是数字ID，直接作为自增ID查找
+        if (typeof parentFolderId === 'number' && parentFolderId > 0) {
+          parentFolder = (await this.folderModel
+            .findOne({ folderId: parentFolderId })
+            .lean()
+            .exec()) as FolderDocument | null;
+        } else {
+          throw new BadRequestException(
+            `无效的父文件夹ID格式: ${parentFolderId}`,
+          );
         }
-
-        const parentFolder = await this.folderModel
-          .findById(parentFolderId)
-          .lean()
-          .exec();
 
         if (!parentFolder) {
           throw new BadRequestException('父文件夹不存在');
@@ -106,6 +112,26 @@ export class FolderService {
         if (depth > 10) {
           throw new BadRequestException('文件夹层级不能超过10级');
         }
+
+        // 将所有数字ID转换为对应的MongoDB ObjectId字符串
+        for (const numericId of parentFolderIds) {
+          if (typeof numericId === 'number' && numericId > 0) {
+            const folder = await this.folderModel
+              .findOne({ folderId: numericId })
+              .select('_id')
+              .lean()
+              .exec();
+            if (folder) {
+              convertedParentFolderIds.push(
+                (folder._id as Types.ObjectId).toString(),
+              );
+            } else {
+              throw new BadRequestException(`父文件夹ID ${numericId} 不存在`);
+            }
+          } else {
+            throw new BadRequestException(`无效的父文件夹ID格式: ${numericId}`);
+          }
+        }
       }
 
       // 获取下一个自增的文件夹ID
@@ -118,7 +144,7 @@ export class FolderService {
         folderName: createFolderDto.folderName.trim(),
         create_username: createFolderDto.create_username,
         update_username: createFolderDto.create_username,
-        parentFolderIds,
+        parentFolderIds: convertedParentFolderIds, // 使用转换后的ObjectId字符串数组
         depth,
         all_children_documentId: [],
         all_children_folderId: [],
@@ -128,8 +154,9 @@ export class FolderService {
       const folderDoc = savedFolder.toObject() as unknown as FolderDocument;
 
       // 更新父文件夹的子文件夹列表
-      if (parentFolderIds.length > 0) {
-        const parentFolderId = parentFolderIds[parentFolderIds.length - 1];
+      if (convertedParentFolderIds.length > 0) {
+        const parentFolderId =
+          convertedParentFolderIds[convertedParentFolderIds.length - 1];
         await this.folderModel.findByIdAndUpdate(parentFolderId, {
           $push: { all_children_folderId: folderDoc._id },
           update_username: createFolderDto.create_username,
