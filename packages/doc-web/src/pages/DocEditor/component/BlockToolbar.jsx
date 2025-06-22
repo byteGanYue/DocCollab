@@ -110,17 +110,23 @@ const BlockToolbar = ({
     >
       <button
         onClick={onExpand}
-        style={{ ...btnStyle, background: expanded ? '#f0f0f0' : 'none' }}
+        style={{
+          ...btnStyle,
+          background: expanded ? '#f0f0f0' : 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
         title="插入新段落"
       >
         <BoldOutlined style={{ opacity: 0, pointerEvents: 'none' }} />
         <span
           style={{
             position: 'absolute',
-            left: 10,
-            top: 6,
-            fontSize: 20,
-            color: '#888',
+            left: 6,
+            top: -8,
+            fontSize: 30,
+            color: '#444343',
           }}
         >
           +
