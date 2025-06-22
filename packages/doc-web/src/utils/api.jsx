@@ -151,17 +151,28 @@ export const folderAPI = {
   // 获取文件夹树形结构（备用接口）
   getFolderTree: params => get('/folder/getFoldersTree', params),
 
-  // 获取单个文件夹详情
+  // 获取单个文件夹详情（使用MongoDB ID）
   getFolder: id => get(`/folder/getFolderDetailById/${id}`),
+
+  // 根据自增folderId获取文件夹详情
+  getFolderByFolderId: folderId =>
+    get(`/folder/getFolderDetailByFolderId/${folderId}`),
 
   // 创建文件夹
   createFolder: data => post('/folder/create', data),
 
-  // 更新文件夹
-  updateFolder: (id, data) => patch(`/folder/update/${id}`, data),
+  // 更新文件夹（使用自增folderId）- 推荐使用此方法
+  updateFolder: (folderId, data) => patch(`/folder/update/${folderId}`, data),
 
-  // 删除文件夹
+  // 更新文件夹（使用MongoDB ID）- 兼容旧代码
+  updateFolderById: (id, data) => patch(`/folder/updateById/${id}`, data),
+
+  // 删除文件夹（使用MongoDB ID）- 兼容旧代码
   deleteFolder: id => del(`/folder/deleteFolderById/${id}`),
+
+  // 根据自增folderId删除文件夹（推荐使用此方法）
+  deleteFolderByFolderId: folderId =>
+    del(`/folder/deleteFolderByFolderId/${folderId}`),
 
   // 移动文件夹（保留，后续可能实现）
   moveFolder: (id, targetParentFolderIds) =>
@@ -297,6 +308,39 @@ export const authUtils = {
  *     await documentAPI.exportDocument(documentId, format);
  *   } catch (error) {
  *     console.error('下载文档失败:', error);
+ *     throw error;
+ *   }
+ * };
+ *
+ * // 6. 文件夹操作示例
+ * const createFolder = async (folderData) => {
+ *   try {
+ *     const folder = await folderAPI.createFolder(folderData);
+ *     return folder;
+ *   } catch (error) {
+ *     console.error('创建文件夹失败:', error);
+ *     throw error;
+ *   }
+ * };
+ *
+ * // 7. 更新文件夹（使用自增folderId）
+ * const updateFolder = async (folderId, folderName) => {
+ *   try {
+ *     const result = await folderAPI.updateFolder(folderId, { folderName });
+ *     return result;
+ *   } catch (error) {
+ *     console.error('更新文件夹失败:', error);
+ *     throw error;
+ *   }
+ * };
+ *
+ * // 8. 获取文件夹详情（使用自增folderId）
+ * const getFolderDetails = async (folderId) => {
+ *   try {
+ *     const folder = await folderAPI.getFolderByFolderId(folderId);
+ *     return folder;
+ *   } catch (error) {
+ *     console.error('获取文件夹详情失败:', error);
  *     throw error;
  *   }
  * };

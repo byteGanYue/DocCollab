@@ -316,7 +316,8 @@ class folderUtils {
    */
   static extractFolderFromBackendData(backendData) {
     return {
-      folderId: backendData.folderId || backendData._id,
+      folderId: backendData.folderId || backendData._id, // MongoDB ID (用于父子关系)
+      autoFolderId: backendData.autoFolderId, // 自增ID (用于API调用)
       folderName: backendData.folderName,
       userId: backendData.userId,
       create_username: backendData.create_username,

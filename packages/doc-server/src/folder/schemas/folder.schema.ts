@@ -3,6 +3,9 @@ import { Document, Types } from 'mongoose';
 
 @Schema({ timestamps: { createdAt: 'create_time', updatedAt: 'update_time' } })
 export class Folder extends Document {
+  @Prop({ required: true, unique: true })
+  folderId: number; // 自增的文件夹ID，从1开始
+
   @Prop({ type: Number, required: true })
   userId: number; // 用户ID，与用户模块的自增userId保持一致
 
@@ -47,3 +50,4 @@ export const FolderSchema = SchemaFactory.createForClass(Folder);
 FolderSchema.index({ userId: 1, depth: 1 });
 FolderSchema.index({ parentFolderIds: 1 });
 FolderSchema.index({ folderName: 1, userId: 1, parentFolderIds: 1 });
+// folderId 已通过 unique: true 自动创建索引，无需手动添加

@@ -69,6 +69,7 @@ export interface CreateFolderResponseDto {
   message: string;
   data: {
     folderId: string;
+    autoFolderId: number; // 自增的文件夹ID，从1开始
     folderName: string;
     userId: number;
     create_username: string;
@@ -87,6 +88,7 @@ export interface FindFolderDetailResponseDto {
   message: string;
   data: {
     folderId: string;
+    autoFolderId: number; // 自增的文件夹ID，从1开始
     folderName: string;
     userId: number; // 使用number类型，与用户模块保持一致
     create_username: string;

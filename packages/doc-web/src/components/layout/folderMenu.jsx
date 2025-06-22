@@ -363,6 +363,7 @@ const FolderMenu = () => {
 
       const response = await folderAPI.getFolders({ userId: numericUserId });
       console.log('📁 从后端获取的文件夹数据:', response);
+      console.log('📁 原始文件夹数据详情:', response.data);
 
       // 转换后端数据为前端菜单格式
       const convertedFolders = convertBackendFoldersToMenuFormat(
@@ -437,7 +438,8 @@ const FolderMenu = () => {
     // 递归转换后端文件夹数据为前端菜单格式
     const convertFolderToMenuItem = folder => {
       const menuItem = {
-        key: folder.folderId,
+        key: folder.folderId, // MongoDB ID (用于前端菜单key)
+        autoFolderId: folder.autoFolderId, // 自增ID (用于API调用)
         icon: React.createElement(FolderOpenOutlined),
         label: <EllipsisLabel text={folder.folderName} />,
         children: [],
@@ -459,6 +461,12 @@ const FolderMenu = () => {
           convertFolderToMenuItem(childFolder),
         );
       }
+
+      console.log('🔄 转换菜单项:', {
+        originalFolder: folder,
+        menuItem: menuItem,
+        autoFolderId: menuItem.autoFolderId,
+      });
 
       return menuItem;
     };
@@ -664,6 +672,12 @@ const FolderMenu = () => {
         // 进入编辑状态
         setEditingKey(response.data.folderId);
 
+        console.log('创建文件夹成功，数据:', {
+          folderId: response.data.folderId,
+          autoFolderId: response.data.autoFolderId,
+          folderName: response.data.folderName,
+        });
+
         // 确保"我的文件夹"根节点展开
         if (!openKeys.includes('root')) {
           setOpenKeys(prev => [...prev, 'root']);
@@ -709,8 +723,35 @@ const FolderMenu = () => {
         }
       }
 
-      // 调用更新 API
-      const response = await folderAPI.updateFolder(key, {
+      // 查找文件夹项，获取自增ID
+      const folderItem = folderUtils.findNodeByKey(folderList, key);
+
+      // 优先使用自增ID，如果没有则使用MongoDB ID（兼容旧数据）
+      // 尝试从多个地方获取自增ID
+      const autoFolderId =
+        folderItem?.autoFolderId ||
+        folderItem?.backendData?.autoFolderId ||
+        folderItem?.backendData?.folderId;
+
+      const updateId =
+        typeof autoFolderId === 'number' && autoFolderId > 0
+          ? autoFolderId
+          : key;
+
+      console.log('重命名文件夹:', {
+        key,
+        folderItem: folderItem,
+        'folderItem.autoFolderId': folderItem?.autoFolderId,
+        'folderItem.backendData': folderItem?.backendData,
+        'backendData.autoFolderId': folderItem?.backendData?.autoFolderId,
+        'backendData.folderId': folderItem?.backendData?.folderId,
+        finalAutoFolderId: autoFolderId,
+        updateId,
+        newName,
+      });
+
+      // 调用更新 API - 使用自增ID
+      const response = await folderAPI.updateFolder(updateId, {
         folderName: newName,
       });
 
@@ -734,7 +775,19 @@ const FolderMenu = () => {
     const item = folderUtils.findNodeByKey(folderList, key);
     if (item?.isNew) {
       try {
-        await folderAPI.deleteFolder(key);
+        // 获取自增ID用于删除
+        const autoFolderId =
+          item?.autoFolderId ||
+          item?.backendData?.autoFolderId ||
+          item?.backendData?.folderId;
+
+        // 优先使用自增ID删除，如果没有则使用MongoDB ID（兼容性）
+        if (typeof autoFolderId === 'number' && autoFolderId > 0) {
+          await folderAPI.deleteFolderByFolderId(autoFolderId);
+        } else {
+          await folderAPI.deleteFolder(key);
+        }
+
         await fetchFolders();
         message.info('已取消创建');
       } catch (error) {
@@ -800,8 +853,26 @@ const FolderMenu = () => {
     setDeleteModal(prev => ({ ...prev, loading: true }));
 
     try {
-      // 调用后端删除接口
-      const response = await folderAPI.deleteFolder(key);
+      // 获取文件夹信息以使用自增ID进行删除
+      const folderItem = folderUtils.findNodeByKey(folderList, key);
+      const autoFolderId =
+        folderItem?.autoFolderId ||
+        folderItem?.backendData?.autoFolderId ||
+        folderItem?.backendData?.folderId;
+
+      console.log('删除文件夹 - 调试信息:', {
+        key,
+        'folderItem.autoFolderId': folderItem?.autoFolderId,
+        'backendData.autoFolderId': folderItem?.backendData?.autoFolderId,
+        'backendData.folderId': folderItem?.backendData?.folderId,
+        finalAutoFolderId: autoFolderId,
+      });
+
+      // 优先使用自增ID删除，如果没有则使用MongoDB ID（兼容性）
+      const response =
+        typeof autoFolderId === 'number' && autoFolderId > 0
+          ? await folderAPI.deleteFolderByFolderId(autoFolderId)
+          : await folderAPI.deleteFolder(key);
 
       if (response.success) {
         // 显示删除统计信息

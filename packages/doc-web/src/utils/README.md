@@ -286,4 +286,63 @@ const response = await get('/api/data', {}, {
 });
 ```
 
-这个请求工具提供了完整的 HTTP 请求功能，可以满足大部分前端项目的需求。 
+这个请求工具提供了完整的 HTTP 请求功能，可以满足大部分前端项目的需求。
+
+## 文件夹删除API更新说明 
+
+### 新增的删除方法
+
+我们新增了基于自增ID的删除方法，推荐使用此方法：
+
+```javascript
+import { folderAPI } from '@/utils/api';
+
+// 推荐：使用自增folderId删除文件夹
+const deleteFolderByAutoId = async (autoFolderId) => {
+  try {
+    const result = await folderAPI.deleteFolderByFolderId(autoFolderId);
+    console.log('删除成功:', result);
+    console.log(`删除统计 - 文件夹: ${result.data.deletedFoldersCount}, 文档: ${result.data.deletedDocumentsCount}`);
+    return result;
+  } catch (error) {
+    console.error('删除失败:', error);
+  }
+};
+
+// 兼容：使用MongoDB ID删除文件夹（兼容旧代码）
+const deleteFolderByMongoId = async (mongoId) => {
+  try {
+    const result = await folderAPI.deleteFolder(mongoId);
+    console.log('删除成功:', result);
+    return result;
+  } catch (error) {
+    console.error('删除失败:', error);
+  }
+};
+```
+
+### 组件中的使用
+
+在 `folderMenu.jsx` 组件中，删除操作已经更新为优先使用自增ID：
+
+```javascript
+// 获取文件夹的自增ID
+const folderItem = folderUtils.findNodeByKey(folderList, key);
+const autoFolderId = folderItem?.autoFolderId || 
+  folderItem?.backendData?.autoFolderId || 
+  folderItem?.backendData?.folderId;
+
+// 优先使用自增ID删除
+const response = (typeof autoFolderId === 'number' && autoFolderId > 0) 
+  ? await folderAPI.deleteFolderByFolderId(autoFolderId)
+  : await folderAPI.deleteFolder(key);
+```
+
+### API对比
+
+| 特性 | 新方法 (`deleteFolderByFolderId`) | 旧方法 (`deleteFolder`) |
+|------|-----------------------------------|-------------------------|
+| 参数类型 | 自增ID (number) | MongoDB ObjectId (string) |
+| API路径 | `/folder/deleteFolderByFolderId/:folderId` | `/folder/deleteFolderById/:id` |
+| 推荐程度 | ✅ 推荐使用 | ⚠️ 兼容旧代码 |
+| 删除方式 | 基于自增ID递归删除 | 基于MongoDB ID递归删除 | 

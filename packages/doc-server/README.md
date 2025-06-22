@@ -165,3 +165,63 @@ pnpm install -g @nestjs/cli
 nest generate res user
 ```
 然后选择 第一个 REST API 
+
+# 文件夹管理 API
+
+## 删除文件夹接口
+
+### 1. 根据MongoDB ID删除文件夹（原有接口）
+
+**接口路径**: `DELETE /folder/deleteFolderById/:id`
+
+**说明**: 使用MongoDB ObjectId递归删除文件夹及其所有子文件夹和子文档
+
+**参数**:
+- `id` (string): MongoDB ObjectId格式的文件夹ID
+
+**示例**:
+```http
+DELETE /folder/deleteFolderById/6856aacc90ea7201152ec98f
+```
+
+### 2. 根据自增ID删除文件夹（新增接口）
+
+**接口路径**: `DELETE /folder/deleteFolderByFolderId/:folderId`
+
+**说明**: 使用自增folderId递归删除文件夹及其所有子文件夹和子文档
+
+**参数**:
+- `folderId` (number): 自增的文件夹ID
+
+**示例**:
+```http
+DELETE /folder/deleteFolderByFolderId/1
+```
+
+## 删除逻辑说明
+
+### 递归删除过程
+
+1. **查找目标文件夹**: 根据提供的ID（MongoDB ObjectId 或自增ID）查找要删除的文件夹
+2. **递归删除子文件夹**: 遍历所有子文件夹，递归调用删除方法
+3. **删除子文档**: 删除文件夹中的所有子文档及其相关记录
+4. **删除当前文件夹**: 删除文件夹本身
+5. **更新父文件夹**: 从父文件夹的子文件夹列表中移除当前文件夹的引用
+
+### 删除统计
+
+接口返回删除统计信息：
+- `deletedFoldersCount`: 删除的文件夹数量
+- `deletedDocumentsCount`: 删除的文档数量
+
+### 错误处理
+
+- 自动跳过不存在的子文件夹，继续删除其他项目
+- 记录详细的删除日志
+- 提供友好的错误信息
+
+## 注意事项
+
+- 删除操作不可逆，请谨慎使用
+- 建议在删除前进行数据备份
+- 大量数据删除可能需要较长时间

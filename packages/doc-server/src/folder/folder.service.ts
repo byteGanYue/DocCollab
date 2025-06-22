@@ -12,9 +12,11 @@ import {
   UpdateFolderResponseDto,
 } from './dto/update-folder.dto';
 import { Folder } from './schemas/folder.schema';
+import { CounterService } from './services/counter.service';
 
 interface FolderDocument {
   _id: Types.ObjectId;
+  folderId: number;
   folderName: string;
   userId: number;
   create_username: string;
@@ -35,6 +37,7 @@ export interface FolderTreeResponse {
 
 export interface FolderTreeItem {
   folderId: string;
+  autoFolderId: number;
   folderName: string;
   userId: number;
   create_username: string;
@@ -54,7 +57,10 @@ export interface FolderTreeItem {
 export class FolderService {
   private readonly logger = new Logger(FolderService.name);
 
-  constructor(@InjectModel(Folder.name) private folderModel: Model<Folder>) {}
+  constructor(
+    @InjectModel(Folder.name) private folderModel: Model<Folder>,
+    private readonly counterService: CounterService,
+  ) {}
 
   /**
    * 创建文件夹
@@ -102,8 +108,12 @@ export class FolderService {
         }
       }
 
+      // 获取下一个自增的文件夹ID
+      const folderId = await this.counterService.getNextSequence('folderId');
+
       // 创建新文件夹
       const newFolder = new this.folderModel({
+        folderId, // 设置自增的文件夹ID
         userId: createFolderDto.userId, // 直接使用number类型的userId
         folderName: createFolderDto.folderName.trim(),
         create_username: createFolderDto.create_username,
@@ -131,6 +141,7 @@ export class FolderService {
         message: '文件夹创建成功',
         data: {
           folderId: folderDoc._id.toString(),
+          autoFolderId: folderDoc.folderId, // 返回自增的文件夹ID
           folderName: folderDoc.folderName,
           userId: createFolderDto.userId, // 直接使用原始的number类型userId
           create_username: folderDoc.create_username,
@@ -143,6 +154,7 @@ export class FolderService {
 
       this.logger.log('文件夹创建成功', {
         folderId: folderDoc._id.toString(),
+        autoFolderId: folderDoc.folderId, // 记录自增的文件夹ID
         folderName: folderDoc.folderName,
         depth: folderDoc.depth,
       });
@@ -243,6 +255,7 @@ export class FolderService {
 
             return {
               folderId: folder._id.toString(),
+              autoFolderId: folder.folderId,
               folderName: folder.folderName,
               userId: folder.userId,
               create_username: folder.create_username,
@@ -290,6 +303,63 @@ export class FolderService {
   }
 
   /**
+   * 根据自增folderId查询文件夹详情
+   * @param folderId 自增的文件夹ID
+   * @returns 文件夹详情
+   */
+  async findByFolderId(folderId: number): Promise<FindFolderDetailResponseDto> {
+    try {
+      this.logger.log('根据folderId查询文件夹详情', { folderId });
+
+      // 查询文件夹
+      const folder = await this.folderModel.findOne({ folderId }).lean().exec();
+
+      if (!folder) {
+        throw new BadRequestException('文件夹不存在');
+      }
+
+      const folderDoc = folder as unknown as FolderDocument;
+
+      const result = {
+        success: true,
+        message: '查询文件夹详情成功',
+        data: {
+          folderId: folderDoc._id.toString(),
+          autoFolderId: folderDoc.folderId, // 返回自增的文件夹ID
+          folderName: folderDoc.folderName,
+          userId: folderDoc.userId, // 直接使用number类型的userId
+          create_username: folderDoc.create_username,
+          update_username: folderDoc.update_username,
+          parentFolderIds: folderDoc.parentFolderIds,
+          depth: folderDoc.depth,
+          childrenCount: {
+            documents: folderDoc.all_children_documentId?.length || 0,
+            folders: folderDoc.all_children_folderId?.length || 0,
+          },
+          create_time: folderDoc.create_time,
+          update_time: folderDoc.update_time,
+        },
+      };
+
+      this.logger.log('根据folderId查询文件夹详情成功', {
+        folderId: folderDoc.folderId,
+        folderName: folderDoc.folderName,
+      });
+
+      return result;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error('根据folderId查询文件夹详情失败', err.stack);
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(`查询文件夹详情失败: ${err.message}`);
+    }
+  }
+
+  /**
    * 查询单个文件夹详情
    * @param id 文件夹ID
    * @returns 文件夹详情
@@ -317,6 +387,7 @@ export class FolderService {
         message: '查询文件夹详情成功',
         data: {
           folderId: folderDoc._id.toString(),
+          autoFolderId: folderDoc.folderId, // 返回自增的文件夹ID
           folderName: folderDoc.folderName,
           userId: folderDoc.userId, // 直接使用number类型的userId
           create_username: folderDoc.create_username,
@@ -415,6 +486,7 @@ export class FolderService {
         message: '文件夹更新成功',
         data: {
           folderId: folderDoc._id.toString(),
+          autoFolderId: folderDoc.folderId, // 返回自增的文件夹ID
           folderName: folderDoc.folderName,
           userId: folderDoc.userId, // 直接使用number类型的userId
           create_username: folderDoc.create_username,
@@ -434,6 +506,106 @@ export class FolderService {
     } catch (error) {
       const err = error as Error;
       this.logger.error('更新文件夹失败', err.stack);
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(`更新文件夹失败: ${err.message}`);
+    }
+  }
+
+  /**
+   * 根据自增folderId更新文件夹
+   * @param folderId 自增的文件夹ID
+   * @param updateFolderDto 更新数据
+   * @returns 更新结果
+   */
+  async updateByFolderId(
+    folderId: number,
+    updateFolderDto: UpdateFolderDto,
+  ): Promise<UpdateFolderResponseDto> {
+    try {
+      this.logger.log('开始根据自增folderId更新文件夹', {
+        folderId,
+        updateData: updateFolderDto,
+      });
+
+      // 验证folderId是否为有效数字
+      if (!folderId || folderId <= 0) {
+        throw new BadRequestException('无效的文件夹ID');
+      }
+
+      // 根据自增folderId查找要更新的文件夹
+      const existingFolder = await this.folderModel.findOne({ folderId });
+      if (!existingFolder) {
+        throw new BadRequestException('文件夹不存在');
+      }
+
+      // 准备更新数据
+      const trimmedName = updateFolderDto.folderName.trim();
+
+      // 验证文件夹名称不能为空
+      if (!trimmedName) {
+        throw new BadRequestException('文件夹名称不能为空');
+      }
+
+      // 检查同级目录下是否已存在同名文件夹（排除当前文件夹）
+      const duplicateFolder = await this.folderModel.findOne({
+        folderId: { $ne: folderId }, // 排除当前文件夹
+        folderName: trimmedName,
+        userId: existingFolder.userId,
+        parentFolderIds: { $eq: existingFolder.parentFolderIds },
+      });
+
+      if (duplicateFolder) {
+        throw new BadRequestException('同级目录下已存在同名文件夹');
+      }
+
+      // 执行更新操作
+      const updatedFolder = await this.folderModel.findOneAndUpdate(
+        { folderId },
+        {
+          folderName: trimmedName,
+          update_username: existingFolder.create_username,
+        },
+        {
+          new: true, // 返回更新后的文档
+          runValidators: true, // 运行模式验证器
+        },
+      );
+
+      if (!updatedFolder) {
+        throw new BadRequestException('文件夹更新失败');
+      }
+
+      const folderDoc = updatedFolder.toObject() as unknown as FolderDocument;
+
+      const result: UpdateFolderResponseDto = {
+        success: true,
+        message: '文件夹更新成功',
+        data: {
+          folderId: folderDoc._id.toString(),
+          autoFolderId: folderDoc.folderId, // 返回自增的文件夹ID
+          folderName: folderDoc.folderName,
+          userId: folderDoc.userId, // 直接使用number类型的userId
+          create_username: folderDoc.create_username,
+          parentFolderIds: folderDoc.parentFolderIds,
+          depth: folderDoc.depth,
+          create_time: folderDoc.create_time,
+          update_time: folderDoc.update_time,
+        },
+      };
+
+      this.logger.log('根据自增folderId更新文件夹成功', {
+        folderId: folderDoc.folderId,
+        folderName: folderDoc.folderName,
+      });
+
+      return result;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error('根据自增folderId更新文件夹失败', err.stack);
 
       if (error instanceof BadRequestException) {
         throw error;
@@ -484,6 +656,60 @@ export class FolderService {
 
       this.logger.log('文件夹递归删除成功', {
         folderId: id,
+        folderName: existingFolder.folderName,
+        foldersDeleted: deletionResult.foldersDeleted,
+        documentsDeleted: deletionResult.documentsDeleted,
+      });
+
+      return result;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error('删除文件夹失败', err.stack);
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(`删除文件夹失败: ${err.message}`);
+    }
+  }
+
+  /**
+   * 根据自增folderId删除文件夹（递归删除所有子文件夹和子文档）
+   * @param folderId 自增的文件夹ID
+   * @returns 删除结果
+   */
+  async removeByFolderId(folderId: number) {
+    try {
+      this.logger.log('开始根据自增folderId递归删除文件夹', { folderId });
+
+      // 查找要删除的文件夹
+      const existingFolder = await this.folderModel.findOne({ folderId });
+      if (!existingFolder) {
+        throw new BadRequestException('文件夹不存在');
+      }
+
+      // 执行递归删除（使用自增folderId）
+      const deletionResult = await this.recursiveDeleteByFolderId(folderId);
+
+      // 从父文件夹中移除对该文件夹的引用
+      await this.removeFromParentFolderByFolderId(
+        existingFolder.toObject() as unknown as FolderDocument,
+      );
+
+      const result = {
+        success: true,
+        message: '文件夹及其所有子项删除成功',
+        data: {
+          folderId: existingFolder.folderId,
+          folderName: existingFolder.folderName,
+          deletedFoldersCount: deletionResult.foldersDeleted,
+          deletedDocumentsCount: deletionResult.documentsDeleted,
+        },
+      };
+
+      this.logger.log('文件夹递归删除成功', {
+        folderId: existingFolder.folderId,
         folderName: existingFolder.folderName,
         foldersDeleted: deletionResult.foldersDeleted,
         documentsDeleted: deletionResult.documentsDeleted,
@@ -586,6 +812,97 @@ export class FolderService {
   }
 
   /**
+   * 根据自增folderId递归删除文件夹及其所有子项
+   * @param autoFolderId 自增的文件夹ID
+   * @returns 删除统计信息
+   */
+  private async recursiveDeleteByFolderId(autoFolderId: number): Promise<{
+    foldersDeleted: number;
+    documentsDeleted: number;
+  }> {
+    let foldersDeleted = 0;
+    let documentsDeleted = 0;
+
+    try {
+      // 查找当前文件夹
+      const currentFolder = await this.folderModel.findOne({
+        folderId: autoFolderId,
+      });
+      if (!currentFolder) {
+        this.logger.warn(`文件夹不存在: ${autoFolderId}`);
+        return { foldersDeleted, documentsDeleted };
+      }
+
+      this.logger.log('开始递归删除文件夹内容（使用自增ID）', {
+        autoFolderId,
+        folderName: currentFolder.folderName,
+        childFolders: currentFolder.all_children_folderId?.length || 0,
+        childDocuments: currentFolder.all_children_documentId?.length || 0,
+      });
+
+      // 1. 递归删除所有子文件夹
+      if (
+        currentFolder.all_children_folderId &&
+        currentFolder.all_children_folderId.length > 0
+      ) {
+        // 获取所有子文件夹的自增ID
+        const childFolders = await this.folderModel
+          .find({ _id: { $in: currentFolder.all_children_folderId } })
+          .select('folderId folderName')
+          .lean();
+
+        for (const childFolder of childFolders) {
+          try {
+            const childResult = await this.recursiveDeleteByFolderId(
+              childFolder.folderId,
+            );
+            foldersDeleted += childResult.foldersDeleted;
+            documentsDeleted += childResult.documentsDeleted;
+          } catch (error) {
+            this.logger.error(
+              `删除子文件夹失败: ${childFolder.folderId}`,
+              error,
+            );
+            // 继续删除其他子文件夹，不中断整个删除过程
+          }
+        }
+      }
+
+      // 2. 删除所有子文档
+      if (
+        currentFolder.all_children_documentId &&
+        currentFolder.all_children_documentId.length > 0
+      ) {
+        try {
+          // 批量删除子文档的相关记录（如最近访问记录等）
+          this.deleteDocumentReferences(currentFolder.all_children_documentId);
+          documentsDeleted += currentFolder.all_children_documentId.length;
+
+          this.logger.log(
+            `已删除 ${currentFolder.all_children_documentId.length} 个子文档的相关记录`,
+          );
+        } catch (error) {
+          this.logger.error('删除子文档记录失败', error);
+        }
+      }
+
+      // 3. 删除当前文件夹
+      await this.folderModel.findOneAndDelete({ folderId: autoFolderId });
+      foldersDeleted += 1;
+
+      this.logger.log('文件夹删除完成（使用自增ID）', {
+        autoFolderId,
+        folderName: currentFolder.folderName,
+      });
+
+      return { foldersDeleted, documentsDeleted };
+    } catch (error) {
+      this.logger.error(`递归删除文件夹失败: ${autoFolderId}`, error);
+      throw error;
+    }
+  }
+
+  /**
    * 从父文件夹中移除对指定文件夹的引用
    * @param folder 要移除的文件夹
    */
@@ -613,6 +930,41 @@ export class FolderService {
       }
     } catch (error) {
       this.logger.error('从父文件夹移除引用失败', error);
+      // 不抛出错误，因为这不应该阻止删除操作
+    }
+  }
+
+  /**
+   * 根据自增folderId从父文件夹中移除对指定文件夹的引用
+   * @param folder 要移除的文件夹
+   */
+  private async removeFromParentFolderByFolderId(
+    folder: FolderDocument,
+  ): Promise<void> {
+    try {
+      if (folder.parentFolderIds && folder.parentFolderIds.length > 0) {
+        // 获取直接父级文件夹ID（使用MongoDB ObjectId）
+        const parentFolderId =
+          folder.parentFolderIds[folder.parentFolderIds.length - 1];
+
+        // 从父文件夹的子文件夹列表中移除当前文件夹
+        await this.folderModel.findByIdAndUpdate(
+          parentFolderId,
+          {
+            $pull: { all_children_folderId: folder._id },
+            update_username: folder.create_username, // 使用文件夹创建者作为更新者
+          },
+          { new: true },
+        );
+
+        this.logger.log(`已从父文件夹移除引用（使用自增ID方式）`, {
+          parentFolderId,
+          removedFolderId: folder._id.toString(),
+          removedAutoFolderId: folder.folderId,
+        });
+      }
+    } catch (error) {
+      this.logger.error('从父文件夹移除引用失败（使用自增ID方式）', error);
       // 不抛出错误，因为这不应该阻止删除操作
     }
   }
