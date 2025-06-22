@@ -168,13 +168,14 @@ class folderUtils {
     }
 
     // 如果选中的是文件夹（包括子文件夹），直接在该文件夹下创建
-    if (
-      selectedKey.startsWith('sub') ||
-      (!selectedKey.startsWith('doc_') &&
-        !selectedKey.startsWith('doc') &&
-        !selectedKey.includes('collab_user_') &&
-        !['home', 'recent-docs', 'collaboration', 'root'].includes(selectedKey))
-    ) {
+    // 文件夹的key通常是MongoDB ObjectId（24位十六进制字符串）或者数字ID
+    const isFolderKey =
+      !selectedKey.startsWith('doc_') &&
+      !selectedKey.startsWith('doc') &&
+      !selectedKey.includes('collab_user_') &&
+      !['home', 'recent-docs', 'collaboration', 'root'].includes(selectedKey);
+
+    if (isFolderKey) {
       // 协同文档相关的不能创建新文件夹
       if (selectedKey.includes('collab_user_')) {
         return 'root'; // 重定向到"我的文件夹"根目录
@@ -196,14 +197,14 @@ class folderUtils {
       for (let i = openKeys.length - 1; i >= 0; i--) {
         const key = openKeys[i];
         // 排除协同文档相关的键，优先选择"我的文件夹"下的文件夹
-        if (
-          !key.includes('collab_user_') &&
-          (key === 'root' ||
-            key.startsWith('sub') ||
-            (!key.startsWith('doc_') &&
-              !key.startsWith('doc') &&
-              !['home', 'recent-docs', 'collaboration'].includes(key)))
-        ) {
+        const isValidFolderKey =
+          key === 'root' ||
+          (!key.startsWith('doc_') &&
+            !key.startsWith('doc') &&
+            !key.includes('collab_user_') &&
+            !['home', 'recent-docs', 'collaboration'].includes(key));
+
+        if (isValidFolderKey) {
           return key;
         }
       }

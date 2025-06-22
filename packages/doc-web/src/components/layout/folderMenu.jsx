@@ -434,6 +434,8 @@ const FolderMenu = () => {
   // 先声明状态
   const [folderList, setFolderList] = useState([]);
   const [openKeys, setOpenKeys] = useState(['root']);
+  // 新增：用户实际选中的菜单项（用于新建文件夹/文档时确定目标位置）
+  const [userSelectedKeys, setUserSelectedKeys] = useState(['root']);
   // 新增：控制编辑状态的key
   const [editingKey, setEditingKey] = useState(null);
   // 新增：控制删除弹窗显示和目标key
@@ -868,8 +870,13 @@ const FolderMenu = () => {
   }, [folderList]);
 
   const handleMenuSelect = ({ selectedKeys }) => {
-    // 移除 setSelectedKeys 调用，因为现在选中状态基于路由计算
     const selectedKey = selectedKeys[0];
+
+    // 更新用户实际选中的菜单项（用于新建文件夹/文档时确定目标位置）
+    setUserSelectedKeys(selectedKeys);
+
+    console.log('📁 菜单选中事件 - selectedKey:', selectedKey);
+    console.log('📁 菜单选中事件 - selectedKeys:', selectedKeys);
 
     // 处理首页点击导航
     if (selectedKey === 'home') {
@@ -921,6 +928,10 @@ const FolderMenu = () => {
         console.warn('⚠️ 无效的documentId:', documentId, 'key:', selectedKey);
       }
     }
+    // 处理文件夹类型的选中（不需要导航，只需要更新选中状态用于新建操作）
+    else {
+      console.log('📁 文件夹选中，无需导航，key:', selectedKey);
+    }
   };
 
   const handleMenuOpenChange = newOpenKeys => {
@@ -933,15 +944,30 @@ const FolderMenu = () => {
   // 新建文件功能
   const handleAddFile = async () => {
     try {
+      console.log('📁 新建文档 - 用户选中的菜单项:', userSelectedKeys[0]);
+      console.log('📁 新建文档 - 完整的userSelectedKeys:', userSelectedKeys);
+      console.log('📁 新建文档 - 打开的菜单项:', openKeys);
+
       // 使用工具函数获取有效的目标文件夹
+      // 如果userSelectedKeys不正确，使用openKeys的最后一个作为备选
+      const selectedKey = userSelectedKeys[0];
+      const fallbackKey =
+        openKeys.length > 0 ? openKeys[openKeys.length - 1] : 'root';
+      const actualSelectedKey =
+        selectedKey && selectedKey !== 'root' ? selectedKey : fallbackKey;
+
+      console.log('📁 新建文档 - 实际使用的选中键:', actualSelectedKey);
+
       const targetKey = folderUtils.getValidTargetKey(
         folderList,
-        selectedKeys[0],
+        actualSelectedKey,
         openKeys,
       );
 
+      console.log('📁 新建文档 - 计算出的目标文件夹:', targetKey);
+
       // 检查是否选中了文件，如果是则给出提示
-      const currentKey = selectedKeys[0];
+      const currentKey = userSelectedKeys[0];
       if (currentKey && currentKey.startsWith('doc')) {
         const parentNode = folderUtils.findParentNodeByKey(
           folderList,
@@ -1073,15 +1099,30 @@ const FolderMenu = () => {
   // 修改：创建文件夹，调用后端 API
   const handleAddFolder = async () => {
     try {
+      console.log('📁 新建文件夹 - 用户选中的菜单项:', userSelectedKeys[0]);
+      console.log('📁 新建文件夹 - 完整的userSelectedKeys:', userSelectedKeys);
+      console.log('📁 新建文件夹 - 打开的菜单项:', openKeys);
+
       // 使用工具函数获取有效的目标文件夹
+      // 如果userSelectedKeys不正确，使用openKeys的最后一个作为备选
+      const selectedKey = userSelectedKeys[0];
+      const fallbackKey =
+        openKeys.length > 0 ? openKeys[openKeys.length - 1] : 'root';
+      const actualSelectedKey =
+        selectedKey && selectedKey !== 'root' ? selectedKey : fallbackKey;
+
+      console.log('📁 新建文件夹 - 实际使用的选中键:', actualSelectedKey);
+
       const targetKey = folderUtils.getValidTargetKey(
         folderList,
-        selectedKeys[0],
+        actualSelectedKey,
         openKeys,
       );
 
+      console.log('📁 新建文件夹 - 计算出的目标文件夹:', targetKey);
+
       // 检查是否选中了文件，如果是则给出提示
-      const currentKey = selectedKeys[0];
+      const currentKey = userSelectedKeys[0];
       if (currentKey && currentKey.startsWith('doc')) {
         const parentNode = folderUtils.findParentNodeByKey(
           folderList,
@@ -1675,19 +1716,31 @@ const FolderMenu = () => {
       <div className={styles.menuLabelContainer}>
         <div
           className={styles.labelContent}
-          onClick={() => {
+          onClick={e => {
             // 如果是文档项，点击文档名可以直接跳转
             if (isFile && !item.key.includes('collab_user_')) {
               const documentId = item.key.replace('doc_', '');
               if (documentId) {
+                // 阻止事件冒泡，因为我们要自己处理导航
+                e.stopPropagation();
                 navigate(`/doc-editor/${documentId}`);
               }
+            } else if (!isFile && !item.key.includes('collab_user_')) {
+              // 如果是文件夹，直接更新选中状态
+              console.log(
+                '📁 文件夹名称点击，直接更新选中状态，key:',
+                item.key,
+              );
+              setUserSelectedKeys([item.key]);
+              // 不阻止冒泡，让Menu组件也能处理
             }
           }}
           style={
             isFile && !item.key.includes('collab_user_')
               ? { cursor: 'pointer' }
-              : {}
+              : !isFile && !item.key.includes('collab_user_')
+                ? { cursor: 'pointer' }
+                : {}
           }
         >
           <EllipsisLabel
@@ -1755,12 +1808,22 @@ const FolderMenu = () => {
           result.children = undefined; // 文档项不应该有子项，强制设置为undefined
         }
 
-        // 为文件夹添加权限样式（移除点击选中功能，因为菜单高亮基于路由）
-        if (item.key && (item.key.startsWith('sub') || item.key === 'root')) {
+        // 为文件夹添加权限样式
+        // 文件夹的key通常是MongoDB ObjectId（24位十六进制字符串）或者'root'
+        const isFolderKey =
+          item.key === 'root' ||
+          (!item.key.startsWith('doc_') &&
+            !item.key.startsWith('doc') &&
+            !item.key.includes('collab_user_') &&
+            !['home', 'recent-docs', 'collaboration'].includes(item.key));
+
+        if (isFolderKey) {
           // 为文件夹添加权限相关的CSS类名
           if (item.permission) {
             result.className = `${item.permission}-folder`;
           }
+          // 确保文件夹是可选中的（不禁用）
+          result.disabled = false;
         }
 
         // 为协同文档的用户空间添加特殊样式（移除点击选中功能）
@@ -1899,10 +1962,29 @@ const FolderMenu = () => {
 
       <Menu
         mode="inline"
-        selectedKeys={selectedKeys}
+        selectedKeys={[...new Set([...selectedKeys, ...userSelectedKeys])]}
         openKeys={openKeys}
         onSelect={handleMenuSelect}
         onOpenChange={handleMenuOpenChange}
+        onClick={({ key }) => {
+          // 处理菜单项点击事件（包括文件夹点击）
+          console.log('📁 Menu onClick事件，key:', key);
+
+          // 更新用户选中状态
+          setUserSelectedKeys([key]);
+
+          // 如果是文件夹类型，不进行导航操作
+          const isFolderKey =
+            key === 'root' ||
+            (!key.startsWith('doc_') &&
+              !key.startsWith('doc') &&
+              !key.includes('collab_user_') &&
+              !['home', 'recent-docs', 'collaboration'].includes(key));
+
+          if (isFolderKey) {
+            console.log('📁 文件夹点击，key:', key);
+          }
+        }}
         className={`${styles.menu} folder-menu-theme`}
         items={withMenuActions(validateMenuData(folderList))}
         selectable={true}
