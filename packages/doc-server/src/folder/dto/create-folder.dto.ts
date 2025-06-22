@@ -28,12 +28,14 @@ export class CreateFolderDto {
   create_username: string; // 创建者用户名
 
   @ApiProperty({
-    description: '父文件夹id',
-    example: ['685660003a7988baf7809f46'],
+    description: '父文件夹id（支持自增ID数字或ObjectId字符串）',
+    example: [18],
+    type: [Number],
   })
   @IsArray()
   @IsOptional()
-  parentFolderIds?: string[]; // 父文件夹ID数组 (可选，空数组表示根目录)
+  @Type(() => Number)
+  parentFolderIds?: number[]; // 父文件夹ID数组 (可选，空数组表示根目录，支持自增ID)
 
   @ApiProperty({ description: '文件夹层级', example: 0 })
   @IsNumber()

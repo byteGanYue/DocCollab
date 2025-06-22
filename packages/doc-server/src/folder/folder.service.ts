@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-base-to-string */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types, FilterQuery } from 'mongoose';
@@ -76,19 +79,25 @@ export class FolderService {
       // 获取父文件夹路径并验证
       const parentFolderIds = createFolderDto.parentFolderIds || [];
       let depth = 0;
+      // eslint-disable-next-line prefer-const
+      let convertedParentFolderIds: string[] = [];
 
       if (parentFolderIds.length > 0) {
         // 验证父文件夹是否存在且属于同一用户
         const parentFolderId = parentFolderIds[parentFolderIds.length - 1];
+        let parentFolder: FolderDocument | null = null;
 
-        if (!Types.ObjectId.isValid(parentFolderId)) {
-          throw new BadRequestException('无效的父文件夹ID格式');
+        // 由于前端现在发送的是数字ID，直接作为自增ID查找
+        if (typeof parentFolderId === 'number' && parentFolderId > 0) {
+          parentFolder = (await this.folderModel
+            .findOne({ folderId: parentFolderId })
+            .lean()
+            .exec()) as FolderDocument | null;
+        } else {
+          throw new BadRequestException(
+            `无效的父文件夹ID格式: ${parentFolderId}`,
+          );
         }
-
-        const parentFolder = await this.folderModel
-          .findById(parentFolderId)
-          .lean()
-          .exec();
 
         if (!parentFolder) {
           throw new BadRequestException('父文件夹不存在');
@@ -106,6 +115,26 @@ export class FolderService {
         if (depth > 10) {
           throw new BadRequestException('文件夹层级不能超过10级');
         }
+
+        // 将所有数字ID转换为对应的MongoDB ObjectId字符串
+        for (const numericId of parentFolderIds) {
+          if (typeof numericId === 'number' && numericId > 0) {
+            const folder = await this.folderModel
+              .findOne({ folderId: numericId })
+              .select('_id')
+              .lean()
+              .exec();
+            if (folder) {
+              convertedParentFolderIds.push(
+                (folder._id as Types.ObjectId).toString(),
+              );
+            } else {
+              throw new BadRequestException(`父文件夹ID ${numericId} 不存在`);
+            }
+          } else {
+            throw new BadRequestException(`无效的父文件夹ID格式: ${numericId}`);
+          }
+        }
       }
 
       // 获取下一个自增的文件夹ID
@@ -118,7 +147,7 @@ export class FolderService {
         folderName: createFolderDto.folderName.trim(),
         create_username: createFolderDto.create_username,
         update_username: createFolderDto.create_username,
-        parentFolderIds,
+        parentFolderIds: convertedParentFolderIds, // 使用转换后的ObjectId字符串数组
         depth,
         all_children_documentId: [],
         all_children_folderId: [],
@@ -128,8 +157,9 @@ export class FolderService {
       const folderDoc = savedFolder.toObject() as unknown as FolderDocument;
 
       // 更新父文件夹的子文件夹列表
-      if (parentFolderIds.length > 0) {
-        const parentFolderId = parentFolderIds[parentFolderIds.length - 1];
+      if (convertedParentFolderIds.length > 0) {
+        const parentFolderId =
+          convertedParentFolderIds[convertedParentFolderIds.length - 1];
         await this.folderModel.findByIdAndUpdate(parentFolderId, {
           $push: { all_children_folderId: folderDoc._id },
           update_username: createFolderDto.create_username,
@@ -992,6 +1022,173 @@ export class FolderService {
     } catch (error) {
       this.logger.error('删除文档引用记录失败', error);
       throw error;
+    }
+  }
+
+  /**
+   * 获取所有公开用户的文件夹树形结构
+   * @returns 所有公开用户的文件夹结构
+   */
+  async findAllPublicFolders(): Promise<{
+    success: boolean;
+    message: string;
+    data: Array<{
+      userId: number;
+      username: string;
+      isPublic: boolean;
+      folders: FolderTreeItem[];
+    }>;
+  }> {
+    try {
+      this.logger.log('开始获取所有公开用户的文件夹');
+
+      // 首先获取所有设置为公开的用户
+      const userModel = this.folderModel.db.model('User');
+      const publicUsers = await userModel.find({ isPublic: true }).select({
+        userId: 1,
+        username: 1,
+        isPublic: 1,
+      });
+
+      if (publicUsers.length === 0) {
+        return {
+          success: true,
+          message: '当前没有公开的用户空间',
+          data: [],
+        };
+      }
+
+      // 为每个公开用户获取其文件夹树
+      const result: Array<{
+        userId: number;
+        username: string;
+        isPublic: boolean;
+        folders: FolderTreeItem[];
+      }> = [];
+
+      for (const user of publicUsers) {
+        try {
+          // 获取用户的根文件夹（depth为0的文件夹）
+          const rootFolders = await this.folderModel
+            .find({
+              userId: user.userId,
+              depth: 0,
+            })
+            .lean()
+            .exec();
+
+          // 构建该用户的文件夹树
+          const userFolderTree: FolderTreeItem[] = [];
+
+          for (const rootFolder of rootFolders) {
+            const folderTree = await this.buildUserFolderTree(
+              (rootFolder._id as Types.ObjectId).toString(),
+              user.userId,
+              0,
+            );
+            if (folderTree) {
+              userFolderTree.push(folderTree);
+            }
+          }
+
+          result.push({
+            userId: user.userId,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            username: user.username,
+            isPublic: user.isPublic,
+            folders: userFolderTree,
+          });
+        } catch (userError) {
+          this.logger.warn(
+            `获取用户 ${user.username} (ID: ${user.userId}) 的文件夹失败: ${userError.message}`,
+          );
+          // 继续处理其他用户，不中断整个流程
+        }
+      }
+
+      return {
+        success: true,
+        message: `成功获取 ${result.length} 个公开用户的文件夹结构`,
+        data: result,
+      };
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error('获取公开用户文件夹失败', err.stack);
+      throw new BadRequestException(`获取公开用户文件夹失败: ${err.message}`);
+    }
+  }
+
+  /**
+   * 构建单个用户的文件夹树（私有方法）
+   * @param folderId 文件夹ID
+   * @param userId 用户ID
+   * @param currentDepth 当前深度
+   * @returns 文件夹树节点
+   */
+  private async buildUserFolderTree(
+    folderId: string,
+    userId: number,
+    currentDepth: number,
+  ): Promise<FolderTreeItem | null> {
+    try {
+      // 获取当前文件夹信息
+      const folder = await this.folderModel.findById(folderId).lean().exec();
+
+      if (!folder || folder.userId !== userId) {
+        return null;
+      }
+
+      // 获取子文件夹
+      const childFolders = await this.folderModel
+        .find({
+          userId: userId,
+          parentFolderIds: { $in: [folderId] },
+        })
+        .lean()
+        .exec();
+
+      // 递归构建子文件夹树
+      const children: FolderTreeItem[] = [];
+      for (const childFolder of childFolders) {
+        const childTree = await this.buildUserFolderTree(
+          childFolder._id.toString(),
+          userId,
+          currentDepth + 1,
+        );
+        if (childTree) {
+          children.push(childTree);
+        }
+      }
+
+      // 获取当前文件夹下的文档数量
+      const documentModel = this.folderModel.db.model('DocumentEntity');
+      const documentsCount = await documentModel.countDocuments({
+        userId: userId,
+        parentFolderIds: { $in: [folder.folderId] },
+      });
+
+      return {
+        folderId: folder._id.toString(),
+        autoFolderId: folder.folderId,
+        folderName: folder.folderName,
+        userId: folder.userId,
+        create_username: folder.create_username,
+        update_username: folder.update_username,
+        parentFolderIds: folder.parentFolderIds,
+        depth: folder.depth,
+        childrenCount: {
+          documents: documentsCount,
+          folders: children.length,
+        },
+        children: children,
+        create_time: folder.create_time,
+        update_time: folder.update_time,
+      };
+    } catch (error) {
+      this.logger.error(
+        `构建用户 ${userId} 文件夹树失败 (folderId: ${folderId}): ${error.message}`,
+      );
+      return null;
     }
   }
 }

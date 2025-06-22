@@ -28,7 +28,7 @@ class folderUtils {
       }
       return item;
     });
-    console.log('重命名后新的目录结构:', result); // 添加调试信息
+
     return result;
   }
 
@@ -47,7 +47,7 @@ class folderUtils {
       }
       return true;
     });
-    console.log('删除后新的目录结构:', result); // 添加调试信息
+
     return result;
   }
 
@@ -80,7 +80,7 @@ class folderUtils {
       }
       return item;
     });
-    console.log('插入新节点后新的目录结构:', result); // 添加调试信息
+
     return result;
   }
 
@@ -170,7 +170,8 @@ class folderUtils {
     // 如果选中的是文件夹（包括子文件夹），直接在该文件夹下创建
     if (
       selectedKey.startsWith('sub') ||
-      (!selectedKey.startsWith('doc') &&
+      (!selectedKey.startsWith('doc_') &&
+        !selectedKey.startsWith('doc') &&
         !selectedKey.includes('collab_user_') &&
         !['home', 'recent-docs', 'collaboration', 'root'].includes(selectedKey))
     ) {
@@ -182,7 +183,7 @@ class folderUtils {
     }
 
     // 如果选中的是文件，需要找到其父文件夹
-    if (selectedKey.startsWith('doc')) {
+    if (selectedKey.startsWith('doc_') || selectedKey.startsWith('doc')) {
       const parentNode = folderUtils.findParentNodeByKey(list, selectedKey);
       if (parentNode) {
         return parentNode.key;
@@ -199,7 +200,8 @@ class folderUtils {
           !key.includes('collab_user_') &&
           (key === 'root' ||
             key.startsWith('sub') ||
-            (!key.startsWith('doc') &&
+            (!key.startsWith('doc_') &&
+              !key.startsWith('doc') &&
               !['home', 'recent-docs', 'collaboration'].includes(key)))
         ) {
           return key;
@@ -266,7 +268,7 @@ class folderUtils {
     }
 
     // 排除文档节点
-    if (node.key.startsWith('doc')) {
+    if (node.key.startsWith('doc_') || node.key.startsWith('doc')) {
       return false;
     }
 
@@ -357,7 +359,7 @@ class folderUtils {
       }
       return item;
     });
-    console.log('更新工作空间权限后新的目录结构:', result); // 添加调试信息
+
     return result;
   }
 
@@ -432,7 +434,6 @@ class folderUtils {
       }
     });
 
-    console.log('协同文档列表:', collaborationDocs);
     return collaborationDocs;
   }
 
@@ -444,27 +445,162 @@ class folderUtils {
    * @returns 返回是否可协同编辑
    */
   static isDocumentCollaborative(list, docKey) {
-    // 查找文档所属的根文件夹
     const findRootForDoc = (nodes, targetKey, currentRoot = null) => {
-      for (const item of nodes) {
-        if (item.key === 'root') {
-          currentRoot = item;
-        }
-
-        if (item.key === targetKey) {
+      for (const node of nodes) {
+        if (node.key === targetKey) {
           return currentRoot;
         }
-
-        if (item.children) {
-          const found = findRootForDoc(item.children, targetKey, currentRoot);
+        if (node.children) {
+          const found = findRootForDoc(node.children, targetKey, node);
           if (found) return found;
         }
       }
       return null;
     };
 
-    const rootFolder = findRootForDoc(list, docKey);
-    return rootFolder && rootFolder.permission === 'public';
+    const rootNode = findRootForDoc(list, docKey);
+    return rootNode?.owner && rootNode.owner !== '当前用户';
+  }
+
+  /**
+   * 构建完整的文件夹和文档树形结构
+   * @param {Array} folders - 文件夹数据数组
+   * @param {Array} documents - 文档数据数组
+   * @returns {Object} 返回构建好的树形结构
+   */
+  static buildFolderDocumentTree(folders = [], documents = []) {
+    // 创建文件夹ID到文件夹对象的映射
+    const folderMap = new Map();
+
+    // 递归收集所有文件夹ID映射
+    const collectFolderIds = folderList => {
+      folderList.forEach(folder => {
+        // 添加主要ID映射
+        folderMap.set(folder.folderId, folder);
+
+        // 如果有自增ID，也添加映射
+        if (folder.autoFolderId) {
+          folderMap.set(folder.autoFolderId, folder);
+          folderMap.set(String(folder.autoFolderId), folder);
+        }
+
+        // 添加字符串和数字形式的ID映射（防止类型不匹配）
+        folderMap.set(String(folder.folderId), folder);
+
+        // 如果folderId是数字字符串，尝试转换为数字
+        const numericId = Number(folder.folderId);
+        if (!isNaN(numericId)) {
+          folderMap.set(numericId, folder);
+        }
+
+        // 递归处理子文件夹
+        if (folder.children && folder.children.length > 0) {
+          collectFolderIds(folder.children);
+        }
+      });
+    };
+
+    collectFolderIds(folders);
+
+    // 为每个文件夹创建文档列表
+    const folderDocuments = new Map();
+
+    // 分类文档：根据parentFolderIds将文档分配到对应的文件夹
+    documents.forEach(doc => {
+      const parentIds = doc.parentFolderIds || [];
+
+      if (parentIds.length === 0) {
+        // 根级文档
+        if (!folderDocuments.has('ROOT')) {
+          folderDocuments.set('ROOT', []);
+        }
+        folderDocuments.get('ROOT').push(doc);
+      } else {
+        // 获取直接父文件夹ID
+        const directParentId = parentIds[parentIds.length - 1];
+
+        // 查找对应的文件夹，尝试多种ID匹配方式
+        let parentFolder = folderMap.get(directParentId);
+
+        if (!parentFolder) {
+          // 尝试字符串形式
+          parentFolder = folderMap.get(String(directParentId));
+        }
+
+        if (!parentFolder) {
+          // 尝试数字形式
+          const numericId = Number(directParentId);
+          if (!isNaN(numericId)) {
+            parentFolder = folderMap.get(numericId);
+          }
+        }
+
+        if (parentFolder) {
+          const folderId = parentFolder.folderId;
+          if (!folderDocuments.has(folderId)) {
+            folderDocuments.set(folderId, []);
+          }
+          folderDocuments.get(folderId).push(doc);
+        } else {
+          console.warn('⚠️ 找不到父文件夹:', {
+            doc: doc.documentName,
+            parentId: directParentId,
+            parentIdType: typeof directParentId,
+            availableFolderIds: Array.from(folderMap.keys()),
+          });
+          // 如果找不到父文件夹，放到根级
+          if (!folderDocuments.has('ROOT')) {
+            folderDocuments.set('ROOT', []);
+          }
+          folderDocuments.get('ROOT').push(doc);
+        }
+      }
+    });
+
+    return {
+      folderMap,
+      folderDocuments,
+      rootDocuments: folderDocuments.get('ROOT') || [],
+    };
+  }
+
+  /**
+   * 根据文件夹ID查找文档列表
+   * @param {Map} folderDocuments - 文件夹文档映射
+   * @param {string|number} folderId - 文件夹ID
+   * @returns {Array} 文档列表
+   */
+  static getDocumentsByFolderId(folderDocuments, folderId) {
+    return (
+      folderDocuments.get(folderId) ||
+      folderDocuments.get(String(folderId)) ||
+      folderDocuments.get(Number(folderId)) ||
+      []
+    );
+  }
+
+  /**
+   * 验证文档是否应该属于指定文件夹
+   * @param {Object} document - 文档对象
+   * @param {Object} folder - 文件夹对象
+   * @returns {boolean} 是否匹配
+   */
+  static isDocumentBelongToFolder(document, folder) {
+    const docParentIds = document.parentFolderIds || [];
+
+    if (docParentIds.length === 0) {
+      return false; // 根级文档不属于任何文件夹
+    }
+
+    const directParentId = docParentIds[docParentIds.length - 1];
+
+    // 检查各种ID匹配情况
+    return (
+      directParentId === folder.folderId ||
+      directParentId === folder.autoFolderId ||
+      String(directParentId) === String(folder.folderId) ||
+      Number(directParentId) === Number(folder.autoFolderId)
+    );
   }
 }
 
@@ -485,5 +621,8 @@ class folderUtils {
  * - isDocumentCollaborative: 检查文档是否可协同编辑
  * - formatFolderDataForAPI: 格式化文件夹数据以适配后端API
  * - extractFolderFromBackendData: 从后端响应数据中提取文件夹信息
+ * - buildFolderDocumentTree: 构建完整的文件夹和文档树形结构
+ * - getDocumentsByFolderId: 根据文件夹ID查找文档列表
+ * - isDocumentBelongToFolder: 验证文档是否应该属于指定文件夹
  */
 export default folderUtils;

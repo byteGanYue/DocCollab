@@ -346,3 +346,148 @@ const response = (typeof autoFolderId === 'number' && autoFolderId > 0)
 | API路径 | `/folder/deleteFolderByFolderId/:folderId` | `/folder/deleteFolderById/:id` |
 | 推荐程度 | ✅ 推荐使用 | ⚠️ 兼容旧代码 |
 | 删除方式 | 基于自增ID递归删除 | 基于MongoDB ID递归删除 | 
+
+## 目录树结构构建改进 (2024-12-22)
+
+### 问题背景
+根据后端接口返回的数据结构，需要正确构建文件夹和文档的树形结构：
+
+1. **文件夹数据结构：**
+   ```json
+   {
+     "folderId": "68579722cf74235aaa494da5", // MongoDB ObjectId字符串
+     "folderName": "新建文件夹1",
+     "userId": 1,
+     "parentFolderIds": [], // 父文件夹ID数组
+     "depth": 0,
+     "childrenCount": {
+       "documents": 0,
+       "folders": 0
+     },
+     "children": [] // 子文件夹数组
+   }
+   ```
+
+2. **文档数据结构：**
+   ```json
+   {
+     "documentId": 14,
+     "documentName": "新建文档1",
+     "userId": 4,
+     "parentFolderIds": [5], // 父文件夹ID数组，可能包含数字ID
+     "content": "",
+     "create_time": "2025-06-22T06:42:37.057Z"
+   }
+   ```
+
+### 核心改进
+
+1. **ID类型匹配优化**
+   - 文件夹ID是字符串类型的MongoDB ObjectId
+   - 文档的parentFolderIds可能包含数字类型的ID
+   - 实现了灵活的ID匹配机制，支持字符串和数字的相互转换
+
+2. **新增工具函数**
+   - `folderUtils.buildFolderDocumentTree()` - 构建完整的文件夹文档映射
+   - `folderUtils.getDocumentsByFolderId()` - 根据文件夹ID获取文档列表
+   - `folderUtils.isDocumentBelongToFolder()` - 验证文档归属关系
+
+3. **树形结构构建逻辑**
+   ```javascript
+   // 核心匹配逻辑
+   const directParentId = parentIds[parentIds.length - 1];
+   
+   // 多种ID匹配方式
+   let parentFolder = folderMap.get(directParentId) ||
+                      folderMap.get(String(directParentId)) ||
+                      folderMap.get(Number(directParentId));
+   ```
+
+4. **菜单项生成规范**
+   - 文件夹菜单项：`key = folder.folderId`
+   - 文档菜单项：`key = "doc_" + doc.documentId`
+   - 根级文档正确归类到"我的文件夹"根节点
+
+### 使用示例
+
+```javascript
+// 在folderMenu.jsx中的使用
+const convertBackendFoldersToMenuFormat = (backendFolders, documents) => {
+  
+  // 构建映射关系
+  const { folderDocuments, rootDocuments } = folderUtils.buildFolderDocumentTree(
+    backendFolders, 
+    documents
+  );
+  
+  // 获取文件夹下的文档
+  const folderDocumentList = folderUtils.getDocumentsByFolderId(
+    folderDocuments, 
+    folder.folderId
+  );
+};
+```
+
+
+
+## 错误修复 (2024-12-22)
+
+### 问题：Cannot read properties of undefined (reading 'startsWith')
+
+**错误原因：**
+- `getMenuLabel` 函数中 `item.key` 可能为 `undefined`
+- `withMenuActions` 函数中传入了无效的菜单项数据
+- 数组合并时缺少扩展运算符导致结构异常
+
+**修复措施：**
+
+1. **添加安全检查**
+   ```javascript
+   // 在 getMenuLabel 中添加安全检查
+   if (!item || !item.key) {
+     console.warn('⚠️ getMenuLabel: item或item.key未定义', item);
+     return <span>未知项目</span>;
+   }
+   ```
+
+2. **修复数组合并错误**
+   ```javascript
+   // 修复前：缺少扩展运算符
+   menuItem.children = [...(menuItem.children || []), documentMenuItems];
+   
+   // 修复后：正确使用扩展运算符
+   menuItem.children = [...(menuItem.children || []), ...documentMenuItems];
+   ```
+
+3. **添加数据验证函数**
+   ```javascript
+   const validateMenuData = menuData => {
+     return menuData
+       .filter(item => item && item.key)
+       .map(item => ({
+         ...item,
+         children: item.children ? validateMenuData(item.children) : undefined,
+       }));
+   };
+   ```
+
+4. **增强 withMenuActions 安全性**
+   ```javascript
+   function withMenuActions(list) {
+     return list.map(item => {
+       if (!item) {
+         console.warn('⚠️ withMenuActions: item未定义', item);
+         return null;
+       }
+       // ... 其他逻辑
+     }).filter(Boolean);
+   }
+   ```
+
+### 最终使用
+```javascript
+<Menu
+  items={withMenuActions(validateMenuData(folderList))}
+  // ... 其他属性
+/>
+```

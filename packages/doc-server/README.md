@@ -78,7 +78,7 @@ Body: {
 
 #### 删除文档
 ```
-DELETE /document/deleteDocumentById/:id
+DELETE /document/deleteDocumentByDocumentId/:documentId
 ```
 
 ### 协同编辑接口

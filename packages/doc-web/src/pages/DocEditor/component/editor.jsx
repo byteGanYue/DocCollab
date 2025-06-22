@@ -461,7 +461,16 @@ const Editor = () => {
 
       <CommentModal
         visible={commentModalVisible}
-        onCancel={() => setCommentModalVisible(false)}
+        onCancel={() => {
+          // 重置CommentManager的模态框状态
+          if (commentManagerRef.current) {
+            commentManagerRef.current.isCommentModalOpen = false;
+            // 清理临时存储的数据
+            commentManagerRef.current.currentSelectedText = null;
+            commentManagerRef.current.currentSelectedRange = null;
+          }
+          setCommentModalVisible(false);
+        }}
         selectedText={selectedTextForComment}
         onSubmit={async comment => {
           // 调用CommentManager的提交回调
