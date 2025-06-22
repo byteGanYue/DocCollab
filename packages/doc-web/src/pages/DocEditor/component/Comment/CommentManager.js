@@ -91,10 +91,13 @@ class CommentManager {
       // 延迟隐藏评论按钮，给用户时间点击
       this.selectionTimer = setTimeout(() => {
         console.log('Selection cleared, hiding comment button');
-        // 只有在没有存储的选择时才隐藏按钮
-        if (!this.currentSelectedRange) {
-          this.hideCommentButton();
-          this.selectedRange = null;
+        // 隐藏按钮并清理选中范围
+        this.hideCommentButton();
+        this.selectedRange = null;
+        // 如果评论模态框没有打开，也清理临时存储的数据
+        if (!this.isCommentModalOpen) {
+          this.currentSelectedRange = null;
+          this.currentSelectedText = null;
         }
       }, 100); // 100ms延迟
     }
@@ -228,6 +231,12 @@ class CommentManager {
     this.currentSelectedText = selectedText;
     this.currentSelectedRange = { ...this.selectedRange };
 
+    // 标记评论模态框已打开，防止在选择变化时清理数据
+    this.isCommentModalOpen = true;
+
+    // 立即隐藏评论按钮
+    this.hideCommentButton();
+
     // 通知React组件显示评论模态框
     console.log('Calling onShowCommentModal with:', {
       visible: true,
@@ -260,8 +269,8 @@ class CommentManager {
     const commentId = this.generateId();
     this.saveComment(commentId, content, finalSelectedText, finalSelectedRange);
 
-    // 隐藏按钮和模态框
-    this.hideCommentButton();
+    // 重置模态框状态
+    this.isCommentModalOpen = false;
 
     // 清理临时存储的数据
     this.currentSelectedText = null;
