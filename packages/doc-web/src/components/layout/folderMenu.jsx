@@ -639,8 +639,8 @@ const FolderMenu = () => {
         label: (
           <div className={styles.menuLabelContainer}>
             <div className={styles.labelContent}>
-              <EllipsisLabel text="协同文档" />
-              {/* 协同文档主目录显示公开空间图标 */}
+              <EllipsisLabel text="协同空间" />
+              {/* 协同空间主目录显示公开空间图标 */}
               <Tooltip title="公开协同空间 - 所有公开用户的文档">
                 <TeamOutlined
                   style={{ color: '#52c41a', marginLeft: 4, fontSize: '12px' }}
