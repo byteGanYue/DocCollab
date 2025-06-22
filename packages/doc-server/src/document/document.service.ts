@@ -10,6 +10,7 @@ import {
   CreateDocumentDto,
   CreateDocumentResponseDto,
   QueryDocumentDto,
+  UserDocumentQueryDto,
 } from './dto/create-document.dto';
 import {
   UpdateDocumentDto,
@@ -146,13 +147,18 @@ export class DocumentService {
     try {
       this.logger.log('开始查询文档列表', queryDto);
 
+      // 验证必要参数
+      if (!queryDto?.userId) {
+        throw new BadRequestException('用户ID是必需的参数');
+      }
+
       const page = queryDto?.page || 1;
       const pageSize = queryDto?.pageSize || 10;
       const skip = (page - 1) * pageSize;
 
       // 构建查询条件
       interface DocumentFilter {
-        userId?: number;
+        userId: number; // 用户ID是必需的
         parentFolderIds?: { $in: number[] };
         $or?: Array<{
           documentName?: { $regex: string; $options: string };
@@ -160,11 +166,9 @@ export class DocumentService {
         }>;
       }
 
-      const filter: DocumentFilter = {};
-
-      if (queryDto?.userId) {
-        filter.userId = queryDto.userId;
-      }
+      const filter: DocumentFilter = {
+        userId: queryDto.userId, // 必须按用户ID过滤
+      };
 
       if (queryDto?.parentFolderId) {
         filter.parentFolderIds = { $in: [queryDto.parentFolderId] };
@@ -190,7 +194,7 @@ export class DocumentService {
 
       const result = {
         success: true,
-        message: '查询文档列表成功',
+        message: `成功获取用户${queryDto.userId}的文档列表`,
         data: {
           documents: documents as unknown as DocumentDocument[],
           total,
@@ -201,6 +205,7 @@ export class DocumentService {
       };
 
       this.logger.log('查询文档列表成功', {
+        userId: queryDto.userId,
         total,
         page,
         pageSize,
@@ -211,6 +216,94 @@ export class DocumentService {
       const err = error as Error;
       this.logger.error('查询文档列表失败', err.stack);
       throw new BadRequestException(`查询文档列表失败: ${err.message}`);
+    }
+  }
+
+  /**
+   * 根据用户ID查询文档列表
+   * @param userId 用户ID
+   * @param queryDto 查询参数
+   * @returns 用户的文档列表
+   */
+  async findAllByUserId(
+    userId: number,
+    queryDto?: UserDocumentQueryDto,
+  ): Promise<DocumentListResponse> {
+    try {
+      this.logger.log('开始根据用户ID查询文档列表', { userId, ...queryDto });
+
+      const page = queryDto?.page || 1;
+      const pageSize = queryDto?.pageSize || 10;
+      const skip = (page - 1) * pageSize;
+
+      // 构建查询条件
+      interface DocumentFilter {
+        userId: number; // 用户ID是必需的
+        parentFolderIds?: { $in: number[] };
+        $or?: Array<{
+          documentName?: { $regex: string; $options: string };
+          content?: { $regex: string; $options: string };
+        }>;
+      }
+
+      const filter: DocumentFilter = {
+        userId, // 按用户ID过滤
+      };
+
+      if (queryDto?.parentFolderId) {
+        filter.parentFolderIds = { $in: [queryDto.parentFolderId] };
+      }
+
+      if (queryDto?.search) {
+        filter.$or = [
+          { documentName: { $regex: queryDto.search, $options: 'i' } },
+          { content: { $regex: queryDto.search, $options: 'i' } },
+        ];
+      }
+
+      // 构建排序条件
+      const sortBy = queryDto?.sortBy || 'create_time';
+      const sortOrder = queryDto?.sortOrder || 'desc';
+      const sortObj: { [key: string]: 1 | -1 } = {};
+      sortObj[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+      // 查询文档
+      const [documents, total] = await Promise.all([
+        this.documentModel
+          .find(filter)
+          .sort(sortObj)
+          .skip(skip)
+          .limit(pageSize)
+          .lean(),
+        this.documentModel.countDocuments(filter),
+      ]);
+
+      const result = {
+        success: true,
+        message: `成功获取用户${userId}的文档列表`,
+        data: {
+          documents: documents as unknown as DocumentDocument[],
+          total,
+          page,
+          pageSize,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      };
+
+      this.logger.log('根据用户ID查询文档列表成功', {
+        userId,
+        total,
+        page,
+        pageSize,
+      });
+
+      return result;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error('根据用户ID查询文档列表失败', err.stack);
+      throw new BadRequestException(
+        `查询用户${userId}的文档列表失败: ${err.message}`,
+      );
     }
   }
 

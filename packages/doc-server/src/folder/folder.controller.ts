@@ -43,7 +43,7 @@ export class FolderController {
    * @returns 文件夹列表
    */
   @Get('getFoldersList')
-  @ApiOperation({ summary: '获取文件夹列表' })
+  @ApiOperation({ summary: '根据用户userId获取文件夹列表' })
   findAll(@Query() queryDto: QueryFolderTreeDto) {
     return this.folderService.findAll(queryDto);
   }

@@ -110,9 +110,9 @@ export const documentAPI = {
   removeCollaborator: (documentId, userId) =>
     del(`/document/${documentId}/editors/${userId}`),
 
-  // 根据用户ID获取文档列表
+  // 根据用户ID获取文档列表（使用新的专用接口）
   getUserDocuments: (userId, params = {}) =>
-    get('/document/getDocumentsList', { userId, ...params }),
+    get(`/document/getUserDocuments/${userId}`, params),
 
   // 根据父文件夹ID获取文档列表
   getFolderDocuments: (parentFolderId, params = {}) =>
