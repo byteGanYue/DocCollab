@@ -15,6 +15,8 @@ const BlockToolbar = ({
   onFormat,
   expanded = false,
   onExpand,
+  onMouseEnter,
+  onMouseLeave,
 }) => {
   if (!visible) return null;
   return ReactDOM.createPortal(
@@ -36,6 +38,8 @@ const BlockToolbar = ({
         transition: 'box-shadow 0.2s',
       }}
       onMouseDown={e => e.preventDefault()}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <button
         onClick={onExpand}

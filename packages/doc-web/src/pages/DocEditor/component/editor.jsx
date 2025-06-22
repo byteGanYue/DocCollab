@@ -106,8 +106,9 @@ const Editor = () => {
   const [blockToolbarVisible, setBlockToolbarVisible] = useState(false);
   const [blockToolbarPos, setBlockToolbarPos] = useState({ top: 0, left: 0 });
   const [blockLineIndex, setBlockLineIndex] = useState(null);
-  // 新增：展开状态
   const [blockToolbarExpanded, setBlockToolbarExpanded] = useState(false);
+  // 新增：加号按钮悬停状态
+  const [blockToolbarHover, setBlockToolbarHover] = useState(false);
 
   // 添加工具栏提示样式
   useEffect(() => {
@@ -278,40 +279,36 @@ const Editor = () => {
 
   // 块级工具栏逻辑
   useEffect(() => {
-    const editor = document.querySelector('.ql-editor');
-    if (!editor) return;
+    const quill = quillRef.current;
+    if (!quill) return;
 
-    const handleMouseMove = e => {
-      const line = e.target.closest('p, div, li');
-      if (line && editor.contains(line)) {
-        const rect = line.getBoundingClientRect();
-        // 鼠标靠近左侧时显示加号+
-        if (e.clientX - rect.left < 32) {
-          setBlockToolbarVisible(true);
-          setBlockToolbarPos({
-            top: rect.top + rect.height / 2 - 60,
-            left: rect.left - 44,
-          });
-          // 计算当前行的 index
-          const quill = quillRef.current;
-          if (quill) {
-            const blot = Quill.find(line);
-            if (blot) {
-              setBlockLineIndex(quill.getIndex(blot));
-            }
-          }
-        } else {
-          setBlockToolbarVisible(false);
-          setBlockToolbarExpanded(false); // 鼠标移出时收起
-        }
+    // 监听selection-change
+    const handleSelectionChange = range => {
+      if (!range) {
+        setBlockToolbarVisible(false);
+        setBlockToolbarExpanded(false);
+        return;
+      }
+      // 获取当前行的blot和DOM节点
+      const [line] = quill.getLine(range.index);
+      if (line && line.domNode) {
+        const rect = line.domNode.getBoundingClientRect();
+        setBlockToolbarVisible(true);
+        setBlockToolbarPos({
+          top: rect.top + rect.height / 2 - 16,
+          left: rect.left - 44,
+        });
+        setBlockLineIndex(quill.getIndex(line));
       } else {
         setBlockToolbarVisible(false);
         setBlockToolbarExpanded(false);
       }
     };
-    editor.addEventListener('mousemove', handleMouseMove);
-    return () => editor.removeEventListener('mousemove', handleMouseMove);
-  }, []);
+    quill.on('selection-change', handleSelectionChange);
+    return () => {
+      quill.off('selection-change', handleSelectionChange);
+    };
+  }, [blockToolbarHover]);
 
   // 浮动工具栏操作
   const handleFormat = format => {
@@ -381,6 +378,12 @@ const Editor = () => {
         onFormat={handleBlockFormat}
         expanded={blockToolbarExpanded}
         onExpand={() => setBlockToolbarExpanded(exp => !exp)}
+        onMouseEnter={() => setBlockToolbarHover(true)}
+        onMouseLeave={() => {
+          setBlockToolbarHover(false);
+          setBlockToolbarVisible(false);
+          setBlockToolbarExpanded(false);
+        }}
       />
       {/* 浮动工具栏 */}
       <FloatingToolbar visible={toolbarVisible} position={toolbarPosition}>
