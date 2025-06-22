@@ -30,7 +30,7 @@ import {
   DownOutlined,
 } from '@ant-design/icons';
 import BlockToolbar from './BlockToolbar.jsx';
-import { Dropdown, Menu, Tooltip, Input, Button } from 'antd';
+import { Dropdown, Menu, Tooltip, Input, Button, Modal, Select } from 'antd';
 import 'antd/dist/reset.css';
 // 导入配置和工具函数
 import {
@@ -49,6 +49,7 @@ import {
   showPDFMenu,
   TOOLBAR_TOOLTIPS,
 } from '../../../../utils/index.js';
+import './CodeBlockBlot.js';
 
 // 注册 Quill 光标模块
 Quill.register('modules/cursors', QuillCursors);
@@ -131,6 +132,11 @@ const Editor = () => {
   const [blockToolbarExpanded, setBlockToolbarExpanded] = useState(false);
   // 新增：加号按钮悬停状态
   const [blockToolbarHover, setBlockToolbarHover] = useState(false);
+
+  // 新增：代码块模态框状态
+  const [codeModalVisible, setCodeModalVisible] = useState(false);
+  const [codeInput, setCodeInput] = useState('');
+  const [codeLang, setCodeLang] = useState('plaintext');
 
   // 添加工具栏提示样式
   useEffect(() => {
@@ -381,7 +387,6 @@ const Editor = () => {
     if (url) quill.format('link', url);
   };
   const handleBlockquote = () => handleFormat('blockquote');
-  const handleCodeBlock = () => handleFormat('code-block');
   const handleClear = () => {
     const quill = quillRef.current;
     if (!quill) return;
@@ -440,6 +445,27 @@ const Editor = () => {
     setBlockToolbarExpanded(false);
   };
 
+  // 插入自定义代码块
+  const showCodeModal = () => {
+    setCodeInput('');
+    setCodeLang('plaintext');
+    setCodeModalVisible(true);
+  };
+
+  const handleCodeModalOk = () => {
+    const quill = quillRef.current;
+    const range = quill.getSelection();
+    quill.insertEmbed(
+      range.index,
+      'custom-code-block',
+      { code: codeInput, language: codeLang },
+      'user',
+    );
+    setCodeModalVisible(false);
+  };
+
+  const handleInsertCodeBlock = showCodeModal;
+
   // 工具栏按钮渲染映射
   const TOOLBAR_BUTTONS = {
     bold: {
@@ -468,7 +494,7 @@ const Editor = () => {
     },
     'code-block': {
       icon: <CodeOutlined />,
-      handler: handleCodeBlock,
+      handler: handleInsertCodeBlock,
     },
     table: {
       icon: <TableOutlined />,
@@ -781,6 +807,41 @@ const Editor = () => {
           setCommentModalVisible(false);
         }}
       />
+
+      <Modal
+        title="插入代码块"
+        open={codeModalVisible}
+        onOk={handleCodeModalOk}
+        onCancel={() => setCodeModalVisible(false)}
+        okText="插入"
+        cancelText="取消"
+      >
+        <div style={{ marginBottom: 12 }}>
+          <span>语言：</span>
+          <Select
+            value={codeLang}
+            onChange={setCodeLang}
+            style={{ width: 180 }}
+            options={[
+              { value: 'plaintext', label: 'Plain Text' },
+              { value: 'javascript', label: 'JavaScript' },
+              { value: 'json', label: 'JSON' },
+              { value: 'java', label: 'Java' },
+              { value: 'python', label: 'Python' },
+              { value: 'c', label: 'C' },
+              { value: 'cpp', label: 'C++' },
+              { value: 'html', label: 'HTML' },
+              { value: 'css', label: 'CSS' },
+            ]}
+          />
+        </div>
+        <Input.TextArea
+          value={codeInput}
+          onChange={e => setCodeInput(e.target.value)}
+          autoSize={{ minRows: 6, maxRows: 16 }}
+          placeholder="请输入代码内容"
+        />
+      </Modal>
     </div>
   );
 };
