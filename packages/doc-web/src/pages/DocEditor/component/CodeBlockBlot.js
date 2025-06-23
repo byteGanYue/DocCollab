@@ -5,16 +5,16 @@ import 'highlight.js/styles/github.css'; // 可选其他主题
 const BlockEmbed = Quill.import('blots/block/embed');
 
 class CodeBlockBlot extends BlockEmbed {
-  static create(value) {
+  static create(value = { code: '', language: 'plaintext' }) {
     const node = super.create();
     node.setAttribute('data-language', value.language || 'plaintext');
     node.className = 'ql-custom-code-block';
     node.innerHTML = `
       <div class="code-block-header">
         <select class="code-lang-select">
+          <option value="plaintext">Plain Text</option>
           <option value="javascript">JavaScript</option>
           <option value="json">JSON</option>
-          <option value="plaintext">Plain Text</option>
           <option value="java">Java</option>
           <option value="python">Python</option>
           <option value="c">C</option>
@@ -24,7 +24,7 @@ class CodeBlockBlot extends BlockEmbed {
         </select>
         <button class="code-copy-btn">复制</button>
       </div>
-      <pre><code>${value.code || ''}</code></pre>
+      <pre><code contenteditable="true">${value.code || ''}</code></pre>
     `;
     // 设置语言
     node.querySelector('.code-lang-select').value =
@@ -36,6 +36,11 @@ class CodeBlockBlot extends BlockEmbed {
     // 语言切换
     node.querySelector('.code-lang-select').onchange = e => {
       node.setAttribute('data-language', e.target.value);
+      CodeBlockBlot.highlight(node);
+    };
+    // 代码编辑
+    const codeEl = node.querySelector('code');
+    codeEl.oninput = () => {
       CodeBlockBlot.highlight(node);
     };
     // 高亮
@@ -78,6 +83,5 @@ class CodeBlockBlot extends BlockEmbed {
 CodeBlockBlot.blotName = 'custom-code-block';
 CodeBlockBlot.tagName = 'div';
 CodeBlockBlot.className = 'ql-custom-code-block';
-
 Quill.register(CodeBlockBlot);
 export default CodeBlockBlot;

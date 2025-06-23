@@ -133,11 +133,6 @@ const Editor = () => {
   // 新增：加号按钮悬停状态
   const [blockToolbarHover, setBlockToolbarHover] = useState(false);
 
-  // 新增：代码块模态框状态
-  const [codeModalVisible, setCodeModalVisible] = useState(false);
-  const [codeInput, setCodeInput] = useState('');
-  const [codeLang, setCodeLang] = useState('plaintext');
-
   // 添加工具栏提示样式
   useEffect(() => {
     addToolbarStyles();
@@ -446,25 +441,16 @@ const Editor = () => {
   };
 
   // 插入自定义代码块
-  const showCodeModal = () => {
-    setCodeInput('');
-    setCodeLang('plaintext');
-    setCodeModalVisible(true);
-  };
-
-  const handleCodeModalOk = () => {
+  const handleInsertCodeBlock = () => {
     const quill = quillRef.current;
     const range = quill.getSelection();
     quill.insertEmbed(
-      range.index,
+      range ? range.index : 0,
       'custom-code-block',
-      { code: codeInput, language: codeLang },
+      { code: '', language: 'plaintext' },
       'user',
     );
-    setCodeModalVisible(false);
   };
-
-  const handleInsertCodeBlock = showCodeModal;
 
   // 工具栏按钮渲染映射
   const TOOLBAR_BUTTONS = {
@@ -807,41 +793,6 @@ const Editor = () => {
           setCommentModalVisible(false);
         }}
       />
-
-      <Modal
-        title="插入代码块"
-        open={codeModalVisible}
-        onOk={handleCodeModalOk}
-        onCancel={() => setCodeModalVisible(false)}
-        okText="插入"
-        cancelText="取消"
-      >
-        <div style={{ marginBottom: 12 }}>
-          <span>语言：</span>
-          <Select
-            value={codeLang}
-            onChange={setCodeLang}
-            style={{ width: 180 }}
-            options={[
-              { value: 'plaintext', label: 'Plain Text' },
-              { value: 'javascript', label: 'JavaScript' },
-              { value: 'json', label: 'JSON' },
-              { value: 'java', label: 'Java' },
-              { value: 'python', label: 'Python' },
-              { value: 'c', label: 'C' },
-              { value: 'cpp', label: 'C++' },
-              { value: 'html', label: 'HTML' },
-              { value: 'css', label: 'CSS' },
-            ]}
-          />
-        </div>
-        <Input.TextArea
-          value={codeInput}
-          onChange={e => setCodeInput(e.target.value)}
-          autoSize={{ minRows: 6, maxRows: 16 }}
-          placeholder="请输入代码内容"
-        />
-      </Modal>
     </div>
   );
 };
