@@ -364,4 +364,43 @@ export class RecentVisitsService {
       throw error;
     }
   }
+
+  /**
+   * 根据文档ID删除所有相关的访问记录
+   * 当文档被删除时，需要清理所有关于该文档的访问记录
+   * @param documentId 文档ID (number类型)
+   * @returns 删除结果
+   */
+  async deleteByDocumentId(documentId: number) {
+    try {
+      this.logger.log(`开始删除文档 ${documentId} 的所有访问记录`);
+
+      // 删除所有与该文档相关的访问记录
+      const result = await this.recentVisitModel.deleteMany({
+        documentId: documentId,
+      });
+
+      this.logger.log(
+        `成功删除文档 ${documentId} 的 ${result.deletedCount} 条访问记录`,
+      );
+
+      return {
+        code: 200,
+        message: `成功删除文档访问记录，共删除${result.deletedCount}条记录`,
+        data: {
+          documentId,
+          deletedCount: result.deletedCount,
+        },
+      };
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(
+        `删除文档 ${documentId} 的访问记录失败: ${errorMessage}`,
+        errorStack,
+      );
+      throw error;
+    }
+  }
 }

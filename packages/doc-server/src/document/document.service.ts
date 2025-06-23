@@ -440,7 +440,23 @@ export class DocumentService {
         throw new NotFoundException('文档不存在');
       }
 
+      // 删除文档
       await this.documentModel.findOneAndDelete({ documentId });
+
+      // 删除该文档的所有访问记录
+      try {
+        const visitDeleteResult =
+          await this.recentVisitsService.deleteByDocumentId(documentId);
+        this.logger.log(
+          `同步删除了 ${visitDeleteResult.data.deletedCount} 条访问记录`,
+          { documentId },
+        );
+      } catch (visitError) {
+        // 访问记录删除失败不影响文档删除的成功
+        this.logger.warn(
+          `删除文档 ${documentId} 的访问记录时出现错误: ${(visitError as Error).message}`,
+        );
+      }
 
       const result = {
         success: true,
