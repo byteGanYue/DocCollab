@@ -24,7 +24,10 @@ import {
   DownOutlined,
 } from '@ant-design/icons';
 import { Dropdown, Menu, Tooltip, Button } from 'antd';
-import { TOOLBAR_CONFIG, TOOLBAR_TOOLTIPS } from '../../../../utils/index.js';
+import {
+  TOOLBAR_CONFIG,
+  TOOLBAR_TOOLTIPS,
+} from '../../../../../../utils/index.js';
 
 const BlockToolbar = ({
   visible,
