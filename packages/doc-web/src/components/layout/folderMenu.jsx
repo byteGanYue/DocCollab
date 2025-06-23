@@ -54,7 +54,6 @@ const EllipsisLabel = ({ text, isEditing, onSave, onCancel }) => {
   const inputRef = useRef(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [inputValue, setInputValue] = useState(text);
-
   useEffect(() => {
     const checkOverflow = () => {
       if (textRef.current) {
@@ -182,6 +181,9 @@ const FolderMenu = () => {
   // 使用用户上下文获取用户信息和权限状态
   const { userInfo, userPermission, updateUserPermission } =
     useContext(UserContext);
+
+  // 消息API用于显示提示信息
+  const [messageApi, contextHolder] = message.useMessage();
 
   // 协同文档用户数据状态管理
   const [collaborationUsers, setCollaborationUsers] = useState([]);
@@ -447,8 +449,76 @@ const FolderMenu = () => {
   });
   // 新增：按钮悬停状态
   const [hoveredButton, setHoveredButton] = useState(null);
-  // 新增：计数器，用于生成默认名称
-  const [counters, setCounters] = useState({ folder: 1, file: 1 });
+
+  // 新增：跟踪新创建的文档ID，用于重命名后跳转
+  const [newlyCreatedDocumentId, setNewlyCreatedDocumentId] = useState(null);
+
+  /**
+   * 生成唯一的默认文件名/文件夹名，避免同级目录下的重复
+   * @param {string} baseName - 基础名称，如"新建文档"或"新建文件夹"
+   * @param {string} targetKey - 目标文件夹的key
+   * @returns {string} 唯一的名称
+   */
+  const generateUniqueDefaultName = (baseName, targetKey) => {
+    // 获取目标文件夹的现有子项
+    const getExistingNames = () => {
+      const existingNames = new Set();
+
+      // 递归查找目标文件夹及其子项
+      const findTargetFolderItems = (nodes, key) => {
+        for (const node of nodes) {
+          if (node.key === key) {
+            // 找到目标文件夹，收集其子项名称
+            if (node.children) {
+              node.children.forEach(child => {
+                const name = child.label?.props?.text || child.label;
+                if (name) {
+                  existingNames.add(name);
+                }
+              });
+            }
+            return true;
+          }
+          if (node.children) {
+            if (findTargetFolderItems(node.children, key)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      // 如果是根目录
+      if (targetKey === 'root') {
+        const rootFolder = folderList.find(item => item.key === 'root');
+        if (rootFolder && rootFolder.children) {
+          rootFolder.children.forEach(child => {
+            const name = child.label?.props?.text || child.label;
+            if (name) {
+              existingNames.add(name);
+            }
+          });
+        }
+      } else {
+        findTargetFolderItems(folderList, targetKey);
+      }
+
+      return existingNames;
+    };
+
+    const existingNames = getExistingNames();
+
+    // 从1开始尝试生成唯一名称
+    let counter = 1;
+    let candidateName = `${baseName}${counter}`;
+
+    while (existingNames.has(candidateName)) {
+      counter++;
+      candidateName = `${baseName}${counter}`;
+    }
+
+    return candidateName;
+  };
   // 新增：权限管理弹窗状态
   const [permissionModal, setPermissionModal] = useState({
     visible: false,
@@ -772,21 +842,24 @@ const FolderMenu = () => {
       );
 
       // 将文档转换为菜单项并添加到children中
-      const documentMenuItems = folderDocumentList.map(doc => ({
-        key: `doc_${doc.documentId}`,
-        label: (
-          <EllipsisLabel
-            text={doc.documentName}
-            isEditing={false}
-            onSave={() => {}}
-            onCancel={() => {}}
-          />
-        ),
-        isLeaf: true,
-        backendData: doc,
-        documentId: doc.documentId,
-        // 移除onClick属性，因为Antd Menu不支持，改为在handleMenuSelect中处理
-      }));
+      const documentMenuItems = folderDocumentList.map(doc => {
+        const docKey = `doc_${doc.documentId}`;
+        return {
+          key: docKey,
+          label: (
+            <EllipsisLabel
+              text={doc.documentName}
+              isEditing={editingKey === docKey}
+              onSave={newName => handleRenameSave(docKey, newName)}
+              onCancel={() => handleRenameCancel(docKey)}
+            />
+          ),
+          isLeaf: true,
+          backendData: doc,
+          documentId: doc.documentId,
+          // 移除onClick属性，因为Antd Menu不支持，改为在handleMenuSelect中处理
+        };
+      });
 
       // 合并文件夹和文档（文件夹在前，文档在后）
       menuItem.children = [...(menuItem.children || []), ...documentMenuItems];
@@ -819,21 +892,24 @@ const FolderMenu = () => {
     const sortedFolderTree = sortFolders(folderTree);
 
     // 将根级文档转换为菜单项
-    const rootDocumentMenuItems = rootDocuments.map(doc => ({
-      key: `doc_${doc.documentId}`,
-      label: (
-        <EllipsisLabel
-          text={doc.documentName}
-          isEditing={false}
-          onSave={() => {}}
-          onCancel={() => {}}
-        />
-      ),
-      isLeaf: true,
-      backendData: doc,
-      documentId: doc.documentId,
-      // 移除onClick属性，因为Antd Menu不支持，改为在handleMenuSelect中处理
-    }));
+    const rootDocumentMenuItems = rootDocuments.map(doc => {
+      const docKey = `doc_${doc.documentId}`;
+      return {
+        key: docKey,
+        label: (
+          <EllipsisLabel
+            text={doc.documentName}
+            isEditing={editingKey === docKey}
+            onSave={newName => handleRenameSave(docKey, newName)}
+            onCancel={() => handleRenameCancel(docKey)}
+          />
+        ),
+        isLeaf: true,
+        backendData: doc,
+        documentId: doc.documentId,
+        // 移除onClick属性，因为Antd Menu不支持，改为在handleMenuSelect中处理
+      };
+    });
 
     // 创建"我的文件夹"根节点，包含所有后端文件夹数据和根级文档
     const myFoldersRoot = {
@@ -979,8 +1055,8 @@ const FolderMenu = () => {
         message.info(`文档将在文件夹"${parentName}"中创建`);
       }
 
-      // 生成默认名称
-      const defaultName = `新建文档${counters.file || 1}`;
+      // 生成唯一的默认名称，避免同级目录下的重复
+      const defaultName = generateUniqueDefaultName('新建文档', targetKey);
 
       // 获取当前用户ID
       const numericUserId = getCurrentUserId();
@@ -1050,19 +1126,10 @@ const FolderMenu = () => {
       if (response.success) {
         message.success('新建文档成功');
 
-        // 更新计数器
-        setCounters(prev => ({
-          ...prev,
-          file: (prev.file || 0) + 1,
-        }));
-
-        // 刷新文件夹列表以显示新文档
-        try {
-          await fetchFolders();
-          // 重新获取协同文档数据，因为用户文档数据发生了变化
-          await fetchCollaborationData();
-        } catch (fetchError) {
-          console.warn('刷新文件夹列表失败:', fetchError);
+        // 记录新创建的文档ID
+        const documentId = response.data.documentId;
+        if (documentId) {
+          setNewlyCreatedDocumentId(documentId);
         }
 
         // 确保父文件夹路径都展开
@@ -1077,16 +1144,30 @@ const FolderMenu = () => {
           setOpenKeys(newOpenKeys);
         }
 
-        // 延迟一下再跳转，让用户看到文档创建的反馈
-        setTimeout(() => {
-          const documentId = response.data.documentId;
+        // 刷新文件夹列表以显示新文档
+        try {
+          await fetchFolders();
+          // 重新获取协同文档数据，因为用户文档数据发生了变化
+          await fetchCollaborationData();
+
+          // 在文件夹列表刷新完成后，进入编辑状态
           if (documentId) {
-            navigate(`/doc-editor/${documentId}`);
-          } else {
-            console.warn('创建文档成功但未返回documentId');
+            const documentKey = `doc_${documentId}`;
+            console.log('📝 设置文档编辑状态，documentKey:', documentKey);
+            console.log('📝 当前文件夹列表长度:', folderList.length);
+            // 延迟一下再设置编辑状态，确保组件已经更新
+            setTimeout(() => {
+              setEditingKey(documentKey);
+              console.log('📝 编辑状态已设置:', documentKey);
+            }, 100);
+          }
+        } catch (fetchError) {
+          console.warn('刷新文件夹列表失败:', fetchError);
+          if (documentId) {
+            console.warn('由于刷新失败，无法进入编辑状态');
             message.warning('文档创建成功，请刷新页面查看');
           }
-        }, 500);
+        }
       } else {
         throw new Error(response.message || '创建文档失败');
       }
@@ -1134,8 +1215,8 @@ const FolderMenu = () => {
         message.info(`文件夹将在文件夹"${parentName}"中创建`);
       }
 
-      // 生成默认名称
-      const defaultName = `新建文件夹${counters.folder}`;
+      // 生成唯一的默认名称，避免同级目录下的重复
+      const defaultName = generateUniqueDefaultName('新建文件夹', targetKey);
 
       // 获取当前用户ID
       const numericUserId = getCurrentUserId();
@@ -1206,9 +1287,6 @@ const FolderMenu = () => {
 
         // 重新获取协同文档数据，因为用户文件夹数据发生了变化
         await fetchCollaborationData();
-
-        // 更新计数器
-        setCounters(prev => ({ ...prev, folder: prev.folder + 1 }));
 
         // 进入编辑状态
         setEditingKey(response.data.folderId);
@@ -1308,12 +1386,35 @@ const FolderMenu = () => {
         await fetchCollaborationData();
         setEditingKey(null);
         message.success('重命名成功');
+
+        // 如果是文档重命名成功，自动跳转到文档编辑器
+        if (isDocument) {
+          const documentId =
+            newlyCreatedDocumentId || // 优先使用新创建的文档ID
+            targetItem?.documentId ||
+            targetItem?.backendData?.documentId ||
+            targetItem?.backendData?.autoDocumentId;
+
+          if (documentId) {
+            // 清除新创建文档ID的记录
+            setNewlyCreatedDocumentId(null);
+            // 延迟一下再跳转，让用户看到重命名成功的反馈
+            setTimeout(() => {
+              navigate(`/doc-editor/${documentId}`);
+            }, 800);
+          }
+        }
       } else {
         throw new Error(response.message || '重命名失败');
       }
     } catch (error) {
       console.error('重命名失败:', error);
-      message.error(error.message || '重命名失败，请重试');
+
+      // 显示详细的错误信息弹窗
+      messageApi.warning({
+        content: `重命名失败：${error.response.data.message || error}`,
+        duration: 5, // 显示5秒
+      });
     }
   };
 
@@ -1323,23 +1424,50 @@ const FolderMenu = () => {
     const item = folderUtils.findNodeByKey(folderList, key);
     if (item?.isNew) {
       try {
-        // 获取自增ID用于删除
-        const autoFolderId =
-          item?.autoFolderId ||
-          item?.backendData?.autoFolderId ||
-          item?.backendData?.folderId;
+        // 判断是文档还是文件夹
+        const isDocument = key.startsWith('doc_') || key.startsWith('doc');
 
-        // 优先使用自增ID删除，如果没有则使用MongoDB ID（兼容性）
-        if (typeof autoFolderId === 'number' && autoFolderId > 0) {
-          await folderAPI.deleteFolderByFolderId(autoFolderId);
+        if (isDocument) {
+          // 删除文档
+          const documentId =
+            newlyCreatedDocumentId || // 优先使用新创建的文档ID
+            item?.documentId ||
+            item?.backendData?.documentId ||
+            item?.backendData?.autoDocumentId ||
+            key.replace('doc_', ''); // 从key中提取documentId
+
+          if (documentId) {
+            await documentAPI.deleteDocument(documentId);
+            // 清除新创建文档ID的记录
+            setNewlyCreatedDocumentId(null);
+            messageApi.warning({
+              content: `已取消创建文档`,
+              duration: 5, // 显示5秒
+            });
+          }
         } else {
-          await folderAPI.deleteFolder(key);
+          // 删除文件夹
+          const autoFolderId =
+            item?.autoFolderId ||
+            item?.backendData?.autoFolderId ||
+            item?.backendData?.folderId;
+
+          // 优先使用自增ID删除，如果没有则使用MongoDB ID（兼容性）
+          if (typeof autoFolderId === 'number' && autoFolderId > 0) {
+            await folderAPI.deleteFolderByFolderId(autoFolderId);
+          } else {
+            await folderAPI.deleteFolder(key);
+          }
+          messageApi.warning({
+            content: `已取消创建文件夹`,
+            duration: 5, // 显示5秒
+          });
         }
 
         await fetchFolders();
-        message.info('已取消创建');
+        await fetchCollaborationData();
       } catch (error) {
-        console.error('删除文件夹失败:', error);
+        console.error('删除失败:', error);
         message.error('取消创建失败');
       }
     }
@@ -1847,7 +1975,8 @@ const FolderMenu = () => {
   }
 
   return (
-    <Layout.Sider width={280} className={styles.sider}>
+    <div className={styles.folderMenuRoot}>
+      {contextHolder}
       <div className={styles.buttonContainer}>
         <Tooltip title="新建文件">
           <Button
@@ -1960,37 +2089,40 @@ const FolderMenu = () => {
         </div>
       </Modal>
 
-      <Menu
-        mode="inline"
-        selectedKeys={[...new Set([...selectedKeys, ...userSelectedKeys])]}
-        openKeys={openKeys}
-        onSelect={handleMenuSelect}
-        onOpenChange={handleMenuOpenChange}
-        onClick={({ key }) => {
-          // 处理菜单项点击事件（包括文件夹点击）
-          console.log('📁 Menu onClick事件，key:', key);
+      <div className={styles.menu}>
+        <Menu
+          mode="inline"
+          selectedKeys={[...new Set([...selectedKeys, ...userSelectedKeys])]}
+          openKeys={openKeys}
+          onSelect={handleMenuSelect}
+          onOpenChange={handleMenuOpenChange}
+          onClick={({ key }) => {
+            // 处理菜单项点击事件（包括文件夹点击）
+            console.log('📁 Menu onClick事件，key:', key);
 
-          // 更新用户选中状态
-          setUserSelectedKeys([key]);
+            // 更新用户选中状态
+            setUserSelectedKeys([key]);
 
-          // 如果是文件夹类型，不进行导航操作
-          const isFolderKey =
-            key === 'root' ||
-            (!key.startsWith('doc_') &&
-              !key.startsWith('doc') &&
-              !key.includes('collab_user_') &&
-              !['home', 'recent-docs', 'collaboration'].includes(key));
+            // 如果是文件夹类型，不进行导航操作
+            const isFolderKey =
+              key === 'root' ||
+              (!key.startsWith('doc_') &&
+                !key.startsWith('doc') &&
+                !key.includes('collab_user_') &&
+                !['home', 'recent-docs', 'collaboration'].includes(key));
 
-          if (isFolderKey) {
-            console.log('📁 文件夹点击，key:', key);
-          }
-        }}
-        className={`${styles.menu} folder-menu-theme`}
-        items={withMenuActions(validateMenuData(folderList))}
-        selectable={true}
-        multiple={false}
-      />
-    </Layout.Sider>
+            if (isFolderKey) {
+              console.log('📁 文件夹点击，key:', key);
+            }
+          }}
+          className="folder-menu-theme"
+          items={withMenuActions(validateMenuData(folderList))}
+          selectable={true}
+          multiple={false}
+          style={{ border: 'none', background: 'transparent' }}
+        />
+      </div>
+    </div>
   );
 };
 

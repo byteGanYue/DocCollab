@@ -130,14 +130,35 @@
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
 
     .siderContent {
-        height: 100%;
+        height: 100%; /* 占满整个侧边栏高度 */
         display: flex;
         flex-direction: column;
+        overflow: hidden; /* 防止内容溢出 */
 
         .folderMenu {
             flex: 1;
             border: none;
             background-color: transparent;
+            overflow-y: auto; /* 启用垂直滚动 */
+            overflow-x: hidden; /* 隐藏水平滚动 */
+            /* 自定义滚动条样式 */
+            &::-webkit-scrollbar {
+                width: 6px;
+            }
+            
+            &::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            
+            &::-webkit-scrollbar-thumb {
+                background: rgba(0, 0, 0, 0.15);
+                border-radius: 3px;
+                transition: background 0.2s ease;
+            }
+            
+            &::-webkit-scrollbar-thumb:hover {
+                background: rgba(0, 0, 0, 0.25);
+            }
 
             :global(.ant-menu-item) {
                 margin: 4px 8px;

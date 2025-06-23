@@ -74,6 +74,17 @@ export class DocumentService {
         throw new BadRequestException('文档名称不能为空');
       }
 
+      // 检查同级目录下是否已存在同名文档
+      const duplicateDocument = await this.documentModel.findOne({
+        documentName: createDocumentDto.documentName.trim(),
+        userId: createDocumentDto.userId,
+        parentFolderIds: { $eq: createDocumentDto.parentFolderIds || [] },
+      });
+
+      if (duplicateDocument) {
+        throw new BadRequestException('同级目录下已存在同名文档');
+      }
+
       // 获取下一个文档ID
       const documentId =
         await this.counterService.getNextSequence('documentId');
@@ -378,6 +389,33 @@ export class DocumentService {
         throw new NotFoundException('文档不存在');
       }
 
+      // 如果要更新文档名称，检查同级目录下是否已存在同名文档
+      if (updateDocumentDto.documentName) {
+        const trimmedName = updateDocumentDto.documentName.trim();
+
+        // 验证文档名称不能为空
+        if (!trimmedName) {
+          throw new BadRequestException('文档名称不能为空');
+        }
+
+        // 检查同级目录下是否已存在同名文档（排除当前文档）
+        const duplicateDocument = await this.documentModel.findOne({
+          documentId: { $ne: documentId }, // 排除当前文档
+          documentName: trimmedName,
+          userId: document.userId,
+          parentFolderIds: {
+            $eq: updateDocumentDto.parentFolderIds || document.parentFolderIds,
+          },
+        });
+
+        if (duplicateDocument) {
+          throw new BadRequestException('同级目录下已存在同名文档');
+        }
+
+        // 确保更新的文档名称是去空格后的
+        updateDocumentDto.documentName = trimmedName;
+      }
+
       // 更新文档
       const updatedDocument = await this.documentModel
         .findOneAndUpdate(
@@ -422,7 +460,7 @@ export class DocumentService {
         throw error;
       }
 
-      throw new BadRequestException(`更新文档失败: ${err.message}`);
+      throw new BadRequestException(`${err.message}`);
     }
   }
 
@@ -440,7 +478,23 @@ export class DocumentService {
         throw new NotFoundException('文档不存在');
       }
 
+      // 删除文档
       await this.documentModel.findOneAndDelete({ documentId });
+
+      // 删除该文档的所有访问记录
+      try {
+        const visitDeleteResult =
+          await this.recentVisitsService.deleteByDocumentId(documentId);
+        this.logger.log(
+          `同步删除了 ${visitDeleteResult.data.deletedCount} 条访问记录`,
+          { documentId },
+        );
+      } catch (visitError) {
+        // 访问记录删除失败不影响文档删除的成功
+        this.logger.warn(
+          `删除文档 ${documentId} 的访问记录时出现错误: ${(visitError as Error).message}`,
+        );
+      }
 
       const result = {
         success: true,
