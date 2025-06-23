@@ -25,16 +25,12 @@
   }
 }
 
-/* 侧边栏样式 */
-.sider {
-  background: var(--color-bg-container);
+/* 组件根容器样式 */
+.folderMenuRoot {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  position: fixed;
-  left: 0;
-  top: 64px; /* 距离顶部导航栏下方 */
-  bottom: 0;
+  background: var(--color-bg-container);
 }
 
 /* 操作按钮容器样式 */
@@ -44,13 +40,48 @@
   padding: 16px 12px;
   border-bottom: 1px solid #f0f0f0;
   background: var(--color-bg-container);
+  flex-shrink: 0; /* 防止在flex布局中被压缩 */
+  z-index: 1; /* 确保按钮容器在滚动内容之上 */
 }
 
-/* 菜单样式 */
+/* 菜单容器样式 */
 .menu {
-  height: 100%;
-  border-right: 0;
   flex: 1;
+  overflow-y: auto; /* 启用垂直滚动 */
+  overflow-x: hidden; /* 隐藏水平滚动 */
+  min-height: 0; /* 重要：允许flex子项缩小 */
+  
+  /* 自定义滚动条样式 */
+  &::-webkit-scrollbar {
+    width: 8px; /* 稍微加宽滚动条使其更容易看到 */
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f5f5f5;
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #d9d9d9;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: #bfbfbf;
+  }
+  
+  /* 确保内部的 Ant Design Menu 组件不产生滚动 */
+  :global(.ant-menu) {
+    border: none !important;
+    background: transparent !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  :global(.ant-menu-inline) {
+    border-right: none !important;
+  }
 }
 
 /* 菜单项标签容器样式 */

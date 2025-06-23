@@ -1975,7 +1975,7 @@ const FolderMenu = () => {
   }
 
   return (
-    <Layout.Sider width={280} className={styles.sider}>
+    <div className={styles.folderMenuRoot}>
       {contextHolder}
       <div className={styles.buttonContainer}>
         <Tooltip title="新建文件">
@@ -2089,37 +2089,40 @@ const FolderMenu = () => {
         </div>
       </Modal>
 
-      <Menu
-        mode="inline"
-        selectedKeys={[...new Set([...selectedKeys, ...userSelectedKeys])]}
-        openKeys={openKeys}
-        onSelect={handleMenuSelect}
-        onOpenChange={handleMenuOpenChange}
-        onClick={({ key }) => {
-          // 处理菜单项点击事件（包括文件夹点击）
-          console.log('📁 Menu onClick事件，key:', key);
+      <div className={styles.menu}>
+        <Menu
+          mode="inline"
+          selectedKeys={[...new Set([...selectedKeys, ...userSelectedKeys])]}
+          openKeys={openKeys}
+          onSelect={handleMenuSelect}
+          onOpenChange={handleMenuOpenChange}
+          onClick={({ key }) => {
+            // 处理菜单项点击事件（包括文件夹点击）
+            console.log('📁 Menu onClick事件，key:', key);
 
-          // 更新用户选中状态
-          setUserSelectedKeys([key]);
+            // 更新用户选中状态
+            setUserSelectedKeys([key]);
 
-          // 如果是文件夹类型，不进行导航操作
-          const isFolderKey =
-            key === 'root' ||
-            (!key.startsWith('doc_') &&
-              !key.startsWith('doc') &&
-              !key.includes('collab_user_') &&
-              !['home', 'recent-docs', 'collaboration'].includes(key));
+            // 如果是文件夹类型，不进行导航操作
+            const isFolderKey =
+              key === 'root' ||
+              (!key.startsWith('doc_') &&
+                !key.startsWith('doc') &&
+                !key.includes('collab_user_') &&
+                !['home', 'recent-docs', 'collaboration'].includes(key));
 
-          if (isFolderKey) {
-            console.log('📁 文件夹点击，key:', key);
-          }
-        }}
-        className={`${styles.menu} folder-menu-theme`}
-        items={withMenuActions(validateMenuData(folderList))}
-        selectable={true}
-        multiple={false}
-      />
-    </Layout.Sider>
+            if (isFolderKey) {
+              console.log('📁 文件夹点击，key:', key);
+            }
+          }}
+          className="folder-menu-theme"
+          items={withMenuActions(validateMenuData(folderList))}
+          selectable={true}
+          multiple={false}
+          style={{ border: 'none', background: 'transparent' }}
+        />
+      </div>
+    </div>
   );
 };
 
