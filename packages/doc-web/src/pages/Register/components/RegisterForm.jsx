@@ -9,6 +9,7 @@ import {
 import { useNavigate, Link } from 'react-router-dom';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import { userAPI } from '@/utils/api';
+import { useUser } from '@/hooks/useAuth';
 import styles from './RegisterForm.module.less';
 const { Title, Text } = Typography;
 
@@ -27,8 +28,13 @@ const { Title, Text } = Typography;
  * 2. handleRegisterClick() - 处理注册按钮点击
  *    - 先调用 validateForm() 验证表单
  *    - 验证通过后调用后端API
- *    - 处理注册成功/失败逻辑
- *    - 自动跳转到主页
+ *    - 注册成功后自动登录用户
+ *    - 自动跳转到首页，无需用户再次登录
+ *
+ * 用户体验优化：
+ * - 注册成功后直接登录，无需重复输入密码
+ * - 自动跳转到首页，减少用户操作步骤
+ * - 显示友好的成功提示信息
  *
  * 使用示例：
  * // 单独验证表单
@@ -37,7 +43,7 @@ const { Title, Text } = Typography;
  *   console.log('表单验证通过');
  * }
  *
- * // 触发注册流程
+ * // 触发注册流程（包含自动登录）
  * await handleRegisterClick();
  */
 const RegisterForm = () => {
@@ -47,6 +53,8 @@ const RegisterForm = () => {
   const navigate = useNavigate();
   // 消息提示
   const [messageApi, contextHolder] = message.useMessage();
+  // 获取用户上下文
+  const { login } = useUser();
 
   /**
    * 验证表单填写是否完整
@@ -108,19 +116,22 @@ const RegisterForm = () => {
       // 调用注册API
       const response = await userAPI.register(registerData);
       console.log('注册响应:', response);
-      // 注册成功，保存token和用户信息
+      // 注册成功，保存用户信息并直接登录
       if (response.code == 200) {
-        messageApi.success(
-          `注册成功！欢迎加入 DocCollab，${response.username}！`,
-        );
-        // 延迟跳转，让用户看到成功消息
-        setTimeout(() => {
-          navigate('/login');
-        }, 1000);
-      } else {
-        // 如果没有返回token，可能是模拟注册
+        // 使用 UserContext 的 login 方法保存用户信息，自动登录
+        await login(response.data);
 
-        messageApi.error(`注册失败`);
+        messageApi.success(
+          `注册成功！欢迎加入 DocCollab，${response.data.username}！正在为您跳转到首页...`,
+        );
+
+        // 延迟跳转到首页，让用户看到成功消息
+        setTimeout(() => {
+          navigate('/home');
+        }, 2000);
+      } else {
+        // 注册失败
+        messageApi.error(`注册失败：${response.message || '未知错误'}`);
       }
     } catch (error) {
       console.error('注册失败:', error);
@@ -279,6 +290,8 @@ const RegisterForm = () => {
           {/* 测试提示 */}
           <div className={styles.testHint}>
             💡 测试账号：任意用户名 + 任意邮箱 + 任意6位以上密码即可注册
+            <br />
+            🚀 注册成功后将自动登录并跳转到首页，无需再次登录！
           </div>
         </div>
       </div>
