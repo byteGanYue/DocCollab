@@ -45,7 +45,19 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.0.0",
     "prettier": "^3.5.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "slate": "^0.117.0",
+    "slate-react": "^0.117.1",
     "typescript-eslint": "^8.24.1",
     "vitepress": "^1.6.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "doc-editor": "link:..\\..\\..\\AppData\\Local\\pnpm\\global\\5\\node_modules\\doc-editor"
+    }
+  },
+  "dependencies": {
+    "doc-editor": "link:..\\..\\..\\AppData\\Local\\pnpm\\global\\5\\node_modules\\doc-editor"
   }
 }

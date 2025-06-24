@@ -15,6 +15,7 @@
     "antd": "^5.26.0",
     "axios": "^1.10.0",
     "do_username": "^1.0.0",
+    "doc-editor": "*",
     "highlight.js": "^11.11.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.1",

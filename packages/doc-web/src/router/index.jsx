@@ -8,6 +8,7 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import Welcome from '@/pages/Welcome';
 import LayoutComponent from '@/components/layout/layout';
+import EditorDemo from '@/pages/EditorDemo';
 // import AuthGuard from '@/components/AuthGuard';
 
 const router = createBrowserRouter([
@@ -22,6 +23,10 @@ const router = createBrowserRouter([
   {
     path: '/register',
     element: <Register />,
+  },
+  {
+    path: '/test',
+    element: <EditorDemo />,
   },
   {
     path: '/',
