@@ -16,6 +16,7 @@ import {
   UnlockOutlined,
   TeamOutlined,
   UserOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import {
   Layout,
@@ -603,7 +604,35 @@ const FolderMenu = () => {
           setOpenKeys(Array.from(pathsToExpand));
 
           if (searchedFolders.length === 0) {
-            message.info(`未找到包含"${keyword}"的文件夹`);
+            message.warning(`搜索的文件夹"${keyword}"不存在`);
+
+            // 显示空状态的搜索结果
+            const emptySearchResult = [
+              {
+                key: 'empty-search-result',
+                icon: React.createElement(SearchOutlined),
+                label: (
+                  <div
+                    style={{
+                      color: '#999',
+                      fontStyle: 'italic',
+                      padding: '8px 0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <span>未找到匹配的文件夹 "{keyword}"</span>
+                  </div>
+                ),
+                disabled: true,
+                selectable: false,
+                children: undefined,
+              },
+            ];
+
+            // 合并基础菜单项和空状态提示
+            setFolderList([...baseMenuItems, ...emptySearchResult]);
           } else {
             // 统计文档总数
             const totalDocuments = foldersWithDocsData.reduce(
@@ -763,15 +792,9 @@ const FolderMenu = () => {
       {
         ...myFoldersRoot,
         label: (
-          <div className={styles.menuLabelContainer}>
-            <div className={styles.labelContent}>
-              <EllipsisLabel
-                text={`我的文件夹 (${searchResultsWithDocs.length}个匹配)`}
-              />
-              {myFoldersRoot.permission &&
-                getPermissionIcon(myFoldersRoot.permission, true)}
-            </div>
-          </div>
+          <EllipsisLabel
+            text={`我的文件夹 (${searchResultsWithDocs.length}个匹配)`}
+          />
         ),
         children: filteredChildren,
       },
