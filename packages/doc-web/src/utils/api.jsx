@@ -118,8 +118,8 @@ export const documentAPI = {
     get(`/document/getUserDocuments/${userId}`, params),
 
   // 根据父文件夹ID获取文档列表
-  getFolderDocuments: (parentFolderId, params = {}) =>
-    get('/document/getDocumentsList', { parentFolderId, ...params }),
+  getFolderDocuments: (parentFolderId, userId, params = {}) =>
+    get('/document/getDocumentsList', { parentFolderId, userId, ...params }),
 
   // 搜索文档
   searchDocuments: (search, params = {}) =>
@@ -193,6 +193,9 @@ export const folderAPI = {
 
   // 获取所有公开用户的文件夹结构
   getPublicFolders: () => get('/folder/public-folders'),
+
+  // 按名称搜索文件夹
+  searchFolders: params => get('/folder/search', params),
 };
 
 /**

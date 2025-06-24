@@ -14,6 +14,8 @@ import {
   QueryFolderTreeDto,
   CreateFolderResponseDto,
   FindFolderDetailResponseDto,
+  SearchFolderDto,
+  SearchFolderResponseDto,
 } from './dto/create-folder.dto';
 import {
   UpdateFolderDto,
@@ -195,5 +197,26 @@ export class FolderController {
   @ApiResponse({ status: 200, description: '成功获取所有公开用户的文件夹结构' })
   async getPublicFolders() {
     return this.folderService.findAllPublicFolders();
+  }
+
+  /**
+   * 按文件夹名称模糊搜索文件夹
+   * @param searchDto 搜索参数
+   * @returns 搜索结果
+   */
+  @Get('search')
+  @ApiOperation({
+    summary: '按文件夹名称模糊搜索文件夹',
+    description:
+      '支持按文件夹名称进行模糊搜索，可选择指定用户ID进行筛选，支持分页',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '搜索成功返回文件夹列表',
+  })
+  async searchFolders(
+    @Query() searchDto: SearchFolderDto,
+  ): Promise<SearchFolderResponseDto> {
+    return await this.folderService.searchFolders(searchDto);
   }
 }

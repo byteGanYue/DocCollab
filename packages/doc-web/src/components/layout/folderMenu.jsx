@@ -30,6 +30,7 @@ import {
   Radio,
   Space,
 } from 'antd';
+const { Search } = Input;
 import { useNavigate, useLocation } from 'react-router-dom';
 import styles from './folderMenu.module.less';
 import folderUtils from '../../utils/folder';
@@ -453,6 +454,330 @@ const FolderMenu = () => {
   // 新增：跟踪新创建的文档ID，用于重命名后跳转
   const [newlyCreatedDocumentId, setNewlyCreatedDocumentId] = useState(null);
 
+  // 搜索相关状态
+  // eslint-disable-next-line no-unused-vars
+  const [searchKeyword, setSearchKeyword] = useState(''); // 搜索关键词
+  // eslint-disable-next-line no-unused-vars
+  const [searchResults, setSearchResults] = useState([]); // 搜索结果
+  const [isSearching, setIsSearching] = useState(false); // 搜索状态
+  const [originalFolderList, setOriginalFolderList] = useState([]); // 原始文件夹列表，用于恢复
+
+  /**
+   * 执行文件夹搜索
+   * @param {string} keyword - 搜索关键词
+   */
+  const performSearch = useCallback(
+    async keyword => {
+      if (!keyword || keyword.trim() === '') {
+        // 如果搜索关键词为空，恢复原始列表
+        setFolderList(originalFolderList);
+        setSearchResults([]);
+        setSearchKeyword('');
+        setIsSearching(false);
+        // 恢复默认的展开状态
+        setOpenKeys(['root']);
+        return;
+      }
+
+      try {
+        setIsSearching(true);
+        setSearchKeyword(keyword);
+
+        // 获取当前用户ID
+        const numericUserId = getCurrentUserId();
+
+        // 调用搜索API
+        const response = await folderAPI.searchFolders({
+          keyword: keyword.trim(),
+          userId: numericUserId,
+          page: 1,
+          limit: 100, // 获取足够多的结果
+        });
+
+        if (response.success && response.data.folders) {
+          const searchedFolders = response.data.folders;
+          setSearchResults(searchedFolders);
+
+          // 获取搜索到的文件夹中的文档
+          const foldersWithDocuments = await Promise.allSettled(
+            searchedFolders.map(async folder => {
+              try {
+                // 使用自增ID获取文件夹中的文档
+                const folderIdForQuery = folder.autoFolderId || folder.folderId;
+                const documentsResponse = await documentAPI.getFolderDocuments(
+                  folderIdForQuery,
+                  numericUserId, // 传递用户ID
+                  {
+                    page: 1,
+                    pageSize: 100, // 获取足够多的文档
+                  },
+                );
+
+                return {
+                  ...folder,
+                  documents: documentsResponse.success
+                    ? documentsResponse.data?.documents || []
+                    : [],
+                };
+              } catch (error) {
+                console.warn(
+                  `获取文件夹 ${folder.folderName} 中的文档失败:`,
+                  error,
+                );
+                return {
+                  ...folder,
+                  documents: [],
+                };
+              }
+            }),
+          );
+
+          // 提取成功获取文档的文件夹数据
+          const foldersWithDocsData = foldersWithDocuments.map(result =>
+            result.status === 'fulfilled' ? result.value : result.reason,
+          );
+
+          // 转换搜索结果为菜单格式（包含文档）
+          const searchMenuItems =
+            convertSearchResultsToMenuFormat(foldersWithDocsData);
+
+          // 构建基础菜单项（首页、最近访问等）
+          const baseMenuItems = [
+            {
+              key: 'home',
+              icon: React.createElement(HomeOutlined),
+              label: <EllipsisLabel text="首页" />,
+              children: null,
+            },
+            {
+              key: 'recent-docs',
+              icon: React.createElement(ClockCircleOutlined),
+              label: <EllipsisLabel text="最近访问文档列表" />,
+              children: null,
+            },
+            {
+              key: 'collaboration',
+              icon: React.createElement(TeamOutlined),
+              label: (
+                <div className={styles.menuLabelContainer}>
+                  <div className={styles.labelContent}>
+                    <EllipsisLabel text="协同空间" />
+                    <Tooltip title="公开协同空间 - 所有公开用户的文档">
+                      <TeamOutlined
+                        style={{
+                          color: '#52c41a',
+                          marginLeft: 4,
+                          fontSize: '12px',
+                        }}
+                      />
+                    </Tooltip>
+                  </div>
+                </div>
+              ),
+              children: collaborationUsers
+                .map(user => user.folderData)
+                .filter(Boolean),
+            },
+          ];
+
+          // 合并基础菜单项和搜索结果
+          setFolderList([...baseMenuItems, ...searchMenuItems]);
+
+          // 自动展开包含搜索结果的路径
+          const pathsToExpand = new Set(['root']); // 始终展开根目录
+
+          searchedFolders.forEach(folder => {
+            // 展开匹配文件夹的所有父级路径
+            if (folder.parentFolderIds && folder.parentFolderIds.length > 0) {
+              folder.parentFolderIds.forEach(parentId => {
+                pathsToExpand.add(parentId.toString());
+              });
+            }
+            // 也要展开匹配的文件夹本身（如果它有子文件夹的话）
+            const folderId = folder.folderId || folder.autoFolderId?.toString();
+            if (folderId) {
+              pathsToExpand.add(folderId);
+            }
+          });
+
+          setOpenKeys(Array.from(pathsToExpand));
+
+          if (searchedFolders.length === 0) {
+            message.info(`未找到包含"${keyword}"的文件夹`);
+          } else {
+            // 统计文档总数
+            const totalDocuments = foldersWithDocsData.reduce(
+              (sum, folder) =>
+                sum + (folder.documents ? folder.documents.length : 0),
+              0,
+            );
+
+            const folderText = `${searchedFolders.length} 个文件夹`;
+            const documentText =
+              totalDocuments > 0 ? `，${totalDocuments} 个文档` : '';
+            message.success(`找到 ${folderText}${documentText}`);
+          }
+        } else {
+          throw new Error(response.message || '搜索失败');
+        }
+      } catch (error) {
+        console.error('搜索文件夹失败:', error);
+        message.error(error.message || '搜索失败，请重试');
+        // 搜索失败时恢复原始列表
+        setFolderList(originalFolderList);
+        setSearchResults([]);
+        setIsSearching(false);
+        // 恢复默认的展开状态
+        setOpenKeys(['root']);
+      }
+    },
+    [originalFolderList, collaborationUsers],
+  );
+
+  /**
+   * 将搜索结果转换为菜单格式，保留完整的层级结构
+   * @param {Array} searchResultsWithDocs - 搜索结果（包含文档数据）
+   * @returns {Array} 菜单格式的搜索结果，包含完整的父级路径和文档
+   */
+  const convertSearchResultsToMenuFormat = searchResultsWithDocs => {
+    if (!searchResultsWithDocs || searchResultsWithDocs.length === 0) {
+      return [];
+    }
+
+    // 从原始文件夹列表中找到"我的文件夹"节点
+    const myFoldersRoot = originalFolderList.find(item => item.key === 'root');
+    if (!myFoldersRoot || !myFoldersRoot.children) {
+      return [];
+    }
+
+    // 构建一个包含所有匹配文件夹及其父级路径的树
+    const buildFilteredTree = (originalTree, matchedFolderIds) => {
+      const filteredTree = [];
+
+      const processNode = node => {
+        if (!node) return null;
+
+        // 检查当前节点是否是匹配的文件夹（支持多种ID格式）
+        const nodeIdMatches = [
+          node.key,
+          node.autoFolderId?.toString(),
+          node.backendData?.folderId,
+          node.backendData?.autoFolderId?.toString(),
+        ].filter(Boolean);
+
+        const isMatched = nodeIdMatches.some(id =>
+          matchedFolderIds.includes(id),
+        );
+
+        // 检查是否有匹配的子节点（递归处理）
+        let hasMatchedChildren = false;
+        let filteredChildren = [];
+
+        if (node.children && node.children.length > 0) {
+          node.children.forEach(child => {
+            const processedChild = processNode(child);
+            if (processedChild) {
+              filteredChildren.push(processedChild);
+              hasMatchedChildren = true;
+            }
+          });
+        }
+
+        // 如果当前节点是匹配的文件夹，且有搜索结果中的文档数据，则添加文档子项
+        if (isMatched) {
+          // 从搜索结果中找到对应的文件夹数据
+          const matchedFolderData = searchResultsWithDocs.find(folder => {
+            const folderIds = [
+              folder.folderId,
+              folder.autoFolderId?.toString(),
+            ].filter(Boolean);
+            return folderIds.some(id => nodeIdMatches.includes(id));
+          });
+
+          // 如果找到匹配的文件夹数据且包含文档，则添加文档菜单项
+          if (
+            matchedFolderData &&
+            matchedFolderData.documents &&
+            matchedFolderData.documents.length > 0
+          ) {
+            const documentMenuItems = matchedFolderData.documents.map(doc => {
+              const docKey = `doc_${doc.documentId}`;
+              return {
+                key: docKey,
+                label: <EllipsisLabel text={doc.documentName} />,
+                isLeaf: true,
+                backendData: doc,
+                documentId: doc.documentId,
+              };
+            });
+
+            // 将文档添加到子项中
+            filteredChildren = [...filteredChildren, ...documentMenuItems];
+            hasMatchedChildren = true;
+          }
+        }
+
+        // 如果当前节点匹配或有匹配的子节点，则包含此节点
+        if (isMatched || hasMatchedChildren) {
+          const filteredNode = {
+            ...node,
+            children:
+              filteredChildren.length > 0 ? filteredChildren : undefined,
+          };
+
+          // 移除高亮相关的处理，保持原始样式
+
+          return filteredNode;
+        }
+
+        return null;
+      };
+
+      originalTree.forEach(node => {
+        const processedNode = processNode(node);
+        if (processedNode) {
+          filteredTree.push(processedNode);
+        }
+      });
+
+      return filteredTree;
+    };
+
+    // 收集所有匹配文件夹的ID
+    const matchedFolderIds = searchResultsWithDocs
+      .map(folder => folder.folderId || folder.autoFolderId?.toString())
+      .filter(Boolean);
+
+    // 构建过滤后的树，只包含匹配的文件夹及其父级路径
+    const filteredChildren = buildFilteredTree(
+      myFoldersRoot.children,
+      matchedFolderIds,
+    );
+
+    if (filteredChildren.length === 0) {
+      return [];
+    }
+
+    // 返回包含搜索结果的"我的文件夹"节点
+    return [
+      {
+        ...myFoldersRoot,
+        label: (
+          <div className={styles.menuLabelContainer}>
+            <div className={styles.labelContent}>
+              <EllipsisLabel
+                text={`我的文件夹 (${searchResultsWithDocs.length}个匹配)`}
+              />
+              {myFoldersRoot.permission &&
+                getPermissionIcon(myFoldersRoot.permission, true)}
+            </div>
+          </div>
+        ),
+        children: filteredChildren,
+      },
+    ];
+  };
+
   /**
    * 生成唯一的默认文件名/文件夹名，避免同级目录下的重复
    * @param {string} baseName - 基础名称，如"新建文档"或"新建文件夹"
@@ -743,7 +1068,12 @@ const FolderMenu = () => {
         collaborationMenuItem,
       ];
 
-      setFolderList([...baseMenuItems, ...convertedFolders]);
+      const fullFolderList = [...baseMenuItems, ...convertedFolders];
+      setFolderList(fullFolderList);
+      // 保存原始文件夹列表，用于搜索后恢复
+      if (!isSearching) {
+        setOriginalFolderList(fullFolderList);
+      }
     } catch (error) {
       console.error('获取文件夹列表失败:', error);
       message.error('获取文件夹列表失败');
@@ -793,6 +1123,10 @@ const FolderMenu = () => {
         },
       ];
       setFolderList(baseMenuItems);
+      // 失败时也保存原始列表
+      if (!isSearching) {
+        setOriginalFolderList(baseMenuItems);
+      }
     } finally {
       setLoading(false);
     }
@@ -1974,6 +2308,15 @@ const FolderMenu = () => {
       .filter(Boolean); // 过滤掉null值
   }
 
+  // 搜索文件夹
+  const onSearch = useCallback(
+    value => {
+      console.log('🔍 搜索文件夹:', value);
+      performSearch(value);
+    },
+    [performSearch],
+  );
+
   return (
     <div className={styles.folderMenuRoot}>
       {contextHolder}
@@ -1998,6 +2341,19 @@ const FolderMenu = () => {
             onMouseLeave={() => setHoveredButton(null)}
           />
         </Tooltip>
+      </div>
+      <div className={styles.searchContainer}>
+        <Search
+          placeholder="在我的文件夹中搜索文件夹"
+          allowClear
+          onSearch={onSearch}
+          onChange={e => {
+            // 当搜索框被清空时，恢复原始列表
+            if (!e.target.value) {
+              performSearch('');
+            }
+          }}
+        />
       </div>
 
       {/* 删除确认弹窗 */}

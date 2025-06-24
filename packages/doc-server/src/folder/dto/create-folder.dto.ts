@@ -105,3 +105,78 @@ export interface FindFolderDetailResponseDto {
     update_time: Date;
   };
 }
+
+/**
+ * 搜索文件夹DTO
+ */
+export class SearchFolderDto {
+  @ApiProperty({
+    description: '搜索关键词（文件夹名称）',
+    example: '我的文档',
+    required: true,
+  })
+  @IsString()
+  @IsNotEmpty()
+  keyword: string; // 搜索关键词
+
+  @ApiProperty({
+    description: '用户ID（可选，用于筛选特定用户的文件夹）',
+    example: 1,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  userId?: number; // 用户ID (可选)
+
+  @ApiProperty({
+    description: '页码（从1开始）',
+    example: 1,
+    required: false,
+    default: 1,
+  })
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  page?: number; // 页码
+
+  @ApiProperty({
+    description: '每页数量',
+    example: 10,
+    required: false,
+    default: 10,
+  })
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  limit?: number; // 每页数量
+}
+
+/**
+ * 搜索文件夹响应DTO
+ */
+export interface SearchFolderResponseDto {
+  success: boolean;
+  message: string;
+  data: {
+    folders: Array<{
+      folderId: string;
+      autoFolderId: number; // 自增的文件夹ID
+      folderName: string;
+      userId: number;
+      create_username: string;
+      update_username: string;
+      parentFolderIds: string[];
+      depth: number;
+      parentFolderNames: string[]; // 父文件夹名称路径，用于显示完整路径
+      create_time: Date;
+      update_time: Date;
+    }>;
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalCount: number;
+      pageSize: number;
+    };
+  };
+}

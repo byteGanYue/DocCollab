@@ -9,6 +9,8 @@ import {
   QueryFolderTreeDto,
   CreateFolderResponseDto,
   FindFolderDetailResponseDto,
+  SearchFolderDto,
+  SearchFolderResponseDto,
 } from './dto/create-folder.dto';
 import {
   UpdateFolderDto,
@@ -1093,7 +1095,7 @@ export class FolderService {
 
           result.push({
             userId: user.userId,
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
             username: user.username,
             isPublic: user.isPublic,
             folders: userFolderTree,
@@ -1189,6 +1191,148 @@ export class FolderService {
         `构建用户 ${userId} 文件夹树失败 (folderId: ${folderId}): ${error.message}`,
       );
       return null;
+    }
+  }
+
+  /**
+   * 按文件夹名称模糊搜索文件夹
+   * @param searchDto 搜索参数
+   * @returns 搜索结果
+   */
+  async searchFolders(
+    searchDto: SearchFolderDto,
+  ): Promise<SearchFolderResponseDto> {
+    try {
+      this.logger.log('开始搜索文件夹', searchDto);
+
+      const { keyword, userId, page = 1, limit = 10 } = searchDto;
+
+      // 构建查询条件
+      const query: FilterQuery<Folder> = {
+        folderName: { $regex: keyword, $options: 'i' }, // 模糊搜索，不区分大小写
+      };
+
+      // 如果指定了用户ID，添加用户筛选条件
+      if (userId) {
+        query.userId = userId;
+      }
+
+      // 计算跳过的记录数
+      const skip = (page - 1) * limit;
+
+      // 执行搜索查询
+      const [folders, totalCount] = await Promise.all([
+        this.folderModel
+          .find(query)
+          .sort({ update_time: -1 }) // 按更新时间倒序排列
+          .skip(skip)
+          .limit(limit)
+          .lean()
+          .exec(),
+        this.folderModel.countDocuments(query).exec(),
+      ]);
+
+      // 获取父文件夹名称路径
+      const foldersWithPath = await Promise.all(
+        folders.map(async (folder) => {
+          const parentFolderNames = await this.getParentFolderNames(
+            folder.parentFolderIds,
+          );
+
+          return {
+            folderId: folder._id.toString(),
+            autoFolderId: folder.folderId,
+            folderName: folder.folderName,
+            userId: folder.userId,
+            create_username: folder.create_username,
+            update_username: folder.update_username,
+            parentFolderIds: folder.parentFolderIds,
+            depth: folder.depth,
+            parentFolderNames, // 父文件夹名称路径
+            create_time: folder.create_time,
+            update_time: folder.update_time,
+          };
+        }),
+      );
+
+      // 计算分页信息
+      const totalPages = Math.ceil(totalCount / limit);
+
+      const result: SearchFolderResponseDto = {
+        success: true,
+        message: `搜索完成，找到 ${totalCount} 个匹配的文件夹`,
+        data: {
+          folders: foldersWithPath,
+          pagination: {
+            currentPage: page,
+            totalPages,
+            totalCount,
+            pageSize: limit,
+          },
+        },
+      };
+
+      this.logger.log('文件夹搜索完成', {
+        keyword,
+        userId,
+        totalCount,
+        currentPage: page,
+      });
+
+      return result;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error('搜索文件夹失败', err.stack);
+
+      return {
+        success: false,
+        message: `搜索文件夹失败: ${err.message}`,
+        data: {
+          folders: [],
+          pagination: {
+            currentPage: 1,
+            totalPages: 0,
+            totalCount: 0,
+            pageSize: 10,
+          },
+        },
+      };
+    }
+  }
+
+  /**
+   * 获取父文件夹名称路径
+   * @param parentFolderIds 父文件夹ID数组
+   * @returns 父文件夹名称数组
+   */
+  private async getParentFolderNames(
+    parentFolderIds: string[],
+  ): Promise<string[]> {
+    try {
+      if (!parentFolderIds || parentFolderIds.length === 0) {
+        return [];
+      }
+
+      // 将字符串ID转换为ObjectId
+      const objectIds = parentFolderIds.map((id) => new Types.ObjectId(id));
+
+      // 按照原始顺序查询文件夹名称
+      const folders = await this.folderModel
+        .find({ _id: { $in: objectIds } })
+        .select('_id folderName')
+        .lean()
+        .exec();
+
+      // 创建ID到名称的映射
+      const folderMap = new Map(
+        folders.map((folder) => [folder._id.toString(), folder.folderName]),
+      );
+
+      // 按照原始顺序返回文件夹名称
+      return parentFolderIds.map((id) => folderMap.get(id) || '未知文件夹');
+    } catch (error) {
+      this.logger.warn('获取父文件夹名称失败', error);
+      return parentFolderIds.map(() => '未知文件夹');
     }
   }
 }
