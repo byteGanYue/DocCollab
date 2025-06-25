@@ -24,10 +24,7 @@ const router = createBrowserRouter([
     path: '/register',
     element: <Register />,
   },
-  {
-    path: '/test',
-    element: <EditorDemo />,
-  },
+
   {
     path: '/',
     element: <LayoutComponent />,
@@ -55,6 +52,10 @@ const router = createBrowserRouter([
       {
         path: 'doc-editor/:id',
         element: <DocEditor />,
+      },
+      {
+        path: '/test',
+        element: <EditorDemo />,
       },
     ],
   },

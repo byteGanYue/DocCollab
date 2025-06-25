@@ -68,6 +68,9 @@ importers:
 
   packages/doc-editor:
     dependencies:
+      is-hotkey:
+        specifier: ^0.2.0
+        version: 0.2.0
       react:
         specifier: ^18.0.0 || ^19.0.0
         version: 19.1.0
