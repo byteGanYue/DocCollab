@@ -29,7 +29,10 @@
     "turndown": "^7.2.0",
     "y-quill": "^1.0.0",
     "y-webrtc": "^10.3.0",
-    "yjs": "^13.6.27"
+    "yjs": "^13.6.27",
+    "slate": "^0.117.0",
+    "slate-react": "^0.117.1",
+    "slate-history": "^0.113.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

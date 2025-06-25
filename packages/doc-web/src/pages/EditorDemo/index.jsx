@@ -1,5 +1,8 @@
-import { DocEditor } from 'doc-editor';
+import React from 'react';
+import { EditorSDK } from 'doc-editor';
 
-export default function EditorDemo() {
-  return <DocEditor />;
-}
+const EditorDemo = () => {
+  return <EditorSDK />;
+};
+
+export default EditorDemo;
