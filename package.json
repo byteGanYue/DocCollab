@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "commit": "git add . && git-cz",
+    "build:doc-editor": "pnpm --filter doc-editor build",
     "dev:doc-web": "pnpm --filter doc-web dev",
     "start:doc-server": "pnpm --filter doc-server start:dev",
     "docs:dev": "vitepress dev ./packages/doc-docs",
@@ -12,7 +13,8 @@
     "docs:preview": "vitepress preview ./packages/doc-docs",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "prepare": "husky"
+    "prepare": "husky",
+    "clean": "rimraf --glob node_modules pnpm-lock.yaml \"packages/*/node_modules\" \"packages/*/pnpm-lock.yaml\""
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
@@ -47,17 +49,11 @@
     "prettier": "^3.5.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "rimraf": "^6.0.1",
     "slate": "^0.117.0",
+    "slate-history": "^0.113.1",
     "slate-react": "^0.117.1",
     "typescript-eslint": "^8.24.1",
     "vitepress": "^1.6.3"
-  },
-  "pnpm": {
-    "overrides": {
-      "doc-editor": "link:..\\..\\..\\AppData\\Local\\pnpm\\global\\5\\node_modules\\doc-editor"
-    }
-  },
-  "dependencies": {
-    "doc-editor": "link:..\\..\\..\\AppData\\Local\\pnpm\\global\\5\\node_modules\\doc-editor"
   }
 }
