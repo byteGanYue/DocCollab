@@ -70,14 +70,17 @@ importers:
   packages/doc-editor:
     dependencies:
       react:
-        specifier: ^19.1.0
+        specifier: ^18.0.0 || ^19.0.0
         version: 19.1.0
       react-dom:
-        specifier: ^19.1.0
+        specifier: ^18.0.0 || ^19.0.0
         version: 19.1.0(react@19.1.0)
       slate:
         specifier: ^0.117.0
         version: 0.117.0
+      slate-history:
+        specifier: ^0.113.1
+        version: 0.113.1(slate@0.117.0)
       slate-react:
         specifier: ^0.117.1
         version: 0.117.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(slate-dom@0.116.0(slate@0.117.0))(slate@0.117.0)
@@ -5166,6 +5169,11 @@ packages:
     resolution: {integrity: sha512-ZyyPdT4zY4d/P/gfqMWBaAWWqV3N2BbAiDqEfOtZwPLcy7vvC02PsVvSZLaGun7DvaM2EIqdN7tTq3REbQkYgA==}
     peerDependencies:
       slate: '>=0.99.0'
+
+  slate-history@0.113.1:
+    resolution: {integrity: sha512-J9NSJ+UG2GxoW0lw5mloaKcN0JI0x2IA5M5FxyGiInpn+QEutxT1WK7S/JneZCMFJBoHs1uu7S7e6pxQjubHmQ==}
+    peerDependencies:
+      slate: '>=0.65.3'
 
   slate-react@0.117.1:
     resolution: {integrity: sha512-zwcuXRzSTMk6L1ILUC6PhEqwSIHKUq9ry13oL2ul2zKsCr6J+aVDoyU2K+IW+hk+c/8VW6U0/jUSl8mZgBc9kA==}
@@ -11340,6 +11348,11 @@ snapshots:
       scroll-into-view-if-needed: 3.1.0
       slate: 0.117.0
       tiny-invariant: 1.3.1
+
+  slate-history@0.113.1(slate@0.117.0):
+    dependencies:
+      is-plain-object: 5.0.0
+      slate: 0.117.0
 
   slate-react@0.117.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(slate-dom@0.116.0(slate@0.117.0))(slate@0.117.0):
     dependencies:

@@ -1,8 +1,6 @@
-import React from 'react';
+import Editor from './components/Editor';
+import withLogger from './plugins/withLogger';
+import withHistory from './plugins/withHistory';
 
-const DocEditor = () => {
-  return <div>DocEditor SDK 初始化成功！</div>;
-};
-
-export { DocEditor };
-export default DocEditor;
+export { Editor, withLogger, withHistory };
+export default Editor;
