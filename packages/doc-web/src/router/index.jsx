@@ -4,6 +4,7 @@ import Folder from '@/pages/Folder';
 import DocEditor from '@/pages/DocEditor';
 import RecentDocs from '@/pages/RecentDocs';
 import Collaboration from '@/pages/Collaboration';
+import HistoryVersion from '@/pages/HistoryVersion';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import Welcome from '@/pages/Welcome';
@@ -23,10 +24,6 @@ const router = createBrowserRouter([
   {
     path: '/register',
     element: <Register />,
-  },
-  {
-    path: '/test',
-    element: <EditorDemo />,
   },
   {
     path: '/',
@@ -55,6 +52,14 @@ const router = createBrowserRouter([
       {
         path: 'doc-editor/:id',
         element: <DocEditor />,
+      },
+      {
+        path: 'history-version/:id',
+        element: <HistoryVersion />,
+      },
+      {
+        path: '/test',
+        element: <EditorDemo />,
       },
     ],
   },

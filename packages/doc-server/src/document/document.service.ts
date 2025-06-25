@@ -19,6 +19,7 @@ import {
 } from './dto/update-document.dto';
 import { DocumentEntity } from './schemas/document.schema';
 import { CounterService } from './services/counter.service';
+import { DocumentHistoryService } from './services/document-history.service';
 import { RecentVisitsService } from '../recent-visits/recent-visits.service';
 
 interface DocumentDocument {
@@ -55,6 +56,7 @@ export class DocumentService {
     @InjectModel(DocumentEntity.name)
     private documentModel: Model<DocumentEntity>,
     private counterService: CounterService,
+    private documentHistoryService: DocumentHistoryService,
     private recentVisitsService: RecentVisitsService,
   ) {}
 
@@ -113,6 +115,28 @@ export class DocumentService {
 
       const savedDocument = await newDocument.save();
       const documentDoc = savedDocument.toObject() as DocumentDocument;
+
+      // 添加到历史版本记录表，versionId从1开始
+      try {
+        await this.documentHistoryService.addDocumentHistory({
+          userId: documentDoc.userId,
+          documentId: documentDoc.documentId,
+          documentName: documentDoc.documentName,
+          content: documentDoc.content,
+          create_username: documentDoc.create_username,
+          update_username: documentDoc.update_username,
+        });
+        this.logger.log('已添加文档历史版本记录', {
+          documentId: documentDoc.documentId,
+          versionId: 1,
+        });
+      } catch (historyError) {
+        // 历史版本记录失败不影响文档创建成功
+        this.logger.warn(
+          `添加文档历史版本记录失败: ${(historyError as Error).message}`,
+          { documentId: documentDoc.documentId },
+        );
+      }
 
       const result = {
         success: true,
@@ -431,6 +455,27 @@ export class DocumentService {
         throw new NotFoundException('文档更新失败');
       }
 
+      // 添加到历史版本记录表，versionId在上一版本基础上加1
+      try {
+        await this.documentHistoryService.addDocumentHistory({
+          userId: updatedDocument.userId,
+          documentId: updatedDocument.documentId,
+          documentName: updatedDocument.documentName,
+          content: updatedDocument.content,
+          create_username: updatedDocument.create_username,
+          update_username: updatedDocument.update_username,
+        });
+        this.logger.log('已添加文档历史版本记录', {
+          documentId: updatedDocument.documentId,
+        });
+      } catch (historyError) {
+        // 历史版本记录失败不影响文档更新成功
+        this.logger.warn(
+          `添加文档历史版本记录失败: ${(historyError as Error).message}`,
+          { documentId: updatedDocument.documentId },
+        );
+      }
+
       const result = {
         success: true,
         message: '文档更新成功',
@@ -493,6 +538,21 @@ export class DocumentService {
         // 访问记录删除失败不影响文档删除的成功
         this.logger.warn(
           `删除文档 ${documentId} 的访问记录时出现错误: ${(visitError as Error).message}`,
+        );
+      }
+
+      // 删除该文档的所有历史版本记录
+      try {
+        const historyDeleteResult =
+          await this.documentHistoryService.deleteDocumentHistory(documentId);
+        this.logger.log(
+          `同步删除了 ${historyDeleteResult.deletedCount} 条历史版本记录`,
+          { documentId },
+        );
+      } catch (historyError) {
+        // 历史版本记录删除失败不影响文档删除的成功
+        this.logger.warn(
+          `删除文档 ${documentId} 的历史版本记录时出现错误: ${(historyError as Error).message}`,
         );
       }
 

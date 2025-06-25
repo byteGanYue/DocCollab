@@ -11,6 +11,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { DocumentService } from './document.service';
+import { DocumentHistoryService } from './services/document-history.service';
 import {
   CreateDocumentDto,
   QueryDocumentDto,
@@ -22,7 +23,10 @@ import { ApiOperation, ApiBody, ApiResponse, ApiParam } from '@nestjs/swagger';
 export class DocumentController {
   private readonly logger = new Logger(DocumentController.name);
 
-  constructor(private readonly documentService: DocumentService) {}
+  constructor(
+    private readonly documentService: DocumentService,
+    private readonly documentHistoryService: DocumentHistoryService,
+  ) {}
 
   /**
    * 创建文档
@@ -288,5 +292,253 @@ export class DocumentController {
       .split(',')
       .map((id) => parseInt(id.trim(), 10));
     return this.documentService.findPublicDocumentsByFolder(folderIdArray);
+  }
+
+  /**
+   * 获取文档历史版本
+   * @param documentId 文档ID
+   * @param page 页码
+   * @param limit 每页数量
+   * @returns 历史版本列表
+   */
+  @Get(':id/history')
+  @ApiOperation({
+    summary: '获取文档历史版本',
+    description: '获取指定文档的所有历史版本记录',
+  })
+  @ApiParam({
+    name: 'id',
+    description: '文档ID',
+    type: 'number',
+    example: 123,
+  })
+  @ApiResponse({
+    status: 200,
+    description: '获取历史版本成功',
+    schema: {
+      example: {
+        success: true,
+        message: '获取历史版本成功',
+        data: {
+          versions: [
+            {
+              _id: '507f1f77bcf86cd799439011',
+              userId: 1,
+              documentId: 123,
+              documentName: '文档标题',
+              content: '文档内容',
+              create_username: 'user123',
+              update_username: 'user456',
+              versionId: 2,
+              create_time: '2024-01-01T00:00:00.000Z',
+              update_time: '2024-01-01T00:00:00.000Z',
+            },
+          ],
+          total: 10,
+          page: 1,
+          limit: 20,
+          totalPages: 1,
+        },
+      },
+    },
+  })
+  async getDocumentHistory(
+    @Param('id', ParseIntPipe) documentId: number,
+    @Query('page') pageParam?: string,
+    @Query('limit') limitParam?: string,
+  ) {
+    // 解析分页参数，提供默认值
+    const page = pageParam ? parseInt(pageParam, 10) : 1;
+    const limit = limitParam ? parseInt(limitParam, 10) : 20;
+
+    // 验证参数有效性
+    const validPage = isNaN(page) || page < 1 ? 1 : page;
+    const validLimit = isNaN(limit) || limit < 1 || limit > 100 ? 20 : limit;
+
+    this.logger.log('接收到获取文档历史版本请求', {
+      documentId,
+      page: validPage,
+      limit: validLimit,
+    });
+
+    const result = await this.documentHistoryService.getDocumentHistory(
+      documentId,
+      validPage,
+      validLimit,
+    );
+    return {
+      success: true,
+      message: '获取历史版本成功',
+      data: result,
+    };
+  }
+
+  /**
+   * 获取特定版本的文档内容
+   * @param documentId 文档ID
+   * @param versionId 版本号
+   * @returns 特定版本的文档内容
+   */
+  @Get(':id/version/:versionId')
+  @ApiOperation({
+    summary: '获取特定版本的文档内容',
+    description: '获取文档的特定版本内容',
+  })
+  @ApiParam({
+    name: 'id',
+    description: '文档ID',
+    type: 'number',
+    example: 123,
+  })
+  @ApiParam({
+    name: 'versionId',
+    description: '版本号',
+    type: 'number',
+    example: 2,
+  })
+  @ApiResponse({
+    status: 200,
+    description: '获取版本内容成功',
+    schema: {
+      example: {
+        success: true,
+        message: '获取版本内容成功',
+        data: {
+          _id: '507f1f77bcf86cd799439011',
+          userId: 1,
+          documentId: 123,
+          documentName: '文档标题',
+          content: '文档内容',
+          create_username: 'user123',
+          update_username: 'user456',
+          versionId: 2,
+          create_time: '2024-01-01T00:00:00.000Z',
+          update_time: '2024-01-01T00:00:00.000Z',
+        },
+      },
+    },
+  })
+  async getDocumentVersion(
+    @Param('id', ParseIntPipe) documentId: number,
+    @Param('versionId', ParseIntPipe) versionId: number,
+  ) {
+    this.logger.log('接收到获取特定版本文档请求', {
+      documentId,
+      versionId,
+    });
+    const version = await this.documentHistoryService.getDocumentVersion(
+      documentId,
+      versionId,
+    );
+    if (!version) {
+      return {
+        success: false,
+        message: '指定版本不存在',
+        data: null,
+      };
+    }
+    return {
+      success: true,
+      message: '获取版本内容成功',
+      data: version,
+    };
+  }
+
+  /**
+   * 恢复文档到指定版本
+   * @param documentId 文档ID
+   * @param body 包含版本ID的请求体
+   * @returns 恢复结果
+   */
+  @Post(':id/restore')
+  @ApiOperation({
+    summary: '恢复文档到指定版本',
+    description: '将文档恢复到指定的历史版本，会创建一个新的版本',
+  })
+  @ApiParam({
+    name: 'id',
+    description: '文档ID',
+    type: 'number',
+    example: 123,
+  })
+  @ApiBody({
+    description: '版本恢复数据',
+    schema: {
+      type: 'object',
+      properties: {
+        versionId: {
+          type: 'number',
+          description: '要恢复到的版本号',
+          example: 2,
+        },
+      },
+      required: ['versionId'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: '版本恢复成功',
+    schema: {
+      example: {
+        success: true,
+        message: '版本恢复成功',
+        data: {
+          documentId: 123,
+          restoredFromVersion: 2,
+          newVersionId: 5,
+        },
+      },
+    },
+  })
+  async restoreDocument(
+    @Param('id', ParseIntPipe) documentId: number,
+    @Body() body: { versionId: number },
+  ) {
+    this.logger.log('接收到恢复文档版本请求', {
+      documentId,
+      versionId: body.versionId,
+    });
+
+    // 获取要恢复的版本
+    const targetVersion = await this.documentHistoryService.getDocumentVersion(
+      documentId,
+      body.versionId,
+    );
+
+    if (!targetVersion) {
+      return {
+        success: false,
+        message: '指定版本不存在',
+        data: null,
+      };
+    }
+
+    // 使用目标版本的内容更新文档
+    const updateResult = await this.documentService.update(documentId, {
+      documentName: targetVersion.documentName,
+      content: targetVersion.content,
+      update_username: targetVersion.create_username, // 使用当前用户或原创建者
+    });
+
+    if (updateResult.success) {
+      return {
+        success: true,
+        message: '版本恢复成功',
+        data: {
+          documentId,
+          restoredFromVersion: body.versionId,
+          newVersionId: await this.documentHistoryService.getLatestVersionId(
+            targetVersion.userId,
+            documentId,
+          ),
+        },
+      };
+    }
+
+    return {
+      success: false,
+      message: '版本恢复失败',
+      data: null,
+    };
   }
 }

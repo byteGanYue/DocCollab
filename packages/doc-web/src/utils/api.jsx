@@ -125,10 +125,15 @@ export const documentAPI = {
   searchDocuments: (search, params = {}) =>
     get('/document/getDocumentsList', { search, ...params }),
 
-  // 获取文档历史版本（保留，后续可能实现）
-  getDocumentHistory: documentId => get(`/document/${documentId}/history`),
+  // 获取文档历史版本
+  getDocumentHistory: (documentId, page = 1, limit = 20) =>
+    get(`/document/${documentId}/history`, { page, limit }),
 
-  // 恢复文档版本（保留，后续可能实现）
+  // 获取特定版本的文档内容
+  getDocumentVersion: (documentId, versionId) =>
+    get(`/document/${documentId}/version/${versionId}`),
+
+  // 恢复文档版本
   restoreDocument: (documentId, versionId) =>
     post(`/document/${documentId}/restore`, { versionId }),
 

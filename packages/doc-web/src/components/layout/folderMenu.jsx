@@ -892,7 +892,10 @@ const FolderMenu = () => {
       return ['recent-docs'];
     } else if (path === '/collaboration') {
       return ['collaboration'];
-    } else if (path.startsWith('/doc-editor/')) {
+    } else if (
+      path.startsWith('/doc-editor/') ||
+      path.startsWith('/history-version/')
+    ) {
       // 文档编辑页面，检查是否是协同文档
       const urlParams = new URLSearchParams(location.search);
       const isCollaborative = urlParams.get('collaborative') === 'true';
@@ -931,7 +934,9 @@ const FolderMenu = () => {
         return ['collaboration'];
       } else {
         // 普通文档编辑，需要在菜单中找到对应的文档项
-        const documentId = path.split('/doc-editor/')[1];
+        const documentId = path.startsWith('/doc-editor/')
+          ? path.split('/doc-editor/')[1]
+          : path.split('/history-version/')[1];
         if (documentId) {
           // 尝试在菜单数据中找到对应的文档
           const findDocumentInMenu = items => {
@@ -2175,8 +2180,13 @@ const FolderMenu = () => {
               label: '历史版本记录',
               onClick: e => {
                 e.domEvent && e.domEvent.stopPropagation();
-                // TODO: 处理历史版本记录的逻辑
-                message.info('查看历史版本记录');
+                // 跳转到历史版本页面
+                const documentId = item.key.replace('doc_', '');
+                if (documentId) {
+                  navigate(`/history-version/${documentId}`);
+                } else {
+                  message.error('无法获取文档ID');
+                }
               },
             },
           ]
