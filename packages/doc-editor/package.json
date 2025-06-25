@@ -1,28 +1,45 @@
 {
   "name": "doc-editor",
   "version": "1.0.0",
-  "description": "",
-  "main": "dist/doc-editor.umd.js",
-  "module": "dist/doc-editor.es.js",
-  "types": "dist/index.d.ts",
+  "description": "协同富文本编辑器组件库",
+  "main": "src/index.jsx",
+  "module": "src/index.jsx",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./src/index.jsx",
+      "require": "./src/index.jsx"
+    }
+  },
   "scripts": {
-    "build": "vite build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build": "vite build"
   },
-  "peerDependencies": {
-    "react": "^18.0.0 || ^19.0.0",
-    "react-dom": "^18.0.0 || ^19.0.0",
-    "slate": "^0.117.0",
-    "slate-react": "^0.117.1"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.5.2",
-    "vite": "^5.4.19"
-  },
-  "keywords": [],
+  "keywords": [
+    "editor",
+    "collaboration",
+    "rich-text"
+  ],
   "author": "",
   "license": "ISC",
+  "packageManager": "pnpm@10.4.1",
   "dependencies": {
-    "slate-history": "^0.113.1"
+    "quill": "^2.0.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "slate": "^0.117.0",
+    "slate-dom": "^0.116.0",
+    "slate-history": "^0.113.1",
+    "slate-react": "^0.117.1",
+    "yjs": "^13.6.27"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5",
+    "@vitejs/plugin-react": "^4.4.1"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   }
 }

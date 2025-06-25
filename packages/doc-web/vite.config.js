@@ -17,6 +17,8 @@ export default defineConfig({
       '@utils': path.resolve(__dirname, './src/utils'),
       '@hooks': path.resolve(__dirname, './src/hooks'),
       '@assets': path.resolve(__dirname, './src/assets'),
+      // 添加对本地包的别名解析
+      'doc-editor': path.resolve(__dirname, '../doc-editor/src/index.jsx'),
     },
   },
   css: {
