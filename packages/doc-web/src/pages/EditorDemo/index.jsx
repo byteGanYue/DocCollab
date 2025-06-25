@@ -1,8 +1,8 @@
 import React from 'react';
+import { EditorSDK } from 'doc-editor';
 
-const EditorSDK = () => {
-  return <div>DocEditor SDK 初始化成功！</div>;
+const EditorDemo = () => {
+  return <EditorSDK />;
 };
 
-export { EditorSDK };
-export default EditorSDK;
+export default EditorDemo;
