@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { recentVisitsAPI } from '@/utils/api';
 import styles from './index.module.css';
 import { useUser } from '@/hooks/useAuth';
+import { formatTime } from '@/utils/dealTime';
 
 const { Text } = Typography;
 
@@ -51,34 +52,6 @@ const RecentDocs = () => {
       document: <FileTextOutlined style={{ color: '#1890ff' }} />,
     };
     return iconMap[type] || <FileTextOutlined style={{ color: '#1890ff' }} />;
-  };
-
-  /**
-   * 格式化时间显示
-   * @param {string} dateString - 时间字符串
-   * @returns {string} 格式化后的时间文本
-   */
-  const formatTime = dateString => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = now - date;
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
-      const diffMinutes = Math.floor(diffTime / (1000 * 60));
-
-      if (diffHours === 0) {
-        return `${diffMinutes < 1 ? 1 : diffMinutes}分钟前`;
-      }
-      return `${diffHours}小时前`;
-    } else if (diffDays === 1) {
-      return '昨天';
-    } else if (diffDays < 7) {
-      return `${diffDays}天前`;
-    } else {
-      return date.toLocaleDateString('zh-CN');
-    }
   };
 
   /**
