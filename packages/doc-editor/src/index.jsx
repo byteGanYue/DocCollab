@@ -1,9 +1,16 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import isHotkey from 'is-hotkey';
 import { createEditor } from 'slate';
 import { withHistory } from 'slate-history';
 import { Editable, Slate, withReact } from 'slate-react';
-import { Toolbar, MarkButton, BlockButton, Element, Leaf } from './components';
+import {
+  Toolbar,
+  MarkButton,
+  BlockButton,
+  Element,
+  Leaf,
+  HelpModal,
+} from './components';
 import { HOTKEYS, toggleMark, withLayout } from './utils/editorHelpers';
 
 /**
@@ -12,6 +19,9 @@ import { HOTKEYS, toggleMark, withLayout } from './utils/editorHelpers';
  * 实现强制布局：文档始终有标题和至少一个段落
  */
 const EditorSDK = () => {
+  // 弹窗状态管理
+  const [showHelpModal, setShowHelpModal] = useState(false);
+
   // 创建编辑器实例，结合强制布局、历史记录和React支持
   const editor = useMemo(
     () => withLayout(withHistory(withReact(createEditor()))),
@@ -83,7 +93,120 @@ const EditorSDK = () => {
         href="https://fonts.googleapis.com/icon?family=Material+Icons"
         rel="stylesheet"
       />
-
+      {/* 操作按钮区域 */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: '12px',
+          marginBottom: '16px',
+          paddingBottom: '16px',
+          borderBottom: '1px solid #e9ecef',
+        }}
+      >
+        <button
+          style={{
+            padding: '8px 16px',
+            fontSize: '14px',
+            fontWeight: '500',
+            border: '1px solid #dee2e6',
+            borderRadius: '6px',
+            backgroundColor: '#f8f9fa',
+            color: '#6c757d',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease-in-out',
+            outline: 'none',
+            minWidth: '80px',
+          }}
+          onMouseEnter={e => {
+            e.target.style.backgroundColor = '#e9ecef';
+            e.target.style.borderColor = '#adb5bd';
+            e.target.style.color = '#495057';
+          }}
+          onMouseLeave={e => {
+            e.target.style.backgroundColor = '#f8f9fa';
+            e.target.style.borderColor = '#dee2e6';
+            e.target.style.color = '#6c757d';
+          }}
+          onMouseDown={e => {
+            e.target.style.transform = 'scale(0.98)';
+          }}
+          onMouseUp={e => {
+            e.target.style.transform = 'scale(1)';
+          }}
+        >
+          取消
+        </button>
+        <button
+          style={{
+            padding: '8px 16px',
+            fontSize: '14px',
+            fontWeight: '500',
+            border: '1px solid #0d6efd',
+            borderRadius: '6px',
+            backgroundColor: '#0d6efd',
+            color: '#ffffff',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease-in-out',
+            outline: 'none',
+            minWidth: '80px',
+          }}
+          onMouseEnter={e => {
+            e.target.style.backgroundColor = '#0b5ed7';
+            e.target.style.borderColor = '#0a58ca';
+            e.target.style.transform = 'translateY(-1px)';
+            e.target.style.boxShadow = '0 4px 8px rgba(13, 110, 253, 0.25)';
+          }}
+          onMouseLeave={e => {
+            e.target.style.backgroundColor = '#0d6efd';
+            e.target.style.borderColor = '#0d6efd';
+            e.target.style.transform = 'translateY(0)';
+            e.target.style.boxShadow = 'none';
+          }}
+          onMouseDown={e => {
+            e.target.style.transform = 'translateY(-1px) scale(0.98)';
+          }}
+          onMouseUp={e => {
+            e.target.style.transform = 'translateY(-1px) scale(1)';
+          }}
+        >
+          保存
+        </button>
+        <button
+          onClick={() => setShowHelpModal(true)}
+          style={{
+            padding: '8px 16px',
+            fontSize: '14px',
+            fontWeight: '500',
+            border: '1px solid #6c757d',
+            borderRadius: '6px',
+            backgroundColor: '#ffffff',
+            color: '#6c757d',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease-in-out',
+            outline: 'none',
+            minWidth: '80px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+          }}
+          onMouseEnter={e => {
+            e.target.style.backgroundColor = '#f8f9fa';
+            e.target.style.borderColor = '#495057';
+            e.target.style.color = '#495057';
+          }}
+          onMouseLeave={e => {
+            e.target.style.backgroundColor = '#ffffff';
+            e.target.style.borderColor = '#6c757d';
+            e.target.style.color = '#6c757d';
+          }}
+        >
+          <span className="material-icons" style={{ fontSize: '16px' }}>
+            help_outline
+          </span>
+          使用说明
+        </button>
+      </div>
       <Slate
         editor={editor}
         initialValue={initialValue}
@@ -177,69 +300,11 @@ const EditorSDK = () => {
         />
       </Slate>
 
-      {/* 使用说明 */}
-      <div
-        style={{
-          marginBottom: '20px',
-          padding: '16px',
-          backgroundColor: '#f8f9fa',
-          borderRadius: '8px',
-          fontSize: '14px',
-          color: '#495057',
-          border: '1px solid #e9ecef',
-        }}
-      >
-        <h3 style={{ margin: '0 0 12px 0', color: '#212529' }}>
-          强制布局富文本编辑器功能说明
-        </h3>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '16px',
-          }}
-        >
-          <div>
-            <strong>强制布局特性：</strong>
-            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-              <li>文档始终保持标题在顶部</li>
-              <li>至少保持一个段落内容</li>
-              <li>删除所有内容会自动恢复</li>
-              <li>标题和段落的强制性结构</li>
-            </ul>
-            <strong>键盘快捷键：</strong>
-            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-              <li>
-                <kbd>Ctrl/Cmd + B</kbd> - 粗体
-              </li>
-              <li>
-                <kbd>Ctrl/Cmd + I</kbd> - 斜体
-              </li>
-              <li>
-                <kbd>Ctrl/Cmd + U</kbd> - 下划线
-              </li>
-              <li>
-                <kbd>Ctrl/Cmd + `</kbd> - 代码
-              </li>
-            </ul>
-          </div>
-          <div>
-            <strong>工具栏功能：</strong>
-            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-              <li>文本格式化（粗体、斜体、下划线、代码）</li>
-              <li>标题设置（H1、H2）</li>
-              <li>引用块、列表（有序、无序）</li>
-              <li>文本对齐（左、中、右、两端对齐）</li>
-            </ul>
-            <strong>实验功能：</strong>
-            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-              <li>尝试删除标题，看看会发生什么</li>
-              <li>尝试删除所有段落内容</li>
-              <li>编辑器会自动恢复必要的结构</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+      {/* 帮助弹窗 */}
+      <HelpModal
+        isOpen={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
+      />
     </div>
   );
 };
