@@ -8,6 +8,8 @@ import React from 'react';
  * @param {Object} props.leaf - Slate叶子节点数据
  */
 const Leaf = ({ attributes, children, leaf }) => {
+  const { text, ...rest } = leaf;
+
   // 应用粗体样式
   if (leaf.bold) {
     children = <strong>{children}</strong>;
@@ -40,6 +42,33 @@ const Leaf = ({ attributes, children, leaf }) => {
   // 应用下划线样式
   if (leaf.underline) {
     children = <u>{children}</u>;
+  }
+
+  // 处理语法高亮token
+  // 获取除了text之外的所有属性作为CSS类名
+  const tokenClasses = Object.keys(rest);
+
+  // 如果有token类，应用token样式
+  if (tokenClasses.length > 0) {
+    // 过滤掉非token属性
+    const validTokenClasses = tokenClasses.filter(
+      cls =>
+        cls !== 'bold' &&
+        cls !== 'italic' &&
+        cls !== 'underline' &&
+        cls !== 'code',
+    );
+
+    if (validTokenClasses.length > 0) {
+      return (
+        <span
+          {...attributes}
+          className={validTokenClasses.map(cls => `token ${cls}`).join(' ')}
+        >
+          {children}
+        </span>
+      );
+    }
   }
 
   return <span {...attributes}>{children}</span>;

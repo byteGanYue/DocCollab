@@ -1,5 +1,8 @@
 import React from 'react';
+import { Transforms } from 'slate';
+import { ReactEditor, useSlateStatic } from 'slate-react';
 import { isAlignElement } from '../utils/editorHelpers';
+import LanguageSelect from './LanguageSelect';
 
 /**
  * 元素渲染组件
@@ -9,6 +12,7 @@ import { isAlignElement } from '../utils/editorHelpers';
  * @param {Object} props.element - Slate元素数据
  */
 const Element = ({ attributes, children, element }) => {
+  const editor = useSlateStatic();
   const style = {};
 
   // 如果元素有对齐属性，应用文本对齐样式
@@ -17,6 +21,54 @@ const Element = ({ attributes, children, element }) => {
   }
 
   switch (element.type) {
+    case 'code-block':
+      /**
+       * 设置代码块语言
+       * @param {string} language - 新的语言类型
+       */
+      const setLanguage = language => {
+        const path = ReactEditor.findPath(editor, element);
+        Transforms.setNodes(editor, { language }, { at: path });
+      };
+
+      return (
+        <div
+          {...attributes}
+          style={{
+            fontFamily: 'monospace',
+            fontSize: '16px',
+            lineHeight: '20px',
+            marginTop: '0',
+            background: 'rgba(0, 20, 60, .03)',
+            padding: '5px 13px',
+            position: 'relative',
+            borderRadius: '8px',
+            border: '1px solid #e1e5e9',
+            ...style,
+          }}
+          spellCheck={false}
+        >
+          <LanguageSelect
+            value={element.language || 'html'}
+            onChange={e => setLanguage(e.target.value)}
+          />
+          {children}
+        </div>
+      );
+
+    case 'code-line':
+      return (
+        <div
+          {...attributes}
+          style={{
+            position: 'relative',
+            ...style,
+          }}
+        >
+          {children}
+        </div>
+      );
+
     case 'title':
       return (
         <h1

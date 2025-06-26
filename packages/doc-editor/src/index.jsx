@@ -1,22 +1,43 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import isHotkey from 'is-hotkey';
-import { createEditor } from 'slate';
+import Prism from 'prismjs';
+// 导入Prism.js的各种语言支持
+import 'prismjs/components/prism-css';
+import 'prismjs/components/prism-java';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-jsx';
+import 'prismjs/components/prism-markdown';
+import 'prismjs/components/prism-php';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-sql';
+import 'prismjs/components/prism-tsx';
+import 'prismjs/components/prism-typescript';
+import { createEditor, Element, Node } from 'slate';
 import { withHistory } from 'slate-history';
 import { Editable, Slate, withReact } from 'slate-react';
 import {
   Toolbar,
   MarkButton,
   BlockButton,
-  Element,
+  Element as ElementComponent,
   Leaf,
   HelpModal,
+  CodeBlockButton,
 } from './components';
 import { HOTKEYS, toggleMark, withLayout } from './utils/editorHelpers';
+import { normalizeTokens } from './utils/normalize-tokens';
+import { prismThemeCss } from './utils/prismTheme';
+
+// 常量定义
+const ParagraphType = 'paragraph';
+const CodeBlockType = 'code-block';
+const CodeLineType = 'code-line';
 
 /**
  * 富文本编辑器 SDK 组件
  * 基于 Slate.js 构建的功能完整的富文本编辑器
  * 实现强制布局：文档始终有标题和至少一个段落
+ * 支持代码高亮功能
  */
 const EditorSDK = () => {
   // 弹窗状态管理
@@ -28,32 +49,141 @@ const EditorSDK = () => {
     [],
   );
 
+  /**
+   * 代码高亮装饰器函数
+   * 为代码块中的内容应用语法高亮
+   * @param {Array} nodeEntry - [node, path] 节点和路径
+   * @returns {Array} 装饰范围数组
+   */
+  const decorate = useCallback(([node, path]) => {
+    if (Element.isElement(node) && node.type === CodeBlockType) {
+      return decorateCodeBlock([node, path]);
+    }
+    return [];
+  }, []);
+
+  /**
+   * 为代码块应用语法高亮装饰
+   * @param {Array} blockEntry - [block, blockPath] 代码块节点和路径
+   * @returns {Array} 装饰范围数组
+   */
+  const decorateCodeBlock = ([block, blockPath]) => {
+    // 提取代码块的文本内容
+    const text = block.children.map(line => Node.string(line)).join('\n');
+
+    // 获取语言支持，默认为HTML
+    const language = block.language || 'html';
+
+    // 检查Prism是否支持该语言
+    if (!Prism.languages[language]) {
+      return [];
+    }
+
+    // 使用Prism进行语法分析
+    const tokens = Prism.tokenize(text, Prism.languages[language]);
+
+    // 标准化token结构
+    const normalizedTokens = normalizeTokens(tokens);
+
+    const decorations = [];
+
+    // 为每一行的每个token创建装饰
+    for (let index = 0; index < normalizedTokens.length; index++) {
+      const tokens = normalizedTokens[index];
+
+      let start = 0;
+      for (const token of tokens) {
+        const length = token.content.length;
+        if (!length) {
+          continue;
+        }
+
+        const end = start + length;
+        const path = [...blockPath, index, 0];
+
+        // 创建装饰对象
+        const decoration = {
+          anchor: { path, offset: start },
+          focus: { path, offset: end },
+          token: true,
+        };
+
+        // 为每个token类型添加对应的属性
+        token.types.forEach(type => {
+          decoration[type] = true;
+        });
+
+        decorations.push(decoration);
+        start = end;
+      }
+    }
+
+    return decorations;
+  };
+
+  /**
+   * Tab键处理函数
+   * @param {KeyboardEvent} event - 键盘事件
+   */
+  const onKeyDown = useCallback(
+    event => {
+      // 处理Tab键，在代码块中插入空格
+      if (isHotkey('tab', event)) {
+        event.preventDefault();
+        editor.insertText('  ');
+        return;
+      }
+
+      // 处理其他快捷键
+      for (const hotkey in HOTKEYS) {
+        if (isHotkey(hotkey, event)) {
+          event.preventDefault();
+          const mark = HOTKEYS[hotkey];
+          toggleMark(editor, mark);
+        }
+      }
+    },
+    [editor],
+  );
+
   // 渲染元素的回调函数
-  const renderElement = useCallback(props => <Element {...props} />, []);
+  const renderElement = useCallback(
+    props => <ElementComponent {...props} />,
+    [],
+  );
 
   // 渲染叶子节点的回调函数
   const renderLeaf = useCallback(props => <Leaf {...props} />, []);
 
-  // 初始化编辑器内容 - 包含强制布局的标题和段落
+  /**
+   * 创建文本节点的辅助函数
+   * @param {string} content - 文本内容
+   * @returns {Array} 包含文本的children数组
+   */
+  const toChildren = content => [{ text: content }];
+
+  /**
+   * 将字符串转换为代码行数组
+   * @param {string} content - 代码内容
+   * @returns {Array} 代码行数组
+   */
+  const toCodeLines = content =>
+    content
+      .split('\n')
+      .map(line => ({ type: CodeLineType, children: toChildren(line) }));
+
+  // 初始化编辑器内容 - 包含强制布局的标题和段落，以及代码块示例
   const initialValue = useMemo(
     () => [
       {
         type: 'title',
-        children: [{ text: '强制布局文档示例' }],
+        children: [{ text: '代码高亮文档示例' }],
       },
       {
         type: 'paragraph',
         children: [
           {
-            text: '这是一个强制布局的文档示例。文档始终会在顶部保持一个标题，并且至少有一个段落。',
-          },
-        ],
-      },
-      {
-        type: 'paragraph',
-        children: [
-          {
-            text: '即使你删除了标题和段落，编辑器也会自动创建新的标题和段落。试试看删除所有内容会发生什么！',
+            text: '这是一个支持代码高亮的文档示例。你可以使用工具栏中的代码块按钮插入代码块。',
           },
         ],
       },
@@ -72,8 +202,29 @@ const EditorSDK = () => {
         ],
       },
       {
-        type: 'block-quote',
-        children: [{ text: '引用块和其他格式也完全支持。' }],
+        type: CodeBlockType,
+        language: 'jsx',
+        children: toCodeLines(`// React组件示例
+const App = () => {
+  const [count, setCount] = useState(0);
+
+  return (
+    <div>
+      <h1>计数器: {count}</h1>
+      <button onClick={() => setCount(count + 1)}>
+        增加
+      </button>
+    </div>
+  );
+};`),
+      },
+      {
+        type: 'paragraph',
+        children: [
+          {
+            text: '代码块支持多种编程语言的语法高亮，你可以通过右上角的语言选择器切换语言。',
+          },
+        ],
       },
     ],
     [],
@@ -93,6 +244,9 @@ const EditorSDK = () => {
         href="https://fonts.googleapis.com/icon?family=Material+Icons"
         rel="stylesheet"
       />
+      {/* Prism主题样式 */}
+      <style>{prismThemeCss}</style>
+
       {/* 操作按钮区域 */}
       <div
         style={{
@@ -237,6 +391,8 @@ const EditorSDK = () => {
           <BlockButton format="heading-one" icon="looks_one" />
           <BlockButton format="heading-two" icon="looks_two" />
           <BlockButton format="block-quote" icon="format_quote" />
+          {/* 代码块按钮 */}
+          <CodeBlockButton />
 
           {/* 分隔符 */}
           <div
@@ -271,6 +427,7 @@ const EditorSDK = () => {
 
         {/* 编辑区域 */}
         <Editable
+          decorate={decorate}
           renderElement={renderElement}
           renderLeaf={renderLeaf}
           placeholder="在这里输入内容..."
@@ -287,16 +444,7 @@ const EditorSDK = () => {
             backgroundColor: '#fff',
             boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1)',
           }}
-          onKeyDown={event => {
-            // 处理键盘快捷键
-            for (const hotkey in HOTKEYS) {
-              if (isHotkey(hotkey, event)) {
-                event.preventDefault();
-                const mark = HOTKEYS[hotkey];
-                toggleMark(editor, mark);
-              }
-            }
-          }}
+          onKeyDown={onKeyDown}
         />
       </Slate>
 

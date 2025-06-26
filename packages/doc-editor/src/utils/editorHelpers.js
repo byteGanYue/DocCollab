@@ -73,7 +73,9 @@ export const withLayout = editor => {
             !LIST_TYPES.includes(child.type) &&
             child.type !== 'block-quote' &&
             child.type !== 'heading-one' &&
-            child.type !== 'heading-two'
+            child.type !== 'heading-two' &&
+            child.type !== 'code-block' &&
+            child.type !== 'code-line'
           ) {
             enforceType('paragraph');
           }

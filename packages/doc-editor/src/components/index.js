@@ -7,3 +7,6 @@ export { default as MarkButton } from './MarkButton';
 export { default as Element } from './Element';
 export { default as Leaf } from './Leaf';
 export { default as HelpModal } from './HelpModal';
+// 代码高亮相关组件
+export { default as CodeBlockButton } from './CodeBlockButton';
+export { default as LanguageSelect } from './LanguageSelect';
