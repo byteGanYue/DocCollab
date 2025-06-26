@@ -6,6 +6,7 @@ export const HOTKEYS = {
   'mod+i': 'italic',
   'mod+u': 'underline',
   'mod+`': 'code',
+  'mod+shift+x': 'strikethrough',
 };
 
 export const LIST_TYPES = ['numbered-list', 'bulleted-list'];

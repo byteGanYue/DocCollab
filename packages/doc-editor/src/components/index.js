@@ -15,3 +15,5 @@ export { default as HoveringToolbar } from './HoveringToolbar';
 export { default as HoveringToolbarDebug } from './HoveringToolbarDebug';
 export { default as Portal } from './Portal';
 export { default as Menu } from './Menu';
+// 颜色选择器组件
+export { default as ColorButton } from './ColorButton';

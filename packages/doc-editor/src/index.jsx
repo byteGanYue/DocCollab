@@ -24,7 +24,7 @@ import {
   HelpModal,
   CodeBlockButton,
   HoveringToolbar,
-  HoveringToolbarDebug,
+  ColorButton,
 } from './components';
 import { HOTKEYS, toggleMark, withLayout } from './utils/editorHelpers';
 import { normalizeTokens } from './utils/normalize-tokens';
@@ -383,7 +383,7 @@ const App = () => {
         }}
       >
         {/* 悬浮工具栏 */}
-        <HoveringToolbarDebug />
+        <HoveringToolbar />
 
         {/* 工具栏 */}
         <Toolbar>
@@ -391,7 +391,22 @@ const App = () => {
           <MarkButton format="bold" icon="format_bold" />
           <MarkButton format="italic" icon="format_italic" />
           <MarkButton format="underline" icon="format_underlined" />
+          <MarkButton format="strikethrough" icon="strikethrough_s" />
           <MarkButton format="code" icon="code" />
+
+          {/* 分隔符 */}
+          <div
+            style={{
+              width: '1px',
+              height: '24px',
+              backgroundColor: '#ddd',
+              margin: '0 4px',
+            }}
+          />
+
+          {/* 文本颜色和高亮 */}
+          <ColorButton icon="format_color_text" type="color" />
+          <ColorButton icon="highlight" type="backgroundColor" />
 
           {/* 分隔符 */}
           <div
