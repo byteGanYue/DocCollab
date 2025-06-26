@@ -95,31 +95,68 @@ export class UserService {
   }
 
   /**
-   * 修改用户公开状态
+   * 修改用户公开状态，同时更新该用户所有文档和文件夹的公开状态
    *
    * @param email 用户邮箱
-   * @returns 返回修改后的用户对象
+   * @returns 返回修改后的用户对象和更新统计信息
    */
   async isPublic(email: string) {
-    const user = await this.userModel.findOne({ email: email });
+    try {
+      const user = await this.userModel.findOne({ email: email });
 
-    if (!user) {
-      throw new Error(`User with email ${email} not found`);
+      if (!user) {
+        throw new Error(`User with email ${email} not found`);
+      }
+
+      // 切换isPublic状态
+      const newIsPublicStatus = !user.isPublic;
+      user.isPublic = newIsPublicStatus;
+      await user.save();
+
+      this.logger.log(
+        `用户 ${user.username} (ID: ${user.userId}) 的公开状态已更改为: ${newIsPublicStatus}`,
+      );
+
+      // 同步更新该用户的所有文档的isPublic字段
+      const documentModel = this.userModel.db.model('DocumentEntity');
+      const docUpdateResult = await documentModel.updateMany(
+        { userId: user.userId },
+        { $set: { isPublic: newIsPublicStatus } },
+      );
+
+      this.logger.log(
+        `已更新 ${docUpdateResult.modifiedCount} 个文档的公开状态`,
+      );
+
+      // 同步更新该用户的所有文件夹的isPublic字段
+      const folderModel = this.userModel.db.model('Folder');
+      const folderUpdateResult = await folderModel.updateMany(
+        { userId: user.userId },
+        { $set: { isPublic: newIsPublicStatus } },
+      );
+
+      this.logger.log(
+        `已更新 ${folderUpdateResult.modifiedCount} 个文件夹的公开状态`,
+      );
+
+      return {
+        code: 200,
+        message: 'User public status updated successfully',
+        success: true,
+        data: {
+          userId: user.userId,
+          isPublic: user.isPublic,
+          username: user.username,
+          email: user.email,
+          updatedDocuments: docUpdateResult.modifiedCount,
+          updatedFolders: folderUpdateResult.modifiedCount,
+        },
+      };
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error(`更新用户公开状态失败: ${err.message}`, err.stack);
+      throw new Error(`Failed to update user public status: ${err.message}`);
     }
-    user.isPublic = !user.isPublic;
-
-    await user.save();
-    return {
-      code: 200,
-      message: 'User public status updated successfully',
-      success: true,
-      data: {
-        userId: user.userId,
-        isPublic: user.isPublic,
-        username: user.username,
-        email: user.email,
-      },
-    };
   }
 
   /**

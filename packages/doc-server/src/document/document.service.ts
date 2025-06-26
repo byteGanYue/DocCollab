@@ -34,6 +34,7 @@ interface DocumentDocument {
   parentFolderIds: number[];
   create_time: Date;
   update_time: Date;
+  isPublic: boolean;
 }
 
 export interface DocumentListResponse {
@@ -111,6 +112,7 @@ export class DocumentService {
         update_username: createDocumentDto.create_username,
         editorId: [],
         parentFolderIds: createDocumentDto.parentFolderIds || [],
+        isPublic: createDocumentDto.isPublic || false,
       });
 
       const savedDocument = await newDocument.save();
@@ -131,6 +133,7 @@ export class DocumentService {
           parentFolderIds: documentDoc.parentFolderIds,
           create_time: documentDoc.create_time,
           update_time: documentDoc.update_time,
+          isPublic: documentDoc.isPublic,
         },
       };
 
@@ -469,6 +472,7 @@ export class DocumentService {
           parentFolderIds: updatedDocument.parentFolderIds,
           create_time: updatedDocument.create_time,
           update_time: updatedDocument.update_time,
+          isPublic: updatedDocument.isPublic,
         },
       };
 
@@ -812,7 +816,7 @@ export class DocumentService {
    * 搜索文档内容
    * @param searchText 搜索文本
    * @param userId 用户ID
-   * @returns 搜索结果
+   * @returns 搜索结果，包括用户自己的文档和其他用户公开的文档
    */
   async searchDocuments(
     searchText: string,
@@ -828,6 +832,7 @@ export class DocumentService {
       userId: number;
       create_username: string;
       update_time: Date;
+      isPublic: boolean;
     }>;
   }> {
     try {
@@ -841,23 +846,37 @@ export class DocumentService {
         };
       }
 
-      // 构建搜索条件：查找用户自己的文档
+      // 构建搜索条件：查找用户自己的文档以及其他用户公开的文档
       const searchCondition = {
-        userId: userId, // 只搜索用户自己的文档
-        $or: [
-          { documentName: { $regex: searchText, $options: 'i' } },
-          { content: { $regex: searchText, $options: 'i' } },
+        $and: [
+          {
+            $or: [
+              { userId: userId }, // 用户自己的文档
+              { isPublic: true }, // 其他用户公开的文档
+            ],
+          },
+          {
+            $or: [
+              { documentName: { $regex: searchText, $options: 'i' } },
+              { content: { $regex: searchText, $options: 'i' } },
+            ],
+          },
         ],
       };
 
-      // 查询文档
+      // 查询文档，限制最多返回20条结果
       const documents = await this.documentModel
         .find(searchCondition)
-        .limit(10);
+        .limit(20)
+        .sort({ update_time: -1 }); // 按最后修改时间降序排序
+
+      this.logger.log(`搜索到 ${documents.length} 个相关文档`);
 
       // 处理搜索结果，提取匹配的文本片段
       const searchResults = documents.map((doc) => {
-        const documentObj = doc.toObject() as DocumentDocument;
+        const documentObj = doc.toObject() as DocumentDocument & {
+          isPublic: boolean;
+        };
         let matchedText = '';
         let content = documentObj.content;
 
@@ -902,6 +921,7 @@ export class DocumentService {
           userId: documentObj.userId,
           create_username: documentObj.create_username,
           update_time: documentObj.update_time,
+          isPublic: documentObj.isPublic || false, // 确保isPublic字段有值
         };
       });
 

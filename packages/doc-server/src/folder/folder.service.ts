@@ -28,6 +28,7 @@ interface FolderDocument {
   update_username: string;
   parentFolderIds: string[];
   depth: number;
+  isPublic: boolean;
   all_children_documentId?: Types.ObjectId[];
   all_children_folderId?: Types.ObjectId[];
   create_time: Date;
@@ -49,6 +50,7 @@ export interface FolderTreeItem {
   update_username: string;
   parentFolderIds: string[];
   depth: number;
+  isPublic: boolean;
   childrenCount: {
     documents: number;
     folders: number;
@@ -142,6 +144,20 @@ export class FolderService {
       // 获取下一个自增的文件夹ID
       const folderId = await this.counterService.getNextSequence('folderId');
 
+      // 获取用户的isPublic状态
+      const userModel = this.folderModel.db.model('User');
+      const userResult = await userModel
+        .findOne({ userId: createFolderDto.userId })
+        .lean()
+        .exec();
+
+      // 将查询结果转换为具有isPublic属性的对象
+      const user = userResult as unknown as {
+        userId: number;
+        isPublic?: boolean;
+      };
+      const isPublic = user?.isPublic || false;
+
       // 创建新文件夹
       const newFolder = new this.folderModel({
         folderId, // 设置自增的文件夹ID
@@ -151,6 +167,10 @@ export class FolderService {
         update_username: createFolderDto.create_username,
         parentFolderIds: convertedParentFolderIds, // 使用转换后的ObjectId字符串数组
         depth,
+        isPublic:
+          createFolderDto.isPublic !== undefined
+            ? createFolderDto.isPublic
+            : isPublic, // 使用DTO中的值或者用户的公开状态
         all_children_documentId: [],
         all_children_folderId: [],
       });
@@ -179,6 +199,7 @@ export class FolderService {
           create_username: folderDoc.create_username,
           parentFolderIds: folderDoc.parentFolderIds,
           depth: folderDoc.depth,
+          isPublic: folderDoc.isPublic,
           create_time: folderDoc.create_time,
           update_time: folderDoc.update_time,
         },
@@ -189,6 +210,7 @@ export class FolderService {
         autoFolderId: folderDoc.folderId, // 记录自增的文件夹ID
         folderName: folderDoc.folderName,
         depth: folderDoc.depth,
+        isPublic: folderDoc.isPublic,
       });
 
       return result;
@@ -294,6 +316,7 @@ export class FolderService {
               update_username: folder.update_username,
               parentFolderIds: folder.parentFolderIds,
               depth: folder.depth,
+              isPublic: folder.isPublic || false,
               childrenCount: {
                 documents: folder.all_children_documentId?.length || 0,
                 folders: folder.all_children_folderId?.length || 0,
@@ -364,6 +387,7 @@ export class FolderService {
           update_username: folderDoc.update_username,
           parentFolderIds: folderDoc.parentFolderIds,
           depth: folderDoc.depth,
+          isPublic: folderDoc.isPublic || false, // 添加isPublic字段
           childrenCount: {
             documents: folderDoc.all_children_documentId?.length || 0,
             folders: folderDoc.all_children_folderId?.length || 0,
@@ -426,6 +450,7 @@ export class FolderService {
           update_username: folderDoc.update_username,
           parentFolderIds: folderDoc.parentFolderIds,
           depth: folderDoc.depth,
+          isPublic: folderDoc.isPublic || false, // 添加isPublic字段
           childrenCount: {
             documents: folderDoc.all_children_documentId?.length || 0,
             folders: folderDoc.all_children_folderId?.length || 0,
@@ -1085,6 +1110,7 @@ export class FolderService {
           for (const rootFolder of rootFolders) {
             const folderTree = await this.buildUserFolderTree(
               (rootFolder._id as Types.ObjectId).toString(),
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
               user.userId,
               0,
             );
@@ -1178,6 +1204,7 @@ export class FolderService {
         update_username: folder.update_username,
         parentFolderIds: folder.parentFolderIds,
         depth: folder.depth,
+        isPublic: folder.isPublic || false,
         childrenCount: {
           documents: documentsCount,
           folders: children.length,
@@ -1197,7 +1224,7 @@ export class FolderService {
   /**
    * 按文件夹名称模糊搜索文件夹
    * @param searchDto 搜索参数
-   * @returns 搜索结果
+   * @returns 搜索结果，包括用户自己的文件夹和其他用户公开的文件夹
    */
   async searchFolders(
     searchDto: SearchFolderDto,
@@ -1208,14 +1235,22 @@ export class FolderService {
       const { keyword, userId, page = 1, limit = 10 } = searchDto;
 
       // 构建查询条件
-      const query: FilterQuery<Folder> = {
+      let query: FilterQuery<Folder> = {
         folderName: { $regex: keyword, $options: 'i' }, // 模糊搜索，不区分大小写
       };
 
-      // 如果指定了用户ID，添加用户筛选条件
+      // 如果指定了用户ID，添加条件以搜索用户自己的文件夹和其他用户的公开文件夹
       if (userId) {
-        query.userId = userId;
+        query = {
+          folderName: { $regex: keyword, $options: 'i' },
+          $or: [
+            { userId: userId }, // 用户自己的文件夹
+            { isPublic: true }, // 其他用户公开的文件夹
+          ],
+        };
       }
+
+      this.logger.log('文件夹搜索查询条件', { query });
 
       // 计算跳过的记录数
       const skip = (page - 1) * limit;
@@ -1231,6 +1266,8 @@ export class FolderService {
           .exec(),
         this.folderModel.countDocuments(query).exec(),
       ]);
+
+      this.logger.log(`搜索到 ${folders.length} 个相关文件夹`);
 
       // 获取父文件夹名称路径
       const foldersWithPath = await Promise.all(
@@ -1248,6 +1285,7 @@ export class FolderService {
             update_username: folder.update_username,
             parentFolderIds: folder.parentFolderIds,
             depth: folder.depth,
+            isPublic: folder.isPublic || false, // 确保isPublic字段有值
             parentFolderNames, // 父文件夹名称路径
             create_time: folder.create_time,
             update_time: folder.update_time,

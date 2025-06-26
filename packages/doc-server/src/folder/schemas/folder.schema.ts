@@ -39,6 +39,9 @@ export class Folder extends Document {
   @Prop({ type: Number, required: true, default: 0 })
   depth: number; // 文件夹层级 (根文件夹为0，下一级文件夹为1，以此类推)
 
+  @Prop({ type: Boolean, default: false })
+  isPublic: boolean; // 文件夹是否公开，默认为false
+
   // 自动管理字段 (由 timestamps 选项生成)
   create_time: Date;
   update_time: Date;
@@ -50,4 +53,5 @@ export const FolderSchema = SchemaFactory.createForClass(Folder);
 FolderSchema.index({ userId: 1, depth: 1 });
 FolderSchema.index({ parentFolderIds: 1 });
 FolderSchema.index({ folderName: 1, userId: 1, parentFolderIds: 1 });
+FolderSchema.index({ isPublic: 1 }); // 为isPublic字段添加索引
 // folderId 已通过 unique: true 自动创建索引，无需手动添加

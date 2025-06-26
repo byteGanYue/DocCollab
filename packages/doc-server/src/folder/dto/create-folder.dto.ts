@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsNotEmpty,
   IsArray,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
@@ -41,6 +42,15 @@ export class CreateFolderDto {
   @IsNumber()
   @IsOptional()
   depth?: number; // 文件夹层级 (可选，会自动计算)
+
+  @ApiProperty({
+    description: '是否公开，默认为false',
+    example: false,
+    required: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  isPublic?: boolean; // 是否公开
 }
 
 /**
@@ -77,6 +87,7 @@ export interface CreateFolderResponseDto {
     create_username: string;
     parentFolderIds: string[];
     depth: number;
+    isPublic: boolean;
     create_time: Date;
     update_time: Date;
   };
@@ -97,6 +108,7 @@ export interface FindFolderDetailResponseDto {
     update_username: string;
     parentFolderIds: string[];
     depth: number;
+    isPublic: boolean; // 文件夹是否公开
     childrenCount: {
       documents: number;
       folders: number;
@@ -168,6 +180,7 @@ export interface SearchFolderResponseDto {
       update_username: string;
       parentFolderIds: string[];
       depth: number;
+      isPublic: boolean; // 文件夹是否公开
       parentFolderNames: string[]; // 父文件夹名称路径，用于显示完整路径
       create_time: Date;
       update_time: Date;

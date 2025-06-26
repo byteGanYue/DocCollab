@@ -4,6 +4,7 @@ import {
   IsArray,
   IsNotEmpty,
   IsNumber,
+  IsBoolean,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -56,6 +57,15 @@ export class CreateDocumentDto {
   @IsOptional()
   @Type(() => Number)
   parentFolderIds?: number[];
+
+  @ApiPropertyOptional({
+    description: '文档是否公开，默认为false',
+    example: false,
+    type: 'boolean',
+  })
+  @IsBoolean()
+  @IsOptional()
+  isPublic?: boolean;
 }
 
 export class CreateDocumentResponseDto {
@@ -85,6 +95,7 @@ export class CreateDocumentResponseDto {
       parentFolderIds: [1, 2, 3],
       create_time: '2024-01-01T00:00:00.000Z',
       update_time: '2024-01-01T00:00:00.000Z',
+      isPublic: false,
     },
   })
   data: {
@@ -99,6 +110,7 @@ export class CreateDocumentResponseDto {
     parentFolderIds: number[];
     create_time: Date;
     update_time: Date;
+    isPublic: boolean;
   };
 }
 

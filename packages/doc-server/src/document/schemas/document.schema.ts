@@ -33,6 +33,9 @@ export class DocumentEntity extends Document {
   })
   parentFolderIds: number[]; // 父文件夹ID数组，使用number类型 [一级父级文件夹的id，二级父级文件夹的id，三级父级文件夹的id，依次类推]
 
+  @Prop({ type: Boolean, default: false })
+  isPublic: boolean; // 文档是否公开，默认为false
+
   // 自动管理字段 (由 timestamps 选项生成)
   create_time: Date;
   update_time: Date;
@@ -47,3 +50,4 @@ DocumentSchema.index({ parentFolderIds: 1 });
 DocumentSchema.index({ documentName: 1 });
 DocumentSchema.index({ editorId: 1 });
 DocumentSchema.index({ create_time: -1 }); // 按创建时间倒序
+DocumentSchema.index({ isPublic: 1 }); // 为isPublic字段添加索引

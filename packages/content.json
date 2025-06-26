@@ -1,0 +1,180 @@
+[
+  {
+    "type": "title",
+    "children": [
+      {
+        "text": "代码高亮文档示例"
+      }
+    ]
+  },
+  {
+    "type": "paragraph",
+    "children": [
+      {
+        "text": "这是一个支持代码高亮的文档示例。你可以使用工具栏中的代码块按钮插入代码块。"
+      }
+    ]
+  },
+  {
+    "type": "paragraph",
+    "children": [
+      {
+        "text": "你仍然可以使用所有的富文本功能，比如 "
+      },
+      {
+        "text": "粗体",
+        "bold": true
+      },
+      {
+        "text": "、"
+      },
+      {
+        "text": "斜体",
+        "italic": true
+      },
+      {
+        "text": "、"
+      },
+      {
+        "text": "下划线",
+        "underline": true
+      },
+      {
+        "text": " 和 "
+      },
+      {
+        "text": "代码",
+        "code": true
+      },
+      {
+        "text": "。"
+      }
+    ]
+  },
+  {
+    "type": "paragraph",
+    "children": [
+      {
+        "text": "💡 提示：选中这段文本试试悬浮工具栏功能！你会看到一个深色的工具栏出现在选中文本的上方，包含格式化按钮。"
+      }
+    ]
+  },
+  {
+    "type": "code-block",
+    "language": "jsx",
+    "children": [
+      {
+        "type": "code-line",
+        "children": [
+          {
+            "text": "// React组件示例"
+          }
+        ]
+      },
+      {
+        "type": "code-line",
+        "children": [
+          {
+            "text": "const App = () => {"
+          }
+        ]
+      },
+      {
+        "type": "code-line",
+        "children": [
+          {
+            "text": "  const [count, setCount] = useState(0);"
+          }
+        ]
+      },
+      {
+        "type": "code-line",
+        "children": [
+          {
+            "text": ""
+          }
+        ]
+      },
+      {
+        "type": "code-line",
+        "children": [
+          {
+            "text": "  return ("
+          }
+        ]
+      },
+      {
+        "type": "code-line",
+        "children": [
+          {
+            "text": "    <div>"
+          }
+        ]
+      },
+      {
+        "type": "code-line",
+        "children": [
+          {
+            "text": "      <h1>计数器: {count}</h1>"
+          }
+        ]
+      },
+      {
+        "type": "code-line",
+        "children": [
+          {
+            "text": "      <button onClick={() => setCount(count + 1)}>"
+          }
+        ]
+      },
+      {
+        "type": "code-line",
+        "children": [
+          {
+            "text": "        增加"
+          }
+        ]
+      },
+      {
+        "type": "code-line",
+        "children": [
+          {
+            "text": "      </button>"
+          }
+        ]
+      },
+      {
+        "type": "code-line",
+        "children": [
+          {
+            "text": "    </div>"
+          }
+        ]
+      },
+      {
+        "type": "code-line",
+        "children": [
+          {
+            "text": "  );"
+          }
+        ]
+      },
+      {
+        "type": "code-line",
+        "children": [
+          {
+            "text": "};"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "type": "paragraph",
+    "children": [
+      {
+        "text": "代码块支持多种编程语言的语法高亮，你可以通过右上角的语言选择器切换语言。"
+      }
+    ]
+  }
+]
