@@ -807,4 +807,118 @@ export class DocumentService {
       );
     }
   }
+
+  /**
+   * 搜索文档内容
+   * @param searchText 搜索文本
+   * @param userId 用户ID
+   * @returns 搜索结果
+   */
+  async searchDocuments(
+    searchText: string,
+    userId: number,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    data: Array<{
+      documentId: number;
+      documentName: string;
+      content: string;
+      matchedText: string;
+      userId: number;
+      create_username: string;
+      update_time: Date;
+    }>;
+  }> {
+    try {
+      this.logger.log('开始搜索文档内容', { searchText, userId });
+
+      if (!searchText || !searchText.trim()) {
+        return {
+          success: true,
+          message: '搜索文本不能为空',
+          data: [],
+        };
+      }
+
+      // 构建搜索条件：查找用户自己的文档
+      const searchCondition = {
+        userId: userId, // 只搜索用户自己的文档
+        $or: [
+          { documentName: { $regex: searchText, $options: 'i' } },
+          { content: { $regex: searchText, $options: 'i' } },
+        ],
+      };
+
+      // 查询文档
+      const documents = await this.documentModel
+        .find(searchCondition)
+        .limit(10);
+
+      // 处理搜索结果，提取匹配的文本片段
+      const searchResults = documents.map((doc) => {
+        const documentObj = doc.toObject() as DocumentDocument;
+        let matchedText = '';
+        let content = documentObj.content;
+
+        // 在文档名称中查找匹配
+        if (
+          documentObj.documentName
+            .toLowerCase()
+            .includes(searchText.toLowerCase())
+        ) {
+          matchedText = documentObj.documentName;
+        } else {
+          // 在文档内容中查找匹配
+          const contentLower = documentObj.content.toLowerCase();
+          const searchTextLower = searchText.toLowerCase();
+          const matchIndex = contentLower.indexOf(searchTextLower);
+
+          if (matchIndex !== -1) {
+            // 提取匹配文本及其上下文（前后各50个字符）
+            const start = Math.max(0, matchIndex - 50);
+            const end = Math.min(
+              documentObj.content.length,
+              matchIndex + searchText.length + 50,
+            );
+            content = documentObj.content.substring(start, end);
+
+            // 如果截取的不是完整内容，添加省略号
+            if (start > 0) content = '...' + content;
+            if (end < documentObj.content.length) content = content + '...';
+
+            matchedText = documentObj.content.substring(
+              matchIndex,
+              matchIndex + searchText.length,
+            );
+          }
+        }
+
+        return {
+          documentId: documentObj.documentId,
+          documentName: documentObj.documentName,
+          content: content,
+          matchedText: matchedText,
+          userId: documentObj.userId,
+          create_username: documentObj.create_username,
+          update_time: documentObj.update_time,
+        };
+      });
+
+      this.logger.log('文档搜索完成', {
+        searchText,
+        resultCount: searchResults.length,
+      });
+
+      return {
+        success: true,
+        message: '搜索成功',
+        data: searchResults,
+      };
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error('搜索文档失败', err.stack);
+      throw new BadRequestException(`搜索文档失败: ${err.message}`);
+    }
+  }
 }

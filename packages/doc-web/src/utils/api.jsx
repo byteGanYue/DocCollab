@@ -125,6 +125,9 @@ export const documentAPI = {
   searchDocuments: (search, params = {}) =>
     get('/document/getDocumentsList', { search, ...params }),
 
+  // 搜索文档内容
+  searchDocumentsContent: (params = {}) => get('/document/search', params),
+
   // 获取文档历史版本
   getDocumentHistory: (documentId, page = 1, limit = 20) =>
     get(`/document/${documentId}/history`, { page, limit }),

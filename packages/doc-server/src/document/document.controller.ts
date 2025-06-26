@@ -541,4 +541,44 @@ export class DocumentController {
       data: null,
     };
   }
+
+  /**
+   * 搜索文档内容
+   * @param searchText 搜索文本
+   * @param userId 用户ID
+   * @returns 搜索结果
+   */
+  @Get('search')
+  @ApiOperation({
+    summary: '搜索文档内容',
+    description: '根据搜索文本在用户可访问的文档中搜索内容',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '搜索成功',
+    schema: {
+      example: {
+        success: true,
+        message: '搜索成功',
+        data: [
+          {
+            documentId: 1,
+            documentName: '示例文档',
+            content: '这是包含搜索关键词的文档内容...',
+            matchedText: '搜索关键词',
+            userId: 1,
+            create_username: 'user123',
+            update_time: '2024-01-01T00:00:00.000Z',
+          },
+        ],
+      },
+    },
+  })
+  searchDocuments(
+    @Query('searchText') searchText: string,
+    @Query('userId', ParseIntPipe) userId: number,
+  ) {
+    this.logger.log('接收到文档搜索请求', { searchText, userId });
+    return this.documentService.searchDocuments(searchText, userId);
+  }
 }

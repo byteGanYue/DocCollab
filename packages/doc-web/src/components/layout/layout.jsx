@@ -1,47 +1,19 @@
 import React from 'react';
-import {
-  Breadcrumb,
-  Layout,
-  Menu,
-  Button,
-  Space,
-  Dropdown,
-  Avatar,
-} from 'antd';
+import { Layout, Space, Dropdown, Avatar } from 'antd';
 import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { FolderMenu } from './folderMenu';
+import ContentHeader from './contentHeader';
 import { useUser } from '@/hooks/useAuth';
 import ThemeSwitcher from '@/components/ThemeSwitcher';
 import styles from './layout.module.less';
 import 'quill/dist/quill.snow.css';
 
 const { Header, Content, Sider } = Layout;
-// TODO: mock数据来的
-const EditorList = ['1', '2', '3'].map(key => ({
-  key,
-  label: `最近访问文档 ${key}`,
-}));
 
 const LayoutComponent = () => {
-  const location = useLocation(); // 获取当前路由信息
   const navigate = useNavigate(); // 路由导航
   const { userInfo, logout } = useUser(); // 获取用户信息和登出方法
-
-  // 根据当前路由生成面包屑导航
-  const getBreadcrumbItems = () => {
-    const path = location.pathname;
-    switch (path) {
-      case '/home':
-        return [{ title: '首页' }];
-      case '/recent-docs':
-        return [{ title: '最近访问文档列表' }];
-      case '/doc-editor':
-        return [{ title: '文档编辑' }];
-      default:
-        return [{ title: '文档编辑' }];
-    }
-  };
 
   // 处理登出
   const handleLogout = () => {
@@ -103,12 +75,7 @@ const LayoutComponent = () => {
           </div>
         </Sider>
         <Content className={styles.content}>
-          <div className={styles.contentHeader}>
-            <Breadcrumb
-              className={styles.breadcrumb}
-              items={getBreadcrumbItems()}
-            />
-          </div>
+          <ContentHeader />
           {/* 使用Outlet渲染子路由内容 */}
           <div className={styles.outletContainer}>
             <Outlet />

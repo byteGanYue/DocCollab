@@ -1,0 +1,183 @@
+    .contentHeader {
+        display: flex;
+        align-items: center;
+        justify-content: start;
+        padding: 16px 24px;
+        background: #fff;
+        border-bottom: 1px solid #f0f0f0;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+
+        .breadcrumb {
+            flex: 1;
+            font-size: var(--font-size-base);
+            color: var(--color-text);
+
+            :global(.ant-breadcrumb-link) {
+                color: var(--color-textSecondary);
+
+                &:hover {
+                    color: var(--color-primary);
+                }
+            }
+
+            :global(.ant-breadcrumb-separator) {
+                color: var(--color-textSecondary);
+            }
+        }
+
+        .searchContainer {
+            position: relative;
+            width: 600px;
+            margin-left: 16px;
+            display: flex;
+            justify-content: center;
+
+            .searchInput {
+                width: 100%;
+                border-radius: 6px;
+                border: 1px solid #d9d9d9;
+                transition: all 0.3s;
+            }
+
+            .searchDropdown {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: #fff;
+                border: 1px solid #d9d9d9;
+                border-radius: 6px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                z-index: 1000;
+                max-height: 400px;
+                overflow-y: auto;
+
+                .searchItem {
+                    padding: 12px 16px;
+                    cursor: pointer;
+                    border-bottom: 1px solid #f0f0f0;
+                    transition: background-color 0.2s;
+
+                    &:hover {
+                        background-color: #f5f5f5;
+                    }
+
+                    &:last-child {
+                        border-bottom: none;
+                    }
+
+                    .documentName {
+                        font-weight: 500;
+                        color: #262626;
+                        margin-bottom: 4px;
+                        display: block;
+                    }
+
+                    .content {
+                        color: #595959;
+                        font-size: 12px;
+                        line-height: 1.4;
+                        display: -webkit-box;
+                        white-space: nowrap;      /* 禁止换行 */
+                        overflow: hidden;         /* 超出部分隐藏 */
+                        text-overflow: ellipsis;  /* 显示省略号 */
+                        -webkit-box-orient: vertical;
+                        overflow: hidden;
+                    }
+
+                    .meta {
+                        margin-top: 4px;
+                        font-size: 11px;
+                        color: #8c8c8c;
+                    }
+                }
+
+                .noResults {
+                    padding: 16px;
+                    text-align: center;
+                    color: #8c8c8c;
+                }
+
+                .loading {
+                    padding: 16px;
+                    text-align: center;
+                    color: #8c8c8c;
+                }
+            }
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+
+            .actionButton {
+                height: 32px;
+                border-radius: var(--border-radius-base);
+                font-weight: 500;
+                transition: var(--transition);
+
+                &.primary {
+                    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
+                    border: none;
+                    color: white;
+
+                    &:hover {
+                        background: linear-gradient(135deg, var(--color-hover) 0%, var(--color-primary) 100%);
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+                    }
+                }
+
+                &.default {
+                    border: 1px solid var(--color-border);
+                    background-color: white;
+                    color: var(--color-text);
+
+                    &:hover {
+                        border-color: var(--color-primary);
+                        color: var(--color-primary);
+                    }
+                }
+            }
+        }
+    }
+
+    // 暗色主题适配
+    [data-theme='dark'] {
+        .contentHeader {
+            background: #141414;
+            border-bottom-color: #303030;
+
+            .searchContainer {
+                .searchDropdown {
+                    background: #1f1f1f;
+                    border-color: #434343;
+
+                    .searchItem {
+                        border-bottom-color: #303030;
+
+                        &:hover {
+                            background-color: #262626;
+                        }
+
+                        .documentName {
+                            color: #d9d9d9;
+                        }
+
+                        .content {
+                            color: #a6a6a6;
+                        }
+
+                        .meta {
+                            color: #595959;
+                        }
+                    }
+
+                    .noResults,
+                    .loading {
+                        color: #595959;
+                    }
+                }
+            }
+        }
+    }
