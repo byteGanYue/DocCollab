@@ -263,9 +263,12 @@ const App = () => {
           display: 'flex',
           justifyContent: 'flex-end',
           gap: '12px',
-          marginBottom: '16px',
+          // marginBottom: '16px',
           paddingBottom: '16px',
-          borderBottom: '1px solid #e9ecef',
+          // borderBottom: '1px solid #e9ecef',
+          backgroundColor: '#f8f9fa',
+          margin: '0px -16px 0px',
+          padding: '5px 0px',
         }}
       >
         <button
