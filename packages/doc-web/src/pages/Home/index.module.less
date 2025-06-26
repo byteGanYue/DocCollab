@@ -31,7 +31,11 @@
   font-size: 48px;
   font-weight: 700;
   margin-bottom: 16px;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    var(--color-hover) 100%
+  );
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -55,7 +59,7 @@
 
 .featureGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 24px;
   margin-top: 32px;
 }
@@ -78,7 +82,11 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-hover) 100%);
+  background: linear-gradient(
+    90deg,
+    var(--color-primary) 0%,
+    var(--color-hover) 100%
+  );
   transform: scaleX(0);
   transition: transform 0.3s ease;
   transform-origin: left;
@@ -144,7 +152,11 @@
   padding: 16px 32px;
   border: none;
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-hover) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary) 0%,
+    var(--color-hover) 100%
+  );
   color: white;
   font-size: 16px;
   font-weight: 500;
@@ -158,7 +170,11 @@
 .actionButton:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-  background: linear-gradient(135deg, var(--color-hover) 0%, var(--color-primary) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--color-hover) 0%,
+    var(--color-primary) 100%
+  );
 }
 
 .actionButton:active {
@@ -174,25 +190,25 @@
   .homeContainer {
     padding: 16px;
   }
-  
+
   .mainTitle {
     font-size: 36px;
   }
-  
+
   .subtitle {
     font-size: 18px;
   }
-  
+
   .featureGrid {
     grid-template-columns: 1fr;
     gap: 16px;
   }
-  
+
   .quickActions {
     flex-direction: column;
     align-items: center;
   }
-  
+
   .actionButton {
     min-width: 200px;
   }
@@ -202,17 +218,17 @@
   .mainTitle {
     font-size: 28px;
   }
-  
+
   .subtitle {
     font-size: 16px;
   }
-  
+
   .featureCard {
     padding: 24px 16px;
   }
-  
+
   .actionButton {
     padding: 12px 24px;
     font-size: 14px;
   }
-} 
+}
