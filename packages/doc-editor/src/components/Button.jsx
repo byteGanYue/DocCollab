@@ -8,6 +8,7 @@ import React from 'react';
  * @param {Function} props.onMouseDown - 鼠标按下事件处理函数
  * @param {Object} props.style - 自定义样式
  * @param {boolean} props.reversed - 是否为反色模式（用于悬浮工具栏）
+ * @param {string} props.title - 按钮提示文本
  */
 const Button = ({
   active,
@@ -15,6 +16,7 @@ const Button = ({
   onMouseDown,
   style,
   reversed,
+  title,
   ...props
 }) => {
   // 默认样式
@@ -59,6 +61,7 @@ const Button = ({
     <span
       onMouseDown={onMouseDown}
       style={finalStyle}
+      title={title}
       onMouseEnter={e => {
         if (!active && !reversed) {
           e.target.style.backgroundColor = '#f5f5f5';
