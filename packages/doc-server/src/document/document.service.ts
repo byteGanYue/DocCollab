@@ -116,28 +116,6 @@ export class DocumentService {
       const savedDocument = await newDocument.save();
       const documentDoc = savedDocument.toObject() as DocumentDocument;
 
-      // 添加到历史版本记录表，versionId从1开始
-      try {
-        await this.documentHistoryService.addDocumentHistory({
-          userId: documentDoc.userId,
-          documentId: documentDoc.documentId,
-          documentName: documentDoc.documentName,
-          content: documentDoc.content,
-          create_username: documentDoc.create_username,
-          update_username: documentDoc.update_username,
-        });
-        this.logger.log('已添加文档历史版本记录', {
-          documentId: documentDoc.documentId,
-          versionId: 1,
-        });
-      } catch (historyError) {
-        // 历史版本记录失败不影响文档创建成功
-        this.logger.warn(
-          `添加文档历史版本记录失败: ${(historyError as Error).message}`,
-          { documentId: documentDoc.documentId },
-        );
-      }
-
       const result = {
         success: true,
         message: '文档创建成功',
