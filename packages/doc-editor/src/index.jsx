@@ -23,6 +23,8 @@ import {
   Leaf,
   HelpModal,
   CodeBlockButton,
+  HoveringToolbar,
+  HoveringToolbarDebug,
 } from './components';
 import { HOTKEYS, toggleMark, withLayout } from './utils/editorHelpers';
 import { normalizeTokens } from './utils/normalize-tokens';
@@ -202,6 +204,14 @@ const EditorSDK = () => {
         ],
       },
       {
+        type: 'paragraph',
+        children: [
+          {
+            text: '💡 提示：选中这段文本试试悬浮工具栏功能！你会看到一个深色的工具栏出现在选中文本的上方，包含格式化按钮。',
+          },
+        ],
+      },
+      {
         type: CodeBlockType,
         language: 'jsx',
         children: toCodeLines(`// React组件示例
@@ -369,6 +379,9 @@ const App = () => {
           console.log('编辑器内容更新:', value);
         }}
       >
+        {/* 悬浮工具栏 */}
+        <HoveringToolbarDebug />
+
         {/* 工具栏 */}
         <Toolbar>
           {/* 文本格式化按钮 */}
