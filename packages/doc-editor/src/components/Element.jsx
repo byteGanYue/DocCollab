@@ -17,6 +17,24 @@ const Element = ({ attributes, children, element }) => {
   }
 
   switch (element.type) {
+    case 'title':
+      return (
+        <h1
+          style={{
+            ...style,
+            fontSize: '2.5em',
+            fontWeight: 'bold',
+            margin: '0 0 16px 0',
+            lineHeight: 1.2,
+            color: '#1f2937',
+            borderBottom: '2px solid #e5e7eb',
+            paddingBottom: '8px',
+          }}
+          {...attributes}
+        >
+          {children}
+        </h1>
+      );
     case 'block-quote':
       return (
         <blockquote

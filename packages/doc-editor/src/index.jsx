@@ -4,15 +4,19 @@ import { createEditor } from 'slate';
 import { withHistory } from 'slate-history';
 import { Editable, Slate, withReact } from 'slate-react';
 import { Toolbar, MarkButton, BlockButton, Element, Leaf } from './components';
-import { HOTKEYS, toggleMark } from './utils/editorHelpers';
+import { HOTKEYS, toggleMark, withLayout } from './utils/editorHelpers';
 
 /**
  * 富文本编辑器 SDK 组件
  * 基于 Slate.js 构建的功能完整的富文本编辑器
+ * 实现强制布局：文档始终有标题和至少一个段落
  */
 const EditorSDK = () => {
-  // 创建编辑器实例，结合历史记录和React支持
-  const editor = useMemo(() => withHistory(withReact(createEditor())), []);
+  // 创建编辑器实例，结合强制布局、历史记录和React支持
+  const editor = useMemo(
+    () => withLayout(withHistory(withReact(createEditor()))),
+    [],
+  );
 
   // 渲染元素的回调函数
   const renderElement = useCallback(props => <Element {...props} />, []);
@@ -20,40 +24,46 @@ const EditorSDK = () => {
   // 渲染叶子节点的回调函数
   const renderLeaf = useCallback(props => <Leaf {...props} />, []);
 
-  // 初始化编辑器内容
+  // 初始化编辑器内容 - 包含强制布局的标题和段落
   const initialValue = useMemo(
     () => [
       {
+        type: 'title',
+        children: [{ text: '强制布局文档示例' }],
+      },
+      {
         type: 'paragraph',
         children: [
-          { text: '这是可编辑的 ' },
-          { text: '富文本编辑器', bold: true },
-          { text: '，比 ' },
-          { text: 'textarea', italic: true },
-          { text: ' 更好', code: true },
-          { text: '!' },
+          {
+            text: '这是一个强制布局的文档示例。文档始终会在顶部保持一个标题，并且至少有一个段落。',
+          },
         ],
       },
       {
         type: 'paragraph',
         children: [
           {
-            text: '由于它是富文本，你可以执行诸如将选定的文本 ',
+            text: '即使你删除了标题和段落，编辑器也会自动创建新的标题和段落。试试看删除所有内容会发生什么！',
           },
-          { text: '加粗', bold: true },
-          {
-            text: '，或者在页面中间添加一个语义化的引用块，就像这样：',
-          },
+        ],
+      },
+      {
+        type: 'paragraph',
+        children: [
+          { text: '你仍然可以使用所有的富文本功能，比如 ' },
+          { text: '粗体', bold: true },
+          { text: '、' },
+          { text: '斜体', italic: true },
+          { text: '、' },
+          { text: '下划线', underline: true },
+          { text: ' 和 ' },
+          { text: '代码', code: true },
+          { text: '。' },
         ],
       },
       {
         type: 'block-quote',
-        children: [{ text: '一个明智的引用。' }],
-      },
-      {
-        type: 'paragraph',
-        align: 'center',
-        children: [{ text: '试试看吧！' }],
+        children: [{ text: '引用块和其他格式也完全支持。' }],
       },
     ],
     [],
@@ -73,57 +83,6 @@ const EditorSDK = () => {
         href="https://fonts.googleapis.com/icon?family=Material+Icons"
         rel="stylesheet"
       />
-
-      {/* 使用说明 */}
-      <div
-        style={{
-          marginBottom: '20px',
-          padding: '16px',
-          backgroundColor: '#f8f9fa',
-          borderRadius: '8px',
-          fontSize: '14px',
-          color: '#495057',
-          border: '1px solid #e9ecef',
-        }}
-      >
-        <h3 style={{ margin: '0 0 12px 0', color: '#212529' }}>
-          富文本编辑器功能说明
-        </h3>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '16px',
-          }}
-        >
-          <div>
-            <strong>键盘快捷键：</strong>
-            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-              <li>
-                <kbd>Ctrl/Cmd + B</kbd> - 粗体
-              </li>
-              <li>
-                <kbd>Ctrl/Cmd + I</kbd> - 斜体
-              </li>
-              <li>
-                <kbd>Ctrl/Cmd + U</kbd> - 下划线
-              </li>
-              <li>
-                <kbd>Ctrl/Cmd + `</kbd> - 代码
-              </li>
-            </ul>
-          </div>
-          <div>
-            <strong>工具栏功能：</strong>
-            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-              <li>文本格式化（粗体、斜体、下划线、代码）</li>
-              <li>标题设置（H1、H2）</li>
-              <li>引用块、列表（有序、无序）</li>
-              <li>文本对齐（左、中、右、两端对齐）</li>
-            </ul>
-          </div>
-        </div>
-      </div>
 
       <Slate
         editor={editor}
@@ -217,6 +176,70 @@ const EditorSDK = () => {
           }}
         />
       </Slate>
+
+      {/* 使用说明 */}
+      <div
+        style={{
+          marginBottom: '20px',
+          padding: '16px',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '8px',
+          fontSize: '14px',
+          color: '#495057',
+          border: '1px solid #e9ecef',
+        }}
+      >
+        <h3 style={{ margin: '0 0 12px 0', color: '#212529' }}>
+          强制布局富文本编辑器功能说明
+        </h3>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '16px',
+          }}
+        >
+          <div>
+            <strong>强制布局特性：</strong>
+            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+              <li>文档始终保持标题在顶部</li>
+              <li>至少保持一个段落内容</li>
+              <li>删除所有内容会自动恢复</li>
+              <li>标题和段落的强制性结构</li>
+            </ul>
+            <strong>键盘快捷键：</strong>
+            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+              <li>
+                <kbd>Ctrl/Cmd + B</kbd> - 粗体
+              </li>
+              <li>
+                <kbd>Ctrl/Cmd + I</kbd> - 斜体
+              </li>
+              <li>
+                <kbd>Ctrl/Cmd + U</kbd> - 下划线
+              </li>
+              <li>
+                <kbd>Ctrl/Cmd + `</kbd> - 代码
+              </li>
+            </ul>
+          </div>
+          <div>
+            <strong>工具栏功能：</strong>
+            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+              <li>文本格式化（粗体、斜体、下划线、代码）</li>
+              <li>标题设置（H1、H2）</li>
+              <li>引用块、列表（有序、无序）</li>
+              <li>文本对齐（左、中、右、两端对齐）</li>
+            </ul>
+            <strong>实验功能：</strong>
+            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+              <li>尝试删除标题，看看会发生什么</li>
+              <li>尝试删除所有段落内容</li>
+              <li>编辑器会自动恢复必要的结构</li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

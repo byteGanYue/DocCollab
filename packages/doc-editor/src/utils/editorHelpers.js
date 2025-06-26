@@ -1,4 +1,4 @@
-import { Editor, Element as SlateElement, Transforms } from 'slate';
+import { Editor, Element as SlateElement, Transforms, Node } from 'slate';
 
 // 常量定义
 export const HOTKEYS = {
@@ -10,6 +10,82 @@ export const HOTKEYS = {
 
 export const LIST_TYPES = ['numbered-list', 'bulleted-list'];
 export const TEXT_ALIGN_TYPES = ['left', 'center', 'right', 'justify'];
+
+/**
+ * 强制布局高阶函数
+ * 确保文档始终有标题和至少一个段落
+ * @param {Object} editor - Slate编辑器实例
+ * @returns {Object} 增强后的编辑器实例
+ */
+export const withLayout = editor => {
+  const { normalizeNode } = editor;
+
+  editor.normalizeNode = ([node, path]) => {
+    // 只处理根节点
+    if (path.length === 0) {
+      // 如果编辑器为空或只有一个空节点，插入标题
+      if (
+        editor.children.length === 0 ||
+        (editor.children.length === 1 &&
+          editor.children[0] &&
+          Editor.string(editor, [0]) === '')
+      ) {
+        const title = {
+          type: 'title',
+          children: [{ text: '无标题文档' }],
+        };
+        Transforms.insertNodes(editor, title, {
+          at: path.concat(0),
+          select: true,
+        });
+      }
+
+      // 确保至少有两个节点（标题 + 段落）
+      if (editor.children.length < 2) {
+        const paragraph = {
+          type: 'paragraph',
+          children: [{ text: '' }],
+        };
+        Transforms.insertNodes(editor, paragraph, { at: path.concat(1) });
+      }
+
+      // 强制第一个节点为标题，其余为段落或其他内容
+      for (const [child, childPath] of Node.children(editor, path)) {
+        const slateIndex = childPath[0];
+
+        const enforceType = type => {
+          if (SlateElement.isElement(child) && child.type !== type) {
+            const newProperties = { type };
+            Transforms.setNodes(editor, newProperties, {
+              at: childPath,
+            });
+          }
+        };
+
+        // 第一个节点必须是标题
+        if (slateIndex === 0) {
+          enforceType('title');
+        }
+        // 第二个节点必须是段落（如果不是特殊类型）
+        else if (slateIndex === 1 && SlateElement.isElement(child)) {
+          // 如果不是列表、引用等特殊类型，则强制为段落
+          if (
+            !LIST_TYPES.includes(child.type) &&
+            child.type !== 'block-quote' &&
+            child.type !== 'heading-one' &&
+            child.type !== 'heading-two'
+          ) {
+            enforceType('paragraph');
+          }
+        }
+      }
+    }
+
+    return normalizeNode([node, path]);
+  };
+
+  return editor;
+};
 
 /**
  * 切换块级元素格式
