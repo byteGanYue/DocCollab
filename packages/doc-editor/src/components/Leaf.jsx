@@ -44,6 +44,23 @@ const Leaf = ({ attributes, children, leaf }) => {
     children = <u>{children}</u>;
   }
 
+  // 应用删除线样式
+  if (leaf.strikethrough) {
+    children = <s>{children}</s>;
+  }
+
+  // 处理文本颜色
+  if (leaf.color) {
+    children = <span style={{ color: leaf.color }}>{children}</span>;
+  }
+
+  // 处理背景颜色
+  if (leaf.backgroundColor) {
+    children = (
+      <span style={{ backgroundColor: leaf.backgroundColor }}>{children}</span>
+    );
+  }
+
   // 处理语法高亮token
   // 获取除了text之外的所有属性作为CSS类名
   const tokenClasses = Object.keys(rest);
@@ -56,7 +73,10 @@ const Leaf = ({ attributes, children, leaf }) => {
         cls !== 'bold' &&
         cls !== 'italic' &&
         cls !== 'underline' &&
-        cls !== 'code',
+        cls !== 'code' &&
+        cls !== 'strikethrough' &&
+        cls !== 'color' &&
+        cls !== 'backgroundColor',
     );
 
     if (validTokenClasses.length > 0) {
