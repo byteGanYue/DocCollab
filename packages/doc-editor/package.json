@@ -1,5 +1,5 @@
 {
-  "name": "doc-editor",
+  "name": "byte-element-doc-editor",
   "version": "1.0.1",
   "description": "",
   "main": "dist/doc-editor.umd.js",
@@ -26,5 +26,11 @@
   "dependencies": {
     "is-hotkey": "^0.2.0",
     "prismjs": "^1.30.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/doc-editor.es.js",
+      "require": "./dist/doc-editor.umd.js"
+    }
   }
 }

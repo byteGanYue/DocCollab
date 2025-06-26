@@ -22,4 +22,22 @@ export default defineConfig({
       },
     },
   },
+  server: {
+    open: true,
+    port: 5175,
+  },
+  resolve: {
+    alias: {
+      '@': '/src',
+    },
+  },
+  ...(process.env.NODE_ENV !== 'production' && {
+    build: undefined,
+    root: '.',
+    publicDir: false,
+    appType: 'spa',
+    optimizeDeps: {
+      entries: ['src/examples/HoveringToolbarExample.jsx'],
+    },
+  }),
 });
