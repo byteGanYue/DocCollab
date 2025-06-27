@@ -11,11 +11,13 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.0",
+    "@byteganyue/editorsdk": "workspace:*",
+    "@hocuspocus/provider": "^3.1.7",
+    "@slate-yjs/core": "^1.0.2",
     "ant-design": "^1.0.0",
     "antd": "^5.26.0",
     "axios": "^1.10.0",
     "do_username": "^1.0.0",
-    "byte-element-doc-editor": "workspace:*",
     "highlight.js": "^11.11.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.1",
@@ -25,14 +27,14 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.2",
+    "slate": "^0.117.0",
+    "slate-history": "^0.113.1",
+    "slate-react": "^0.117.1",
     "socket.io-client": "^4.8.1",
     "turndown": "^7.2.0",
     "y-quill": "^1.0.0",
     "y-webrtc": "^10.3.0",
-    "yjs": "^13.6.27",
-    "slate": "^0.117.0",
-    "slate-react": "^0.117.1",
-    "slate-history": "^0.113.1"
+    "yjs": "^13.6.27"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

@@ -1,13 +1,15 @@
 {
-  "name": "byte-element-doc-editor",
-  "version": "1.0.1",
-  "description": "",
+  "name": "@byteganyue/editorsdk",
+  "version": "1.0.7",
+  "description": "编辑器的描述1.1",
   "main": "dist/doc-editor.umd.js",
   "module": "dist/doc-editor.es.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "vite build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start-server": "node server.js",
+    "dev": "vite"
   },
   "peerDependencies": {
     "antd": "^5.0.0",
@@ -26,18 +28,30 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "html2canvas": "^1.4.1",
+    "@hocuspocus/extension-database": "^3.1.7",
+    "@hocuspocus/provider": "^3.1.7",
+    "@hocuspocus/server": "^3.1.7",
+    "@slate-yjs/core": "^1.0.2",
+    "@slate-yjs/react": "^1.1.0",
     "is-hotkey": "^0.2.0",
-    "jspdf": "^3.0.1",
     "prismjs": "^1.30.0",
+    "y-protocols": "^1.0.6",
+    "yjs": "^13.6.27",
+    "jspdf": "^3.0.1",
     "react-markdown": "^9.0.1",
     "rehype-raw": "^7.0.0",
-    "remark-gfm": "^4.0.0"
+    "remark-gfm": "^4.0.0",
+    "html2canvas": "^1.4.1"
   },
   "exports": {
     ".": {
       "import": "./dist/doc-editor.es.js",
       "require": "./dist/doc-editor.umd.js"
     }
-  }
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
+  },
+  "type": "module"
 }

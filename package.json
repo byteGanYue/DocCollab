@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "commit": "git add . && git-cz",
-    "build:doc-editor": "pnpm --filter doc-editor build",
+    "build:doc-editor": "pnpm --filter @byteganyue/editorsdk build",
     "dev:doc-web": "pnpm --filter doc-web dev",
     "start:doc-server": "pnpm --filter doc-server start:dev",
     "docs:dev": "vitepress dev ./packages/doc-docs",
