@@ -151,6 +151,10 @@ export const documentAPI = {
     return upload(`/document/${documentId}/attachments`, formData);
   },
 
+  // 创建文档历史版本记录
+  createDocumentHistory: documentId =>
+    post(`/document/${documentId}/create-history`),
+
   // 获取所有公开用户的文档
   getPublicDocuments: () => get('/document/public-documents'),
 

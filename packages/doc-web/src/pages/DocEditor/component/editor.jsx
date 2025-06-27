@@ -16,6 +16,12 @@ const Editor = () => {
         placeholder: '开始编写您的文档...',
       });
       quillRef.current = quill;
+
+      // 监听文本变化事件，设置isEdit标记
+      quill.on('text-change', () => {
+        // 当编辑器内容发生变化时，设置isEdit为true
+        localStorage.setItem('isEdit', 'true');
+      });
     }
   }, []);
 

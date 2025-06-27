@@ -581,4 +581,80 @@ export class DocumentController {
     this.logger.log('接收到文档搜索请求', { searchText, userId });
     return this.documentService.searchDocuments(searchText, userId);
   }
+
+  /**
+   * 创建文档历史版本记录
+   * @param documentId 文档ID
+   * @returns 创建结果
+   */
+  @Post(':id/create-history')
+  @ApiOperation({
+    summary: '根据文档ID创建一条历史版本记录',
+    description:
+      '当用户离开编辑页面时，调用此接口将当前文档内容保存为一条历史版本记录',
+  })
+  @ApiParam({
+    name: 'id',
+    description: '文档ID',
+    type: 'number',
+    example: 123,
+  })
+  @ApiResponse({
+    status: 201,
+    description: '历史版本创建成功',
+    schema: {
+      example: {
+        success: true,
+        message: '历史版本创建成功',
+        data: {
+          versionId: 3,
+          documentId: 123,
+        },
+      },
+    },
+  })
+  async createHistoryVersion(@Param('id', ParseIntPipe) documentId: number) {
+    this.logger.log('接收到创建历史版本请求', { documentId });
+
+    try {
+      // 查找当前文档
+      const document =
+        await this.documentService.findOneDocumentById(documentId);
+
+      if (!document) {
+        return {
+          success: false,
+          message: '文档不存在',
+          data: null,
+        };
+      }
+
+      // 创建历史版本记录
+      const historyVersion =
+        await this.documentHistoryService.addDocumentHistory({
+          userId: document.userId,
+          documentId: document.documentId,
+          documentName: document.documentName,
+          content: document.content,
+          create_username: document.create_username,
+          update_username: document.update_username,
+        });
+
+      return {
+        success: true,
+        message: '历史版本创建成功',
+        data: {
+          versionId: historyVersion.versionId,
+          documentId: historyVersion.documentId,
+        },
+      };
+    } catch (error) {
+      this.logger.error('创建历史版本失败:', error);
+      return {
+        success: false,
+        message: '创建历史版本失败',
+        error: error instanceof Error ? error.message : '未知错误',
+      };
+    }
+  }
 }

@@ -1103,4 +1103,22 @@ export class DocumentService {
       throw new BadRequestException(`搜索文档失败: ${err.message}`);
     }
   }
+
+  /**
+   * 根据文档ID查询单个文档（不处理最近访问记录）
+   * @param documentId 文档ID
+   * @returns 文档实体
+   */
+  async findOneDocumentById(
+    documentId: number,
+  ): Promise<DocumentEntity | null> {
+    try {
+      this.logger.log('查询文档实体', { documentId });
+      return await this.documentModel.findOne({ documentId }).exec();
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error('查询文档实体失败', err.stack);
+      throw new BadRequestException(`查询文档实体失败: ${err.message}`);
+    }
+  }
 }
