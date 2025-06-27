@@ -80,6 +80,9 @@ importers:
       '@slate-yjs/core':
         specifier: ^1.0.2
         version: 1.0.2(slate@0.117.0)(yjs@13.6.27)
+      '@slate-yjs/react':
+        specifier: ^1.1.0
+        version: 1.1.0(@slate-yjs/core@1.0.2(slate@0.117.0)(yjs@13.6.27))(react@19.1.0)(slate-react@0.117.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(slate-dom@0.116.0(slate@0.117.0))(slate@0.117.0))(slate@0.117.0)(yjs@13.6.27)
       is-hotkey:
         specifier: ^0.2.0
         version: 0.2.0
@@ -1889,6 +1892,15 @@ packages:
     resolution: {integrity: sha512-X0hLFJbQu9c1ItWBaNuEn0pqcXYK76KCp8C4Gvy/VaTQVMo1VgAb2WiiJ0Je/AyuIYEPPSTNVOcyrGHwgA7e6Q==}
     peerDependencies:
       slate: '>=0.70.0'
+      yjs: ^13.5.29
+
+  '@slate-yjs/react@1.1.0':
+    resolution: {integrity: sha512-lGpEJLwThMPVZ+beqsoBowwBO2egu7K8ow+TOM4k2Liz9/dD1H9/ZNrdfZkPVSYT9NmgFm4dYc187t5GC4Wd6g==}
+    peerDependencies:
+      '@slate-yjs/core': ^1.0.0
+      react: '>=16.8.0'
+      slate: '>=0.70.0'
+      slate-react: '>=0.70.0'
       yjs: ^13.5.29
 
   '@socket.io/component-emitter@3.1.2':
@@ -5749,6 +5761,11 @@ packages:
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
 
+  use-sync-external-store@1.5.0:
+    resolution: {integrity: sha512-Rb46I4cGGVBmjamjphe8L/UnvJD+uPPtTkNvX5mZgqdbavhI4EbgIWJiIHXJ8bc/i9EQGPRh4DwEURJ552Do0A==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
@@ -7635,6 +7652,16 @@ snapshots:
   '@slate-yjs/core@1.0.2(slate@0.117.0)(yjs@13.6.27)':
     dependencies:
       slate: 0.117.0
+      y-protocols: 1.0.6(yjs@13.6.27)
+      yjs: 13.6.27
+
+  '@slate-yjs/react@1.1.0(@slate-yjs/core@1.0.2(slate@0.117.0)(yjs@13.6.27))(react@19.1.0)(slate-react@0.117.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(slate-dom@0.116.0(slate@0.117.0))(slate@0.117.0))(slate@0.117.0)(yjs@13.6.27)':
+    dependencies:
+      '@slate-yjs/core': 1.0.2(slate@0.117.0)(yjs@13.6.27)
+      react: 19.1.0
+      slate: 0.117.0
+      slate-react: 0.117.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(slate-dom@0.116.0(slate@0.117.0))(slate@0.117.0)
+      use-sync-external-store: 1.5.0(react@19.1.0)
       y-protocols: 1.0.6(yjs@13.6.27)
       yjs: 13.6.27
 
@@ -12002,6 +12029,10 @@ snapshots:
   uri-js@4.4.1:
     dependencies:
       punycode: 2.3.1
+
+  use-sync-external-store@1.5.0(react@19.1.0):
+    dependencies:
+      react: 19.1.0
 
   util-deprecate@1.0.2: {}
 

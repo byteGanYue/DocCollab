@@ -43,11 +43,13 @@ import {
   slateNodesToInsertDelta,
   YjsEditor,
   withYHistory,
+  withCursors,
 } from '@slate-yjs/core';
 
 // Import yjs and hocuspocus
 import * as Y from 'yjs';
 import { HocuspocusProvider } from '@hocuspocus/provider';
+import CursorOverlay from './components/CursorOverlay';
 
 // 常量定义
 const ParagraphType = 'paragraph';
@@ -163,10 +165,21 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
       // 获取共享文本类型
       const sharedType = provider.document.get('content', Y.XmlText);
 
-      // 创建Yjs增强的编辑器
+      // 创建Yjs增强的编辑器，集成光标
       console.log('创建协同编辑器');
       const e = withLayout(
-        withYHistory(withYjs(withReact(createEditor()), sharedType)),
+        withYHistory(
+          withCursors(
+            withYjs(withReact(createEditor()), sharedType),
+            provider.awareness,
+            {
+              data: {
+                name: `用户${Math.floor(Math.random() * 1000)}`,
+                color: '#' + Math.floor(Math.random() * 16777215).toString(16),
+              },
+            },
+          ),
+        ),
       );
 
       // 确保编辑器始终至少有一个有效子节点
@@ -491,6 +504,13 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
       />
       {/* Prism主题样式 */}
       <style>{prismThemeCss}</style>
+      {/* 协同光标样式 */}
+      <style>{`
+        .cursors { position: relative; }
+        .caretMarker { position: absolute; width: 2px; z-index: 10; }
+        .caret { position: absolute; font-size: 14px; color: #fff; white-space: nowrap; top: 0; border-radius: 6px; border-bottom-left-radius: 0; padding: 2px 6px; pointer-events: none; }
+        .selection { position: absolute; pointer-events: none; opacity: 0.2; z-index: 5; }
+      `}</style>
 
       {/* 连接状态指示器 */}
       <div
@@ -751,27 +771,29 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
           <BlockButton format="justify" icon="format_align_justify" />
         </Toolbar>
 
-        {/* 编辑区域 */}
-        <Editable
-          decorate={decorate}
-          renderElement={renderElement}
-          renderLeaf={renderLeaf}
-          placeholder="在这里输入内容..."
-          spellCheck
-          autoFocus
-          style={{
-            minHeight: '300px',
-            padding: '16px',
-            border: '1px solid #ced4da',
-            borderRadius: '0 0 8px 8px',
-            fontSize: '16px',
-            lineHeight: '1.5',
-            outline: 'none',
-            backgroundColor: '#fff',
-            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1)',
-          }}
-          onKeyDown={onKeyDown}
-        />
+        {/* 编辑区域 + 协同光标覆盖层 */}
+        <CursorOverlay>
+          <Editable
+            decorate={decorate}
+            renderElement={renderElement}
+            renderLeaf={renderLeaf}
+            placeholder="在这里输入内容..."
+            spellCheck
+            autoFocus
+            style={{
+              minHeight: '300px',
+              padding: '16px',
+              border: '1px solid #ced4da',
+              borderRadius: '0 0 8px 8px',
+              fontSize: '16px',
+              lineHeight: '1.5',
+              outline: 'none',
+              backgroundColor: '#fff',
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1)',
+            }}
+            onKeyDown={onKeyDown}
+          />
+        </CursorOverlay>
       </Slate>
 
       {/* 提示服务器未运行 */}
