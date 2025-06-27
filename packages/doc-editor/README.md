@@ -47,6 +47,49 @@ yarn add @byteganyue/editorsdk
 
 ---
 
+## 发布（发包）说明
+
+本项目包通过 GitHub Packages 发布，需具备对应仓库权限。
+
+### 发布流程
+
+1. **构建产物**
+
+   ```bash
+   pnpm install
+   pnpm run build
+   ```
+
+2. **发布命令**
+
+   ```bash
+   pnpm publish --no-git-checks
+   ```
+
+   > 注意：
+   > - 默认发布到 `https://npm.pkg.github.com`，包名为 `@byteganyue/editorsdk`。
+   > - 需保证 `.npmrc` 配置了正确的 registry（如：`@byteganyue:registry=https://npm.pkg.github.com`）。
+   > - CI/CD 场景下，需设置 `NODE_AUTH_TOKEN` 环境变量（如 GitHub Actions 自动注入的 `GITHUB_TOKEN`）。
+   > - 若本地手动发布，需先登录 GitHub npm registry，可用 `npm login --registry=https://npm.pkg.github.com`。
+
+3. **自动化发布（推荐）**
+
+   项目已配置 GitHub Actions 自动发包，推送 tag（如 `doc-editor-v*`）后会自动构建并发布，无需手动操作。
+
+   自动化发包常用命令：
+
+   ```bash
+   git tag doc-editor-v1.1.8（版本号）
+   git push origin doc-editor-v1.1.8（版本号）//注意版本号不能重复
+   ```
+
+   > 执行上述命令后，GitHub Actions 会自动构建并发布新版本。
+   > 构建产物输出路径为：`packages/doc-docs/.vitepress/dist`
+
+   详见 `.github/workflows/deploy.yml`。
+
+---
+
 ## 快速上手
 
 ```jsx
