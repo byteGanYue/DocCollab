@@ -23,18 +23,46 @@ const ColorButton = ({ icon, type = 'color' }) => {
   // 标题文本
   const title = type === 'color' ? '文本颜色' : '文本高亮';
 
+  /**
+   * 检查当前选区是否有特定的颜色标记
+   * @returns {string|null} 当前颜色标记值或null
+   */
+  const getCurrentColor = () => {
+    const marks = Editor.marks(editor);
+    return marks ? marks[type] : null;
+  };
+
   // 处理颜色选择
   const handleColorSelect = useCallback(
     color => {
-      Editor.addMark(editor, type, color);
+      const currentColor = getCurrentColor();
+
+      // 如果点击了当前已有的颜色，则移除该颜色标记
+      if (currentColor === color) {
+        Editor.removeMark(editor, type);
+      } else {
+        // 否则应用新颜色
+        Editor.addMark(editor, type, color);
+      }
+
       setShowColorPicker(false);
     },
     [editor, type],
   );
 
+  // 清除颜色标记
+  const clearColor = useCallback(() => {
+    Editor.removeMark(editor, type);
+    setShowColorPicker(false);
+  }, [editor, type]);
+
+  // 获取当前颜色
+  const currentColor = getCurrentColor();
+
   return (
     <div style={{ position: 'relative' }}>
       <Button
+        active={!!currentColor}
         onMouseDown={e => {
           e.preventDefault();
           setShowColorPicker(!showColorPicker);
@@ -65,9 +93,31 @@ const ColorButton = ({ icon, type = 'color' }) => {
               marginBottom: '8px',
               fontSize: '14px',
               fontWeight: 500,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
             }}
           >
             {title}
+            {currentColor && (
+              <button
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  color: '#d32f2f',
+                  padding: '0',
+                }}
+                onMouseDown={e => {
+                  e.preventDefault();
+                  clearColor();
+                }}
+                title="清除颜色"
+              >
+                清除
+              </button>
+            )}
           </div>
           <div
             style={{
@@ -86,6 +136,8 @@ const ColorButton = ({ icon, type = 'color' }) => {
                   borderRadius: '2px',
                   cursor: 'pointer',
                   border: '1px solid #ddd',
+                  boxShadow:
+                    currentColor === color ? '0 0 0 2px #1890ff' : 'none',
                 }}
                 onMouseDown={e => {
                   e.preventDefault();
