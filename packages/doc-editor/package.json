@@ -1,6 +1,6 @@
 {
-  "name": "byte-element-doc-editor",
-  "version": "1.0.1",
+  "name": "@byteganyue/editorsdk",
+  "version": "1.0.5",
   "description": "",
   "main": "dist/doc-editor.umd.js",
   "module": "dist/doc-editor.es.js",
@@ -32,5 +32,9 @@
       "import": "./dist/doc-editor.es.js",
       "require": "./dist/doc-editor.umd.js"
     }
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
   }
 }
