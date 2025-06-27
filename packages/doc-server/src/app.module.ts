@@ -10,7 +10,8 @@ import { DocumentModule } from './document/document.module';
 @Module({
   imports: [
     MongooseModule.forRoot(
-      'mongodb://doccollab_user:doccollab_pass_2024@121.37.219.159:27017/doccollab?authSource=doccollab',
+      // 'mongodb://doccollab_user:doccollab_pass_2024@121.37.219.159:27017/doccollab?authSource=doccollab',
+      'mongodb://localhost:27017/doccollab',
     ),
     UserModule,
     FolderModule,

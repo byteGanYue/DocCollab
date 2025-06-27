@@ -32,7 +32,8 @@
     "@slate-yjs/core": "^1.0.2",
     "is-hotkey": "^0.2.0",
     "prismjs": "^1.30.0",
-    "y-protocols": "^1.0.6"
+    "y-protocols": "^1.0.6",
+    "yjs": "^13.6.27"
   },
   "exports": {
     ".": {
