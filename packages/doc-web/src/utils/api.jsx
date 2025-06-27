@@ -39,7 +39,8 @@ export const userAPI = {
   changePassword: data => patch('/user/password', data),
 
   // 修改用户公开状态 - 切换用户工作空间的公开/私有状态
-  changePublicStatus: email => patch('/user/isPublic/' + email),
+  changePublicStatus: (email, isPublic) =>
+    patch('/user/isPublic/' + email, { isPublic }),
 
   // 用户登出
   logout: () => post('/auth/logout'),
@@ -374,9 +375,9 @@ export const authUtils = {
  * };
  *
  * // 9. 修改用户工作空间权限
- * const changeUserPermission = async (email) => {
+ * const changeUserPermission = async (email, isPublic) => {
  *   try {
- *     const response = await userAPI.changePublicStatus(email);
+ *     const response = await userAPI.changePublicStatus(email, isPublic);
  *     if (response.success) {
  *       console.log('用户权限修改成功:', response);
  *       return response;
