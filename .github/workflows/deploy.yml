@@ -49,7 +49,7 @@ jobs:
         uses: actions/configure-pages@v4
       - name: Install dependencies
         run: |
-          pnpm install --no-frozen-lockfile
+          pnpm install 
       - name: Build with VitePress
         run: pnpm docs:build
       - name: Upload artifact
@@ -81,22 +81,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           registry-url: 'https://npm.pkg.github.com'
 
-      - name: Install dependencies
-        run: npm install
+      - name: Clean node_modules
+        run: rm -rf node_modules
+        working-directory: ./packages/doc-editor
+
+      - name: Install dependencies (with devDependencies)
+        run: |
+          pnpm config set registry https://registry.npmmirror.com
+          pnpm install
         working-directory: ./packages/doc-editor
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
         working-directory: ./packages/doc-editor
 
       - name: Publish to GitHub Packages
-        run: npm publish
+        run: pnpm publish
         working-directory: ./packages/doc-editor
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

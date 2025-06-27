@@ -15,7 +15,6 @@
     "antd": "^5.26.0",
     "axios": "^1.10.0",
     "do_username": "^1.0.0",
-    "byte-element-doc-editor": "workspace:*",
     "highlight.js": "^11.11.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.1",
@@ -32,7 +31,8 @@
     "yjs": "^13.6.27",
     "slate": "^0.117.0",
     "slate-react": "^0.117.1",
-    "slate-history": "^0.113.1"
+    "slate-history": "^0.113.1",
+    "@byteganyue/editorsdk": "workspace:*"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

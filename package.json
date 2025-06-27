@@ -55,5 +55,6 @@
     "slate-react": "^0.117.1",
     "typescript-eslint": "^8.24.1",
     "vitepress": "^1.6.3"
+   
   }
-}
+} 
