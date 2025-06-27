@@ -858,82 +858,244 @@ export class DocumentService {
           {
             $or: [
               { documentName: { $regex: searchText, $options: 'i' } },
-              { content: { $regex: searchText, $options: 'i' } },
+              // 不再直接在数据库层面匹配content字段，因为可能会匹配到JSON的键名
+              // 我们将获取所有文档，然后在应用层面解析JSON并只匹配text字段的值
             ],
           },
         ],
       };
 
-      // 查询文档，限制最多返回20条结果
+      // 查询文档，限制最多返回100条结果
       const documents = await this.documentModel
         .find(searchCondition)
-        .limit(20)
+        .limit(100)
         .sort({ update_time: -1 }); // 按最后修改时间降序排序
 
-      this.logger.log(`搜索到 ${documents.length} 个相关文档`);
+      this.logger.log(
+        `搜索到 ${documents.length} 个文档名匹配的文档，准备搜索文档内容`,
+      );
 
-      // 处理搜索结果，提取匹配的文本片段
-      const searchResults = documents.map((doc) => {
-        const documentObj = doc.toObject() as DocumentDocument & {
+      // 如果文档名匹配结果少于20条，再获取更多文档进行内容搜索
+      interface DocumentLike {
+        toObject?: () => Record<string, unknown>;
+        _id?: unknown;
+        userId: number;
+        documentId: number;
+        documentName: string;
+        content: string;
+        create_username: string;
+        update_username: string;
+        editorId: number[];
+        parentFolderIds: number[];
+        create_time: Date;
+        update_time: Date;
+        isPublic?: boolean;
+      }
+
+      let additionalDocuments: DocumentLike[] = [];
+      if (documents.length < 20) {
+        // 构建额外的搜索条件，不包含文档名匹配
+        const additionalCondition = {
+          $and: [
+            {
+              $or: [
+                { userId: userId }, // 用户自己的文档
+                { isPublic: true }, // 其他用户公开的文档
+              ],
+            },
+          ],
+        };
+
+        const result = await this.documentModel
+          .find(additionalCondition)
+          .limit(50)
+          .sort({ update_time: -1 })
+          .lean();
+
+        // 安全的类型转换
+        additionalDocuments = result as unknown as DocumentLike[];
+
+        this.logger.log(
+          `获取额外 ${additionalDocuments.length} 个文档进行内容搜索`,
+        );
+      }
+
+      // 合并文档列表
+      const allDocuments = [...documents, ...additionalDocuments];
+
+      // 搜索结果数组
+      const searchResults: Array<{
+        documentId: number;
+        documentName: string;
+        content: string;
+        matchedText: string;
+        userId: number;
+        create_username: string;
+        update_time: Date;
+        isPublic: boolean;
+      }> = [];
+
+      // 遍历文档
+      for (const doc of allDocuments) {
+        // 处理文档对象，确保有正确的结构
+        const typedDoc = (doc.toObject ? doc.toObject() : doc) as {
+          _id: Types.ObjectId;
+          userId: number;
+          documentId: number;
+          documentName: string;
+          content: string;
+          create_username: string;
+          update_username: string;
+          editorId: number[];
+          parentFolderIds: number[];
+          create_time: Date;
+          update_time: Date;
           isPublic: boolean;
         };
-        let matchedText = '';
-        let content = documentObj.content;
 
-        // 在文档名称中查找匹配
+        // 先检查文档名称匹配
         if (
-          documentObj.documentName
-            .toLowerCase()
-            .includes(searchText.toLowerCase())
+          typedDoc.documentName.toLowerCase().includes(searchText.toLowerCase())
         ) {
-          matchedText = documentObj.documentName;
-        } else {
-          // 在文档内容中查找匹配
-          const contentLower = documentObj.content.toLowerCase();
-          const searchTextLower = searchText.toLowerCase();
-          const matchIndex = contentLower.indexOf(searchTextLower);
-
-          if (matchIndex !== -1) {
-            // 提取匹配文本及其上下文（前后各50个字符）
-            const start = Math.max(0, matchIndex - 50);
-            const end = Math.min(
-              documentObj.content.length,
-              matchIndex + searchText.length + 50,
-            );
-            content = documentObj.content.substring(start, end);
-
-            // 如果截取的不是完整内容，添加省略号
-            if (start > 0) content = '...' + content;
-            if (end < documentObj.content.length) content = content + '...';
-
-            matchedText = documentObj.content.substring(
-              matchIndex,
-              matchIndex + searchText.length,
-            );
-          }
+          searchResults.push({
+            documentId: typedDoc.documentId,
+            documentName: typedDoc.documentName,
+            content: typedDoc.documentName, // 使用文档名称作为内容
+            matchedText: typedDoc.documentName,
+            userId: typedDoc.userId,
+            create_username: typedDoc.create_username,
+            update_time: typedDoc.update_time,
+            isPublic: typedDoc.isPublic || false,
+          });
+          continue;
         }
 
-        return {
-          documentId: documentObj.documentId,
-          documentName: documentObj.documentName,
-          content: content,
-          matchedText: matchedText,
-          userId: documentObj.userId,
-          create_username: documentObj.create_username,
-          update_time: documentObj.update_time,
-          isPublic: documentObj.isPublic || false, // 确保isPublic字段有值
-        };
-      });
+        // 检查内容，尝试解析JSON
+        try {
+          // 检查是否有内容且是JSON格式
+          if (
+            !typedDoc.content ||
+            !(
+              typedDoc.content.startsWith('[') ||
+              typedDoc.content.startsWith('{')
+            )
+          ) {
+            continue; // 跳过非JSON内容
+          }
 
-      this.logger.log('文档搜索完成', {
+          // 解析JSON内容
+          const jsonContent = JSON.parse(typedDoc.content);
+
+          // 提取所有text字段
+          const allTextNodes: Array<{
+            text: string;
+            path: string; // 记录节点路径，用于确定上下文关系
+          }> = [];
+
+          // 递归提取所有text字段
+          const extractAllTextNodes = (node: unknown, path: string = '') => {
+            if (!node) return;
+
+            if (Array.isArray(node)) {
+              node.forEach((item, index) => {
+                extractAllTextNodes(item, `${path}.${index}`);
+              });
+            } else if (typeof node === 'object' && node !== null) {
+              // 提取当前节点的text字段
+              const objNode = node as Record<string, unknown>;
+              if (
+                Object.prototype.hasOwnProperty.call(objNode, 'text') &&
+                typeof objNode.text === 'string'
+              ) {
+                allTextNodes.push({ text: objNode.text, path });
+              }
+
+              // 递归处理子节点
+              for (const key in objNode) {
+                if (typeof objNode[key] === 'object' && objNode[key] !== null) {
+                  extractAllTextNodes(objNode[key], `${path}.${key}`);
+                }
+              }
+            }
+          };
+
+          // 开始提取所有text节点
+          extractAllTextNodes(jsonContent);
+
+          // 搜索匹配的text节点
+          for (let i = 0; i < allTextNodes.length; i++) {
+            const node = allTextNodes[i];
+
+            // 检查是否匹配搜索文本
+            if (node.text.toLowerCase().includes(searchText.toLowerCase())) {
+              let contentToDisplay = node.text;
+
+              // 如果匹配到的text小于20个字符，尝试拼接上下文
+              if (node.text.length < 20) {
+                // 尝试获取上一个节点的后15个字符
+                if (i > 0) {
+                  const prevNode = allTextNodes[i - 1];
+                  if (prevNode.text.length > 15) {
+                    contentToDisplay =
+                      prevNode.text.slice(-15) + contentToDisplay;
+                  } else {
+                    contentToDisplay = prevNode.text + contentToDisplay;
+                  }
+                }
+
+                // 如果内容还不够20个字符，尝试获取下一个节点的前15个字符
+                if (
+                  contentToDisplay.length < 20 &&
+                  i < allTextNodes.length - 1
+                ) {
+                  const nextNode = allTextNodes[i + 1];
+                  if (nextNode.text.length > 15) {
+                    contentToDisplay =
+                      contentToDisplay + nextNode.text.slice(0, 15);
+                  } else {
+                    contentToDisplay = contentToDisplay + nextNode.text;
+                  }
+                }
+              }
+
+              // 添加到搜索结果
+              searchResults.push({
+                documentId: typedDoc.documentId,
+                documentName: typedDoc.documentName,
+                content: contentToDisplay,
+                matchedText: node.text,
+                userId: typedDoc.userId,
+                create_username: typedDoc.create_username,
+                update_time: typedDoc.update_time,
+                isPublic: typedDoc.isPublic || false,
+              });
+
+              break; // 每个文档只返回一个匹配结果
+            }
+          }
+        } catch (err) {
+          this.logger.warn(
+            `解析文档JSON内容失败: documentId=${typedDoc.documentId}`,
+            err,
+          );
+          continue;
+        }
+      }
+
+      // 限制返回结果数量
+      const limitedResults = searchResults.slice(0, 20);
+
+      this.logger.log('文档内容搜索完成', {
         searchText,
-        resultCount: searchResults.length,
+        totalDocumentsProcessed: allDocuments.length,
+        matchedDocuments: searchResults.length,
+        returnedResults: limitedResults.length,
       });
 
       return {
         success: true,
         message: '搜索成功',
-        data: searchResults,
+        data: limitedResults,
       };
     } catch (error) {
       const err = error as Error;
