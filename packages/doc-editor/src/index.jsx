@@ -25,6 +25,7 @@ import {
   CodeBlockButton,
   HoveringToolbar,
   ColorButton,
+  AIDrawer,
 } from './components';
 import { HOTKEYS, toggleMark, withLayout } from './utils/editorHelpers';
 import { normalizeTokens } from './utils/normalize-tokens';
@@ -44,6 +45,8 @@ const CodeLineType = 'code-line';
 const EditorSDK = () => {
   // 弹窗状态管理
   const [showHelpModal, setShowHelpModal] = useState(false);
+  // AI抽屉状态管理
+  const [showAIDrawer, setShowAIDrawer] = useState(false);
 
   // 创建编辑器实例，结合强制布局、历史记录和React支持
   const editor = useMemo(
@@ -239,6 +242,24 @@ const App = () => {
     ],
     [],
   );
+  // 编辑器内容状态
+  const [editorContent, setEditorContent] = useState(initialValue);
+
+  // 处理编辑器内容变化的回调函数
+  const handleEditorChange = value => {
+    setEditorContent(value);
+    console.log('编辑器内容更新:', value);
+  };
+
+  // 打开AI摘要抽屉
+  const handleOpenAIDrawer = () => {
+    setShowAIDrawer(true);
+  };
+
+  // 关闭AI摘要抽屉
+  const handleCloseAIDrawer = () => {
+    setShowAIDrawer(false);
+  };
 
   return (
     <div
@@ -340,6 +361,42 @@ const App = () => {
           保存
         </button>
         <button
+          onClick={handleOpenAIDrawer}
+          style={{
+            padding: '8px 16px',
+            fontSize: '14px',
+            fontWeight: '500',
+            border: '1px solid #6610f2',
+            borderRadius: '6px',
+            backgroundColor: '#6610f2',
+            color: '#ffffff',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease-in-out',
+            outline: 'none',
+            minWidth: '80px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+          }}
+          onMouseEnter={e => {
+            e.target.style.backgroundColor = '#520dc2';
+            e.target.style.borderColor = '#4709ac';
+            e.target.style.transform = 'translateY(-1px)';
+            e.target.style.boxShadow = '0 4px 8px rgba(102, 16, 242, 0.25)';
+          }}
+          onMouseLeave={e => {
+            e.target.style.backgroundColor = '#6610f2';
+            e.target.style.borderColor = '#6610f2';
+            e.target.style.transform = 'translateY(0)';
+            e.target.style.boxShadow = 'none';
+          }}
+        >
+          <span className="material-icons" style={{ fontSize: '16px' }}>
+            auto_awesome
+          </span>
+          AI摘要
+        </button>
+        <button
           onClick={() => setShowHelpModal(true)}
           style={{
             padding: '8px 16px',
@@ -377,10 +434,7 @@ const App = () => {
       <Slate
         editor={editor}
         initialValue={initialValue}
-        onChange={value => {
-          // 这里可以添加内容变更的处理逻辑
-          console.log('编辑器内容更新:', value);
-        }}
+        onChange={handleEditorChange}
       >
         {/* 悬浮工具栏 */}
         <HoveringToolbar />
@@ -483,6 +537,13 @@ const App = () => {
       <HelpModal
         isOpen={showHelpModal}
         onClose={() => setShowHelpModal(false)}
+      />
+
+      {/* AI摘要抽屉 */}
+      <AIDrawer
+        isOpen={showAIDrawer}
+        onClose={handleCloseAIDrawer}
+        documentContent={editorContent}
       />
     </div>
   );

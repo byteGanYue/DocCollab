@@ -17,3 +17,5 @@ export { default as Portal } from './Portal';
 export { default as Menu } from './Menu';
 // 颜色选择器组件
 export { default as ColorButton } from './ColorButton';
+// AI功能相关组件
+export { default as AIDrawer } from './AIDrawer';
