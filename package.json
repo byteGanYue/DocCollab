@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "commit": "git add . && git-cz",
-    "build:doc-editor": "pnpm --filter @byteganyue/editorsdk build",
+    "build:all": "turbo run build",
     "dev:doc-web": "pnpm --filter doc-web dev",
-    "start:doc-server": "pnpm --filter doc-server start:dev",
+    "start:all": "turbo run start",
     "docs:dev": "vitepress dev ./packages/doc-docs",
     "docs:build": "vitepress build ./packages/doc-docs",
     "docs:preview": "vitepress preview ./packages/doc-docs",
@@ -54,6 +54,7 @@
     "slate-history": "^0.113.1",
     "slate-react": "^0.117.1",
     "typescript-eslint": "^8.24.1",
-    "vitepress": "^1.6.3"
+    "vitepress": "^1.6.3",
+    "turbo": "^2.4.2"
   }
 }

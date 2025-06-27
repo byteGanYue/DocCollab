@@ -6,6 +6,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.turbo
 
 # Editor directories and files
 .vscode/*
