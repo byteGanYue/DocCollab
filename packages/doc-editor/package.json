@@ -1,7 +1,7 @@
 {
   "name": "@byteganyue/editorsdk",
   "version": "1.0.7",
-  "description": "编辑器的描述1.0",
+  "description": "编辑器的描述1.1",
   "main": "dist/doc-editor.umd.js",
   "module": "dist/doc-editor.es.js",
   "types": "dist/index.d.ts",
