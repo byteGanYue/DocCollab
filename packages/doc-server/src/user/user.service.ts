@@ -98,9 +98,10 @@ export class UserService {
    * 修改用户公开状态，同时更新该用户所有文档和文件夹的公开状态
    *
    * @param email 用户邮箱
+   * @param isPublic 是否公开(true:公开,false:私有)
    * @returns 返回修改后的用户对象和更新统计信息
    */
-  async isPublic(email: string) {
+  async isPublic(email: string, isPublic: boolean) {
     try {
       const user = await this.userModel.findOne({ email: email });
 
@@ -108,20 +109,19 @@ export class UserService {
         throw new Error(`User with email ${email} not found`);
       }
 
-      // 切换isPublic状态
-      const newIsPublicStatus = !user.isPublic;
-      user.isPublic = newIsPublicStatus;
+      // 设置isPublic状态
+      user.isPublic = isPublic;
       await user.save();
 
       this.logger.log(
-        `用户 ${user.username} (ID: ${user.userId}) 的公开状态已更改为: ${newIsPublicStatus}`,
+        `用户 ${user.username} (ID: ${user.userId}) 的公开状态已设置为: ${isPublic}`,
       );
 
       // 同步更新该用户的所有文档的isPublic字段
       const documentModel = this.userModel.db.model('DocumentEntity');
       const docUpdateResult = await documentModel.updateMany(
         { userId: user.userId },
-        { $set: { isPublic: newIsPublicStatus } },
+        { $set: { isPublic } },
       );
 
       this.logger.log(
@@ -132,7 +132,7 @@ export class UserService {
       const folderModel = this.userModel.db.model('Folder');
       const folderUpdateResult = await folderModel.updateMany(
         { userId: user.userId },
-        { $set: { isPublic: newIsPublicStatus } },
+        { $set: { isPublic } },
       );
 
       this.logger.log(

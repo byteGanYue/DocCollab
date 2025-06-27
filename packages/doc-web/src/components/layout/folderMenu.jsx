@@ -1882,8 +1882,11 @@ const FolderMenu = () => {
         return;
       }
 
-      // 调用后端API修改用户公开状态
-      const response = await userAPI.changePublicStatus(userEmail);
+      // 设置isPublic值 - 'public'对应true, 'private'对应false
+      const isPublic = permissionModal.permission === 'public';
+
+      // 调用后端API修改用户公开状态，传递isPublic参数
+      const response = await userAPI.changePublicStatus(userEmail, isPublic);
 
       // 检查响应状态 - API成功返回时通常有success字段或者直接检查message
       const isSuccess = response.success === true || response.success !== false;

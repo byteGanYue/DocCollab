@@ -37,8 +37,8 @@ export class UserController {
   @ApiOperation({ summary: '修改用户公开状态' })
   @ApiResponse({ status: 200, description: '用户公开状态修改成功' })
   @ApiParam({ name: 'email', description: '用户邮箱' })
-  isPublic(@Param('email') email: string) {
-    return this.userService.isPublic(email);
+  isPublic(@Param('email') email: string, @Body() body: { isPublic: boolean }) {
+    return this.userService.isPublic(email, body.isPublic);
   }
 
   @Get('/stats')
