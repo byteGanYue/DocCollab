@@ -11,13 +11,23 @@ export default defineConfig({
       formats: ['es', 'umd'],
     },
     rollupOptions: {
-      external: ['react', 'react-dom', 'slate', 'slate-react'],
+      external: [
+        'react',
+        'react-dom',
+        'slate',
+        'slate-react',
+        '@ant-design/icons',
+        'antd',
+      ],
       output: {
+        exports: 'named',
         globals: {
           react: 'React',
           'react-dom': 'ReactDOM',
           slate: 'Slate',
           'slate-react': 'SlateReact',
+          '@ant-design/icons': 'AntDesignIcons',
+          antd: 'antd',
         },
       },
     },
