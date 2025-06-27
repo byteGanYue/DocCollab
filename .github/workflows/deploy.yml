@@ -1,4 +1,4 @@
-# 构建 VitePress 站点并将其部署到 GitHub Pages 的示例工作流程
+# 构建 VitePress 站点并将其部署到 GitHub Pages，并自动发布 doc-editor 包
 #
 name: Deploy VitePress site to Pages & Publish doc-editor
 
@@ -30,6 +30,7 @@ jobs:
   # 构建工作
   build:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,6 +59,7 @@ jobs:
 
   # 部署工作
   deploy:
+    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -70,8 +72,8 @@ jobs:
         uses: actions/deploy-pages@v4
 
   publish-doc-editor:
-    runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/doc-editor-v')
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
