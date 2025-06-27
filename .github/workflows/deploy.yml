@@ -106,7 +106,7 @@ jobs:
         working-directory: ./packages/doc-editor
 
       - name: Publish to GitHub Packages
-        run: pnpm publish
+        run: pnpm publish --no-git-checks
         working-directory: ./packages/doc-editor
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
