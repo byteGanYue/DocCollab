@@ -1,91 +1,53 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Drawer, Button, Spin, Alert, Typography, Space, message } from 'antd';
 import { DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
 import { computeContentHash, getTextFromContent } from '../utils/dealContent';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-const { Title } = Typography;
+const { Title, Paragraph } = Typography;
 
-// 代码高亮的内联样式
-const highlightStyles = `
-  pre {
-    background: #f6f8fa;
-    border-radius: 3px;
+// 纯文本样式
+const textStyles = `
+  .text-container {
+    white-space: pre-wrap;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.8;
+    font-size: 14px;
+    color: #333;
+    background-color: #f9f9f9;
     padding: 16px;
-    overflow: auto;
+    border-radius: 4px;
+    border: 1px solid #e0e0e0;
   }
   
-  code {
-    font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
-    background-color: rgba(175, 184, 193, 0.2);
-    padding: 0.2em 0.4em;
-    border-radius: 3px;
-    font-size: 85%;
+  .text-paragraph {
+    margin-bottom: 12px;
   }
   
-  pre code {
-    background-color: transparent;
-    padding: 0;
-    font-size: 100%;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    margin-top: 24px;
-    margin-bottom: 16px;
-    font-weight: 600;
-    line-height: 1.25;
+  .text-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.2em;
+    background-color: #333;
+    margin-left: 1px;
+    animation: cursor-blink 1s step-start infinite;
+    vertical-align: text-bottom;
   }
   
-  h1 {
-    font-size: 2em;
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
   }
   
-  h2 {
-    font-size: 1.5em;
+  @keyframes highlight-fade {
+    0% { background-color: rgba(255,255,0,0.3); }
+    100% { background-color: transparent; }
   }
   
-  h3 {
-    font-size: 1.25em;
-  }
-  
-  ul, ol {
-    padding-left: 2em;
-  }
-  
-  blockquote {
-    margin-left: 0;
-    padding: 0 1em;
-    color: #57606a;
-    border-left: 0.25em solid #d0d7de;
-  }
-  
-  hr {
-    height: 0.25em;
-    padding: 0;
-    margin: 24px 0;
-    background-color: #d0d7de;
-    border: 0;
-  }
-  
-  table {
-    border-spacing: 0;
-    border-collapse: collapse;
-    margin: 16px 0;
-    width: 100%;
-    overflow: auto;
-  }
-  
-  table th, table td {
-    padding: 6px 13px;
-    border: 1px solid #d0d7de;
-  }
-  
-  table tr:nth-child(2n) {
-    background-color: #f6f8fa;
+  .new-content {
+    background-color: rgba(255,255,0,0.2);
+    animation: highlight-fade 0.5s ease-out forwards;
   }
 `;
 
@@ -93,7 +55,7 @@ const highlightStyles = `
  * AI抽屉组件 - 用于展示文档摘要
  * 接收文档内容，提取所有文本，发送给AI生成摘要
  * 使用Ant Design的Drawer组件实现
- * 支持Markdown语法渲染
+ * 支持纯文本显示和PDF下载
  */
 const AIDrawer = ({ isOpen, onClose, documentContent }) => {
   const [summary, setSummary] = useState('');
@@ -106,7 +68,7 @@ const AIDrawer = ({ isOpen, onClose, documentContent }) => {
   const [lastContentHash, setLastContentHash] = useState('');
 
   // 用于自动滚动到底部
-  const markdownContainerRef = useRef(null);
+  const contentContainerRef = useRef(null);
 
   // 跟踪内容更新器
   const contentRef = useRef('');
@@ -135,8 +97,8 @@ const AIDrawer = ({ isOpen, onClose, documentContent }) => {
    * 自动滚动到内容底部
    */
   const scrollToBottom = useCallback(() => {
-    if (markdownContainerRef.current) {
-      const container = markdownContainerRef.current;
+    if (contentContainerRef.current) {
+      const container = contentContainerRef.current;
       const isUserNearBottom =
         container.scrollHeight - container.scrollTop - container.clientHeight <
         100;
@@ -203,11 +165,11 @@ const AIDrawer = ({ isOpen, onClose, documentContent }) => {
           {
             role: 'system',
             content:
-              '你是一个专业的文档摘要生成助手，请根据用户提供的文档内容生成简洁明了的摘要，使用Markdown格式输出，可以适当使用标题、列表、引用、加粗等Markdown语法增强可读性。',
+              '你是一个专业的文档摘要生成助手，请根据用户提供的文档内容生成简洁明了的摘要，使用纯文本输出，注意段落分明。',
           },
           {
             role: 'user',
-            content: `请为以下文档内容生成一个结构化的摘要，使用Markdown格式：\n\n${extractedText}`,
+            content: `请为以下文档内容生成一个清晰、结构化的摘要：\n\n${extractedText}`,
           },
         ],
       };
@@ -338,6 +300,8 @@ const AIDrawer = ({ isOpen, onClose, documentContent }) => {
       tempContainer.style.width = '800px'; // 设置固定宽度以便更好的渲染
       tempContainer.style.padding = '20px';
       tempContainer.style.backgroundColor = '#ffffff';
+      tempContainer.style.fontFamily =
+        '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
       // 添加标题
       const titleDiv = document.createElement('div');
@@ -347,77 +311,29 @@ const AIDrawer = ({ isOpen, onClose, documentContent }) => {
       titleDiv.style.borderBottom = '1px solid #ddd';
       titleDiv.style.paddingBottom = '10px';
       titleDiv.innerText = 'AI文档摘要';
-
       tempContainer.appendChild(titleDiv);
 
-      // 创建内容容器
+      // 添加内容
       const contentDiv = document.createElement('div');
-      contentDiv.className = 'pdf-markdown-content';
       contentDiv.style.fontSize = '14px';
-      contentDiv.style.lineHeight = '1.6';
+      contentDiv.style.lineHeight = '1.8';
+      contentDiv.style.whiteSpace = 'pre-wrap';
 
-      // 使用DOMParser将HTML字符串转换为DOM元素
-      const parser = new DOMParser();
+      // 格式化摘要文本，将连续的换行符替换为段落
+      const formattedSummary = summary
+        .replace(/\n\s*\n/g, '\n\n') // 标准化连续换行
+        .split('\n\n'); // 按段落分隔
 
-      // 获取渲染后的Markdown HTML（使用核心ReactMarkdown功能）
-      try {
-        // 创建一个临时渲染区域
-        const renderDiv = document.createElement('div');
-        renderDiv.style.display = 'none';
-        document.body.appendChild(renderDiv);
-
-        // 渲染Markdown内容
-        renderDiv.innerHTML = `<div id="temp-markdown">${summary.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
-        const markdownText = renderDiv.innerText || summary;
-        document.body.removeChild(renderDiv);
-
-        // 使用GitHub风格的Markdown渲染
-        // 注意：这是一个简化的Markdown渲染，用于PDF输出
-        const markdownHTML = markdownText
-          // 标题
-          .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-          .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-          .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-          // 斜体
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-          // 列表
-          .replace(/^\s*\- (.*$)/gm, '<li>$1</li>')
-          // 代码块
-          .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-          // 行内代码
-          .replace(/`([^`]+)`/g, '<code>$1</code>')
-          // 链接
-          .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>')
-          // 段落
-          .replace(/^\s*$/gm, '</p><p>');
-
-        contentDiv.innerHTML = `<p>${markdownHTML}</p>`;
-      } catch (renderError) {
-        console.error('Markdown渲染错误:', renderError);
-        // 回退方案：直接使用纯文本
-        contentDiv.innerText = summary;
-      }
+      formattedSummary.forEach(paragraph => {
+        if (paragraph.trim()) {
+          const p = document.createElement('p');
+          p.style.marginBottom = '12px';
+          p.innerText = paragraph.trim();
+          contentDiv.appendChild(p);
+        }
+      });
 
       tempContainer.appendChild(contentDiv);
-
-      // 添加必要的样式
-      const styleElement = document.createElement('style');
-      styleElement.textContent = `
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-        h1 { font-size: 24px; margin-top: 20px; margin-bottom: 10px; }
-        h2 { font-size: 20px; margin-top: 18px; margin-bottom: 9px; }
-        h3 { font-size: 16px; margin-top: 16px; margin-bottom: 8px; }
-        p { margin: 10px 0; }
-        pre { white-space: pre-wrap; background: #f6f8fa; padding: 10px; border-radius: 4px; }
-        code { font-family: Consolas, monospace; background-color: rgba(175, 184, 193, 0.2); padding: 0.2em 0.4em; border-radius: 3px; font-size: 85%; }
-        pre code { background-color: transparent; padding: 0; }
-        ul, ol { padding-left: 20px; }
-        li { margin: 5px 0; }
-        blockquote { border-left: 4px solid #ddd; padding-left: 10px; margin-left: 0; color: #555; }
-        .pdf-markdown-content { line-height: 1.6; }
-      `;
-      tempContainer.appendChild(styleElement);
 
       document.body.appendChild(tempContainer);
 
@@ -554,50 +470,16 @@ const AIDrawer = ({ isOpen, onClose, documentContent }) => {
                 maxHeight: '80vh',
                 overflow: 'auto',
               }}
-              ref={markdownContainerRef}
+              ref={contentContainerRef}
             >
-              <style>{`
-                @keyframes cursor-blink {
-                  0%, 100% { opacity: 1; }
-                  50% { opacity: 0; }
-                }
-                
-                @keyframes highlight-fade {
-                  0% { background-color: rgba(255,255,0,0.3); }
-                  100% { background-color: transparent; }
-                }
-                
-                .markdown-container {
-                  position: relative;
-                  word-break: break-word;
-                }
-                
-                .markdown-cursor {
-                  display: ${isGenerating ? 'inline-block' : 'none'};
-                  width: 2px;
-                  height: 1.2em;
-                  background-color: #333;
-                  margin-left: 1px;
-                  animation: cursor-blink 1s step-start infinite;
-                  vertical-align: text-bottom;
-                }
-                
-                .new-content {
-                  background-color: rgba(255,255,0,0.2);
-                  animation: highlight-fade 0.5s ease-out forwards;
-                }
-                
-                ${highlightStyles}
-              `}</style>
-              <div className="markdown-container">
-                <ReactMarkdown
-                  className="ai-summary-content"
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw]}
-                >
-                  {summary}
-                </ReactMarkdown>
-                {isGenerating && <span className="markdown-cursor"></span>}
+              <style>{textStyles}</style>
+              <div className="text-container">
+                {summary.split('\n\n').map((paragraph, index) => (
+                  <Paragraph key={index} className="text-paragraph">
+                    {paragraph}
+                  </Paragraph>
+                ))}
+                {isGenerating && <span className="text-cursor"></span>}
               </div>
             </div>
             {isGenerating && (
