@@ -18,9 +18,8 @@ import 'prismjs/components/prism-python';
 import 'prismjs/components/prism-sql';
 import 'prismjs/components/prism-tsx';
 import 'prismjs/components/prism-typescript';
-import { createEditor, Element, Node, Editor, Transforms, Text } from 'slate';
-import { withHistory } from 'slate-history';
-import { Editable, Slate, withReact } from 'slate-react';
+import { Element, Node, Text, Editor, Range } from 'slate';
+import { Editable, Slate } from 'slate-react';
 import {
   Toolbar,
   MarkButton,
@@ -37,24 +36,15 @@ import { HOTKEYS, toggleMark, withLayout } from './utils/editorHelpers';
 import { normalizeTokens } from './utils/normalize-tokens';
 import { prismThemeCss } from './utils/prismTheme';
 
-//引入yjs相关
-// Import the core binding
-import {
-  withYjs,
-  slateNodesToInsertDelta,
-  YjsEditor,
-  withYHistory,
-  withCursors,
-} from '@slate-yjs/core';
-
-// Import yjs and hocuspocus
-import * as Y from 'yjs';
-import { HocuspocusProvider } from '@hocuspocus/provider';
+// 协同相关
 import CursorOverlay from './components/CursorOverlay';
 import { useCollaborativeEditor } from './hooks/useCollaborativeEditor';
 import StatusIndicator from './components/StatusIndicator';
 import UserAvatars from './components/UserAvatars';
 import ActionButtons from './components/ActionButtons';
+import CommentModal from './components/CommentModal';
+import * as Y from 'yjs';
+import CommentList from './components/CommentList';
 
 // 常量定义
 const ParagraphType = 'paragraph';
@@ -101,16 +91,59 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
     setShowAIDrawer,
     handleOpenAIDrawer,
     handleCloseAIDrawer,
+    addComment,
+    yComments,
   } = useCollaborativeEditor(documentId);
 
-  // 代码高亮装饰器函数
-  const decorate = useCallback(([node, path]) => {
-    if (!node || !path) return [];
-    if (Element.isElement(node) && node.type === CodeBlockType) {
-      return decorateCodeBlock([node, path]);
+  // 评论弹窗相关状态
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [commentSelection, setCommentSelection] = useState(null);
+
+  // 记录选区
+  const editorSelectionRef = useRef(null);
+
+  // 辅助：全局 index 转 Slate path/offset
+  const getSlateRangeFromGlobalIndex = (editor, startIndex, endIndex) => {
+    let count = 0;
+    let anchor = null;
+    let focus = null;
+    for (const [node, path] of Node.texts(editor)) {
+      const len = Node.string(node).length;
+      if (anchor === null && count + len >= startIndex) {
+        anchor = { path, offset: startIndex - count };
+      }
+      if (focus === null && count + len >= endIndex) {
+        focus = { path, offset: endIndex - count };
+        break;
+      }
+      count += len;
     }
-    return [];
-  }, []);
+    return anchor && focus ? { anchor, focus } : null;
+  };
+
+  // 辅助：将 Slate path+offset 转为全局 index
+  const getGlobalIndex = (editor, path, offset) => {
+    let index = 0;
+    for (const [node, p] of Node.texts(editor)) {
+      if (p.toString() === path.toString()) {
+        index += offset;
+        break;
+      }
+      index += Node.string(node).length;
+    }
+    return index;
+  };
+
+  // 代码高亮装饰器函数，增加评论高亮
+  function decorate([node, path]) {
+    let decorations = [];
+    if (!node || !path) return decorations;
+    if (Element.isElement(node) && node.type === CodeBlockType) {
+      decorations = decorations.concat(decorateCodeBlock([node, path]));
+    }
+    // 注意：评论高亮现在通过 Editor.addMark 直接添加到文本上，不再需要在这里处理
+    return decorations;
+  }
 
   // 为代码块应用语法高亮装饰
   const decorateCodeBlock = ([block, blockPath]) => {
@@ -195,6 +228,29 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
     },
     [setValue],
   );
+
+  // 评论弹窗确认
+  const handleCommentOk = content => {
+    if (!editorSelectionRef.current) return;
+
+    // 直接使用保存的选区，不再计算全局索引
+    const { anchor, focus } = editorSelectionRef.current;
+
+    // 为了兼容 Yjs 协同，仍然计算全局索引
+    const startIndex = getGlobalIndex(editor, anchor.path, anchor.offset);
+    const endIndex = getGlobalIndex(editor, focus.path, focus.offset);
+
+    // 添加评论
+    addComment(
+      Math.min(startIndex, endIndex),
+      Math.max(startIndex, endIndex),
+      content,
+      '用户A',
+    );
+
+    setShowCommentModal(false);
+    editorSelectionRef.current = null;
+  };
 
   return (
     <div
@@ -329,6 +385,36 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
           <BlockButton format="center" icon="format_align_center" />
           <BlockButton format="right" icon="format_align_right" />
           <BlockButton format="justify" icon="format_align_justify" />
+          {/* 评论按钮 */}
+          <button
+            type="button"
+            style={{
+              marginLeft: 8,
+              padding: '0 12px',
+              border: '1px solid #aaa',
+              borderRadius: 4,
+              background: '#fff',
+              cursor: 'pointer',
+              height: 32,
+            }}
+            onClick={() => {
+              if (!editor.selection || Range.isCollapsed(editor.selection)) {
+                alert('请先选中要评论的文本');
+                return;
+              }
+              // 保存当前选区
+              editorSelectionRef.current = { ...editor.selection };
+              setShowCommentModal(true);
+            }}
+          >
+            <span
+              className="material-icons"
+              style={{ fontSize: 18, verticalAlign: 'middle' }}
+            >
+              mode_comment
+            </span>{' '}
+            评论
+          </button>
         </Toolbar>
 
         {/* 编辑区域 + 协同光标覆盖层 */}
@@ -400,6 +486,14 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
         onClose={handleCloseAIDrawer}
         documentContent={value}
       />
+
+      <CommentModal
+        isOpen={showCommentModal}
+        onOk={handleCommentOk}
+        onCancel={() => setShowCommentModal(false)}
+      />
+
+      <CommentList yComments={yComments} editor={editor} />
     </div>
   );
 };

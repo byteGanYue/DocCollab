@@ -17,12 +17,6 @@ importers:
       '@eslint/js':
         specifier: ^9.21.0
         version: 9.29.0
-      '@hocuspocus/extension-database':
-        specifier: ^3.1.7
-        version: 3.1.7(y-protocols@1.0.6(yjs@13.6.27))(yjs@13.6.27)
-      '@hocuspocus/server':
-        specifier: ^3.1.7
-        version: 3.1.7(y-protocols@1.0.6(yjs@13.6.27))(yjs@13.6.27)
       '@types/node':
         specifier: ^22.10.7
         version: 22.15.33

@@ -10,55 +10,37 @@ import React from 'react';
 const Leaf = ({ attributes, children, leaf }) => {
   const { text, ...rest } = leaf;
 
-  // 应用粗体样式
-  if (leaf.bold) {
-    children = <strong>{children}</strong>;
-  }
-
-  // 应用代码样式
+  let style = {};
+  if (leaf.bold) style.fontWeight = 'bold';
   if (leaf.code) {
-    children = (
-      <code
-        style={{
-          backgroundColor: '#f4f4f4',
-          border: '1px solid #e1e1e1',
-          borderRadius: '3px',
-          padding: '2px 4px',
-          fontSize: '0.9em',
-          fontFamily:
-            'Monaco, Menlo, "Ubuntu Mono", Consolas, "Courier New", monospace',
-        }}
-      >
-        {children}
-      </code>
-    );
+    style.fontFamily = 'monospace';
+    style.backgroundColor = '#eee';
+    style.padding = '2px 4px';
+    style.borderRadius = '4px';
   }
+  if (leaf.italic) style.fontStyle = 'italic';
+  if (leaf.underline) style.textDecoration = 'underline';
+  if (leaf.strikethrough)
+    style.textDecoration =
+      (style.textDecoration ? style.textDecoration + ' ' : '') + 'line-through';
+  if (leaf.color) style.color = leaf.color;
+  if (leaf.backgroundColor) style.backgroundColor = leaf.backgroundColor;
 
-  // 应用斜体样式
-  if (leaf.italic) {
-    children = <em>{children}</em>;
-  }
+  // 评论高亮处理
+  if (leaf.comment) {
+    // 如果 comment 是对象（包含评论信息），使用更明显的高亮样式
+    style.backgroundColor = 'rgba(255, 230, 0, 0.4)';
+    style.borderBottom = '2px solid #ffc107';
+    style.borderRadius = '2px';
+    style.padding = '0 1px';
+    style.cursor = 'pointer';
 
-  // 应用下划线样式
-  if (leaf.underline) {
-    children = <u>{children}</u>;
-  }
-
-  // 应用删除线样式
-  if (leaf.strikethrough) {
-    children = <s>{children}</s>;
-  }
-
-  // 处理文本颜色
-  if (leaf.color) {
-    children = <span style={{ color: leaf.color }}>{children}</span>;
-  }
-
-  // 处理背景颜色
-  if (leaf.backgroundColor) {
-    children = (
-      <span style={{ backgroundColor: leaf.backgroundColor }}>{children}</span>
-    );
+    // 添加标题提示，显示评论内容
+    if (typeof leaf.comment === 'object') {
+      attributes['title'] =
+        `${leaf.comment.author || '匿名'}: ${leaf.comment.content || ''}`;
+      attributes['data-comment-id'] = leaf.comment.id;
+    }
   }
 
   // 处理语法高亮token
@@ -76,13 +58,15 @@ const Leaf = ({ attributes, children, leaf }) => {
         cls !== 'code' &&
         cls !== 'strikethrough' &&
         cls !== 'color' &&
-        cls !== 'backgroundColor',
+        cls !== 'backgroundColor' &&
+        cls !== 'comment',
     );
 
     if (validTokenClasses.length > 0) {
       return (
         <span
           {...attributes}
+          style={style}
           className={validTokenClasses.map(cls => `token ${cls}`).join(' ')}
         >
           {children}
@@ -91,7 +75,11 @@ const Leaf = ({ attributes, children, leaf }) => {
     }
   }
 
-  return <span {...attributes}>{children}</span>;
+  return (
+    <span {...attributes} style={style}>
+      {children}
+    </span>
+  );
 };
 
 export default Leaf;
