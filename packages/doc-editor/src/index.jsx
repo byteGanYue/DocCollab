@@ -91,8 +91,13 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
     setShowAIDrawer,
     handleOpenAIDrawer,
     handleCloseAIDrawer,
+    comments,
     addComment,
+    deleteComment,
+    resolveComment,
+    navigateToComment,
     yComments,
+    printYjsStructure,
   } = useCollaborativeEditor(documentId);
 
   // 评论弹窗相关状态
@@ -241,17 +246,61 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
     const endIndex = getGlobalIndex(editor, focus.path, focus.offset);
     console.log('startIndex', startIndex, 'endIndex', endIndex);
     console.log('content', content);
+
     // 添加评论
-    addComment(
+    const success = addComment(
       Math.min(startIndex, endIndex),
       Math.max(startIndex, endIndex),
       content,
       '用户A',
     );
 
-    setShowCommentModal(false);
-    editorSelectionRef.current = null;
+    if (success) {
+      setShowCommentModal(false);
+      editorSelectionRef.current = null;
+    } else {
+      alert('该文本范围已有评论，请选择其他文本');
+    }
   };
+
+  // 处理评论删除
+  const handleDeleteComment = useCallback(
+    commentId => {
+      const success = deleteComment(commentId);
+      if (success) {
+        console.log('评论删除成功');
+      } else {
+        console.error('评论删除失败');
+      }
+    },
+    [deleteComment],
+  );
+
+  // 处理评论解决
+  const handleResolveComment = useCallback(
+    commentId => {
+      const success = resolveComment(commentId);
+      if (success) {
+        console.log('评论解决成功');
+      } else {
+        console.error('评论解决失败');
+      }
+    },
+    [resolveComment],
+  );
+
+  // 处理评论定位
+  const handleNavigateToComment = useCallback(
+    comment => {
+      const success = navigateToComment(comment);
+      if (success) {
+        console.log('定位到评论位置成功');
+      } else {
+        console.error('定位到评论位置失败');
+      }
+    },
+    [navigateToComment],
+  );
 
   return (
     <div
@@ -416,6 +465,32 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
             </span>{' '}
             评论
           </button>
+
+          {/* 调试按钮 - 打印 Yjs 结构 */}
+          <button
+            type="button"
+            style={{
+              marginLeft: 8,
+              padding: '0 12px',
+              border: '1px solid #ff9800',
+              borderRadius: 4,
+              background: '#fff',
+              color: '#ff9800',
+              cursor: 'pointer',
+              height: 32,
+              fontSize: '12px',
+            }}
+            onClick={() => {
+              printYjsStructure();
+              console.log('=== 当前评论状态 ===');
+              console.log('本地评论数组:', comments);
+              console.log('评论数量:', comments.length);
+              console.log('==================');
+            }}
+            title="打印 Yjs 协同数据结构"
+          >
+            🔍 调试
+          </button>
         </Toolbar>
 
         {/* 编辑区域 + 协同光标覆盖层 */}
@@ -494,7 +569,12 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
         onCancel={() => setShowCommentModal(false)}
       />
 
-      <CommentList yComments={yComments} editor={editor} />
+      <CommentList
+        comments={comments}
+        onDeleteComment={handleDeleteComment}
+        onResolveComment={handleResolveComment}
+        onNavigateToComment={handleNavigateToComment}
+      />
     </div>
   );
 };

@@ -34,7 +34,8 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   const isServerRunning = useRef(false);
   const editorRef = useRef(null);
 
-  // 评论相关 Yjs 数据结构
+  // 评论相关状态
+  const [comments, setComments] = useState([]);
   const yCommentsRef = useRef();
   const yTextRef = useRef();
 
@@ -43,20 +44,247 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     if (!docRef.current) return;
     yCommentsRef.current = docRef.current.getArray('comments');
     yTextRef.current = docRef.current.get('content', Y.XmlText);
-  }, [docRef]);
+
+    // 从本地存储加载评论
+    loadCommentsFromStorage();
+  }, [docRef, documentId]);
+
+  // 从本地存储加载评论
+  const loadCommentsFromStorage = useCallback(() => {
+    try {
+      const storageKey = `comments_${documentId}`;
+      const savedComments = localStorage.getItem(storageKey);
+      if (savedComments) {
+        const parsedComments = JSON.parse(savedComments);
+        setComments(parsedComments);
+
+        // 如果有 Yjs 评论数组，同步到 Yjs
+        if (yCommentsRef.current && parsedComments.length > 0) {
+          parsedComments.forEach(comment => {
+            if (
+              !yCommentsRef.current.toArray().some(c => c.id === comment.id)
+            ) {
+              yCommentsRef.current.push([comment]);
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load comments from storage:', error);
+    }
+  }, [documentId]);
+
+  // 保存评论到本地存储
+  const saveCommentsToStorage = useCallback(
+    commentsToSave => {
+      try {
+        const storageKey = `comments_${documentId}`;
+        localStorage.setItem(storageKey, JSON.stringify(commentsToSave));
+      } catch (error) {
+        console.error('Failed to save comments to storage:', error);
+      }
+    },
+    [documentId],
+  );
+
+  // 检查是否存在相同范围的评论
+  const checkDuplicateComment = useCallback(
+    (startIndex, endIndex) => {
+      return comments.some(
+        comment =>
+          comment.startIndex === startIndex && comment.endIndex === endIndex,
+      );
+    },
+    [comments],
+  );
 
   // 添加评论方法
-  const addComment = useCallback((startIndex, endIndex, content, author) => {
-    if (!yCommentsRef.current || !yTextRef.current || !editorRef.current) {
-      console.error('Comments, text reference or editor not initialized');
-      return;
-    }
+  const addComment = useCallback(
+    (startIndex, endIndex, content, author) => {
+      if (!yCommentsRef.current || !yTextRef.current || !editorRef.current) {
+        console.error('Comments, text reference or editor not initialized');
+        return;
+      }
 
+      // 检查是否已存在相同范围的评论
+      if (checkDuplicateComment(startIndex, endIndex)) {
+        console.warn('Comment already exists for this range');
+        return false;
+      }
+
+      try {
+        const editor = editorRef.current;
+        const commentId = `comment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        // 创建评论对象
+        const newComment = {
+          id: commentId,
+          startIndex,
+          endIndex,
+          content,
+          author,
+          time: Date.now(),
+          documentId,
+        };
+
+        // 保存当前选区
+        const savedSelection = editor.selection;
+
+        // 使用全局索引找到对应的 Slate 范围
+        let count = 0;
+        let anchor = null;
+        let focus = null;
+
+        for (const [node, path] of Node.texts(editor)) {
+          const len = Node.string(node).length;
+          if (anchor === null && count + len >= startIndex) {
+            anchor = { path, offset: startIndex - count };
+          }
+          if (focus === null && count + len >= endIndex) {
+            focus = { path, offset: endIndex - count };
+            break;
+          }
+          count += len;
+        }
+
+        if (!anchor || !focus) {
+          console.error('Failed to find text range for comment');
+          return false;
+        }
+
+        // 设置选区到要评论的文本
+        const commentRange = { anchor, focus };
+        Transforms.select(editor, commentRange);
+
+        // 添加评论标记到文本
+        Editor.addMark(editor, 'comment', commentId);
+
+        // 恢复原始选区
+        if (savedSelection) {
+          Transforms.select(editor, savedSelection);
+        }
+
+        // 更新本地评论状态
+        const updatedComments = [...comments, newComment];
+        setComments(updatedComments);
+
+        // 保存到本地存储
+        saveCommentsToStorage(updatedComments);
+
+        // 保存到 Yjs 数组以便协同
+        if (yCommentsRef.current) {
+          yCommentsRef.current.push([newComment]);
+
+          // 打印添加评论后的 Yjs 结构
+          console.log('=== 添加评论后的 Yjs 结构 ===');
+          console.log('新评论:', newComment);
+          console.log('Yjs 评论数组:', yCommentsRef.current.toArray());
+          console.log('Yjs 评论数组长度:', yCommentsRef.current.length);
+          console.log('Yjs 文本内容:', yTextRef.current.toString());
+          console.log('========================');
+        }
+
+        console.log('Comment added successfully:', newComment);
+        return true;
+      } catch (error) {
+        console.error('Error adding comment:', error);
+        return false;
+      }
+    },
+    [comments, checkDuplicateComment, saveCommentsToStorage],
+  );
+
+  // 删除评论方法
+  const deleteComment = useCallback(
+    commentId => {
+      try {
+        const editor = editorRef.current;
+        if (!editor) return false;
+
+        // 从本地状态中移除
+        const updatedComments = comments.filter(c => c.id !== commentId);
+        setComments(updatedComments);
+
+        // 保存到本地存储
+        saveCommentsToStorage(updatedComments);
+
+        // 从 Yjs 数组中移除
+        if (yCommentsRef.current) {
+          const yCommentsArray = yCommentsRef.current.toArray();
+          const index = yCommentsArray.findIndex(c => c.id === commentId);
+          if (index !== -1) {
+            yCommentsRef.current.delete(index);
+          }
+        }
+
+        // 从编辑器中移除评论标记
+        for (const [node, path] of Node.texts(editor)) {
+          if (node.comment === commentId) {
+            Transforms.setNodes(editor, { comment: undefined }, { at: path });
+          }
+        }
+
+        console.log('Comment deleted successfully:', commentId);
+        return true;
+      } catch (error) {
+        console.error('Error deleting comment:', error);
+        return false;
+      }
+    },
+    [comments, saveCommentsToStorage],
+  );
+
+  // 解析评论方法
+  const resolveComment = useCallback(
+    commentId => {
+      try {
+        const editor = editorRef.current;
+        if (!editor) return false;
+
+        // 从本地状态中移除
+        const updatedComments = comments.filter(c => c.id !== commentId);
+        setComments(updatedComments);
+
+        // 保存到本地存储
+        saveCommentsToStorage(updatedComments);
+
+        // 从 Yjs 数组中移除
+        if (yCommentsRef.current) {
+          const yCommentsArray = yCommentsRef.current.toArray();
+          const index = yCommentsArray.findIndex(c => c.id === commentId);
+          if (index !== -1) {
+            yCommentsRef.current.delete(index);
+          }
+        }
+
+        // 从编辑器中移除评论标记
+        for (const [node, path] of Node.texts(editor)) {
+          if (node.comment === commentId) {
+            Transforms.setNodes(editor, { comment: undefined }, { at: path });
+          }
+        }
+
+        console.log('Comment resolved successfully:', commentId);
+        return true;
+      } catch (error) {
+        console.error('Error resolving comment:', error);
+        return false;
+      }
+    },
+    [comments, saveCommentsToStorage],
+  );
+
+  // 定位到评论位置
+  const navigateToComment = useCallback(comment => {
     try {
       const editor = editorRef.current;
-
-      // 保存当前选区
-      const savedSelection = editor.selection;
+      if (
+        !editor ||
+        comment.startIndex === undefined ||
+        comment.endIndex === undefined
+      ) {
+        return false;
+      }
 
       // 使用全局索引找到对应的 Slate 范围
       let count = 0;
@@ -65,80 +293,34 @@ export function useCollaborativeEditor(documentId = 'default-document') {
 
       for (const [node, path] of Node.texts(editor)) {
         const len = Node.string(node).length;
-        if (anchor === null && count + len >= startIndex) {
-          anchor = { path, offset: startIndex - count };
+        if (anchor === null && count + len >= comment.startIndex) {
+          anchor = { path, offset: comment.startIndex - count };
         }
-        if (focus === null && count + len >= endIndex) {
-          focus = { path, offset: endIndex - count };
+        if (focus === null && count + len >= comment.endIndex) {
+          focus = { path, offset: comment.endIndex - count };
           break;
         }
         count += len;
       }
 
-      if (!anchor || !focus) {
-        console.error('Failed to find text range for comment');
-        return;
-      }
+      if (anchor && focus) {
+        const range = { anchor, focus };
+        Transforms.select(editor, range);
 
-      // 设置选区到要评论的文本
-      const commentRange = { anchor, focus };
-      Transforms.select(editor, commentRange);
-
-      // 直接添加评论标记
-      Editor.addMark(editor, 'comment', {
-        id: Date.now().toString(),
-        content,
-        author,
-        time: Date.now(),
-      });
-
-      // 恢复原始选区
-      if (savedSelection) {
-        Transforms.select(editor, savedSelection);
-      }
-
-      console.log('Comment added successfully');
-
-      // 同时也保存到 Yjs 数组中以便协同
-      if (startIndex !== undefined && endIndex !== undefined) {
-        // 确保索引在有效范围内
-        const validStartIndex = Math.max(
-          0,
-          Math.min(startIndex, yTextRef.current.length),
+        // 滚动到选中位置
+        const editorElement = document.querySelector(
+          '[data-slate-editor="true"]',
         );
-        const validEndIndex = Math.max(
-          validStartIndex,
-          Math.min(endIndex, yTextRef.current.length),
-        );
-
-        // 创建相对位置
-        const start = Y.createRelativePositionFromTypeIndex(
-          yTextRef.current,
-          validStartIndex,
-        );
-        const end = Y.createRelativePositionFromTypeIndex(
-          yTextRef.current,
-          validEndIndex,
-        );
-
-        if (start && end) {
-          const startJSON = JSON.stringify(start);
-          const endJSON = JSON.stringify(end);
-
-          // 添加评论到 Yjs 数组
-          yCommentsRef.current.push([
-            {
-              start: startJSON,
-              end: endJSON,
-              content,
-              author,
-              time: Date.now(),
-            },
-          ]);
+        if (editorElement) {
+          editorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
+
+        return true;
       }
+      return false;
     } catch (error) {
-      console.error('Error adding comment:', error);
+      console.error('Error navigating to comment:', error);
+      return false;
     }
   }, []);
 
@@ -307,20 +489,25 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   const handleOpenAIDrawer = useCallback(() => setShowAIDrawer(true), []);
   const handleCloseAIDrawer = useCallback(() => setShowAIDrawer(false), []);
 
-  // 监听 yComments 变化，强制刷新外部组件
+  // 监听 yComments 变化，同步到本地状态
   useEffect(() => {
     if (!yCommentsRef.current) return;
     const handler = () => {
-      setValue(v => [...v]);
-      // 触发编辑器重新装饰
-      if (editorRef.current) {
-        const currentSelection = editorRef.current.selection;
-        editorRef.current.onChange();
-        // 保持选区
-        if (currentSelection) {
-          editorRef.current.selection = currentSelection;
-        }
-      }
+      const yCommentsArray = yCommentsRef.current.toArray();
+      setComments(yCommentsArray);
+      saveCommentsToStorage(yCommentsArray);
+
+      // 打印 Yjs 协同数据结构
+      console.log('=== Yjs 协同数据结构 ===');
+      console.log('Yjs 评论数组:', yCommentsArray);
+      console.log('Yjs 评论数组长度:', yCommentsArray.length);
+      console.log('Yjs 文档对象:', docRef.current);
+      console.log('Yjs 文档客户端ID:', docRef.current.clientID);
+      console.log('Yjs 文档根节点:', docRef.current.getMap());
+      console.log('Yjs 文本内容:', yTextRef.current);
+      console.log('Yjs 文本长度:', yTextRef.current?.length);
+      console.log('Yjs 文本内容字符串:', yTextRef.current?.toString());
+      console.log('========================');
     };
     yCommentsRef.current.observe(handler);
     return () => {
@@ -328,7 +515,30 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         yCommentsRef.current.unobserve(handler);
       }
     };
-  }, [yCommentsRef]);
+  }, [yCommentsRef, saveCommentsToStorage]);
+
+  // 添加打印 Yjs 结构的方法
+  const printYjsStructure = useCallback(() => {
+    console.log('=== 手动打印 Yjs 结构 ===');
+    console.log('Yjs 文档:', docRef.current);
+    console.log('Yjs 评论数组:', yCommentsRef.current);
+    console.log('Yjs 文本内容:', yTextRef.current);
+
+    if (yCommentsRef.current) {
+      console.log('评论数组内容:', yCommentsRef.current.toArray());
+      console.log('评论数组长度:', yCommentsRef.current.length);
+    }
+
+    if (yTextRef.current) {
+      console.log('文本内容长度:', yTextRef.current.length);
+      console.log('文本内容:', yTextRef.current.toString());
+    }
+
+    // 打印所有共享类型
+    const sharedTypes = docRef.current.share;
+    console.log('所有共享类型:', sharedTypes);
+    console.log('========================');
+  }, []);
 
   return {
     editor,
@@ -344,7 +554,12 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     handleOpenAIDrawer,
     handleCloseAIDrawer,
     // 评论相关
-    yComments: yCommentsRef,
+    comments,
     addComment,
+    deleteComment,
+    resolveComment,
+    navigateToComment,
+    yComments: yCommentsRef,
+    printYjsStructure,
   };
 }
