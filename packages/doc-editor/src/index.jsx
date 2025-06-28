@@ -239,7 +239,8 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
     // 为了兼容 Yjs 协同，仍然计算全局索引
     const startIndex = getGlobalIndex(editor, anchor.path, anchor.offset);
     const endIndex = getGlobalIndex(editor, focus.path, focus.offset);
-
+    console.log('startIndex', startIndex, 'endIndex', endIndex);
+    console.log('content', content);
     // 添加评论
     addComment(
       Math.min(startIndex, endIndex),

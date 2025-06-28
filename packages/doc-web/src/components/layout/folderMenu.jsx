@@ -326,8 +326,8 @@ const FolderMenu = () => {
       const folderDocuments = documentsByFolder.get(folder.autoFolderId) || [];
 
       // 转换文档为菜单项
-      const documentMenuItems = folderDocuments.map(doc => ({
-        key: `collab_user_${userData.userId}_doc_${doc.documentId}`,
+      const documentMenuItems = folderDocuments.map((doc, index) => ({
+        key: `collab_user_${userData.userId}_doc_${doc.documentId}_${index}`,
         label: <EllipsisLabel text={doc.documentName} />,
         isLeaf: true,
         backendData: doc,
@@ -363,8 +363,8 @@ const FolderMenu = () => {
     );
 
     // 处理根级文档
-    const rootDocuments = documentsByFolder.get('root').map(doc => ({
-      key: `collab_user_${userData.userId}_doc_${doc.documentId}`,
+    const rootDocuments = documentsByFolder.get('root').map((doc, index) => ({
+      key: `collab_user_${userData.userId}_doc_${doc.documentId}_${index}`,
       label: <EllipsisLabel text={doc.documentName} />,
       isLeaf: true,
       backendData: doc,
@@ -729,16 +729,18 @@ const FolderMenu = () => {
             matchedFolderData.documents &&
             matchedFolderData.documents.length > 0
           ) {
-            const documentMenuItems = matchedFolderData.documents.map(doc => {
-              const docKey = `doc_${doc.documentId}`;
-              return {
-                key: docKey,
-                label: <EllipsisLabel text={doc.documentName} />,
-                isLeaf: true,
-                backendData: doc,
-                documentId: doc.documentId,
-              };
-            });
+            const documentMenuItems = matchedFolderData.documents.map(
+              (doc, index) => {
+                const docKey = `doc_${doc.documentId}`;
+                return {
+                  key: docKey,
+                  label: <EllipsisLabel text={doc.documentName} />,
+                  isLeaf: true,
+                  backendData: doc,
+                  documentId: doc.documentId,
+                };
+              },
+            );
 
             // 将文档添加到子项中
             filteredChildren = [...filteredChildren, ...documentMenuItems];
@@ -942,7 +944,8 @@ const FolderMenu = () => {
           const findDocumentInMenu = items => {
             if (!Array.isArray(items)) return null;
             for (const item of items) {
-              if (item.key === `doc_${documentId}`) {
+              // 新的key格式: doc_${documentId}_${index}
+              if (item.key && item.key.startsWith(`doc_${documentId}_`)) {
                 return item.key;
               }
               if (item.children) {
@@ -982,22 +985,39 @@ const FolderMenu = () => {
       return [];
     }
 
-    return menuData
-      .filter(item => {
-        if (!item) {
-          console.warn('⚠️ 发现空菜单项');
-          return false;
-        }
-        if (!item.key) {
-          console.warn('⚠️ 菜单项缺少key:', item);
-          return false;
-        }
-        return true;
-      })
-      .map(item => ({
-        ...item,
-        children: item.children ? validateMenuData(item.children) : undefined,
-      }));
+    // 用于检查key唯一性的Set
+    const usedKeys = new Set();
+
+    const validateAndClean = items => {
+      if (!Array.isArray(items)) return [];
+
+      return items
+        .filter(item => {
+          if (!item) {
+            console.warn('⚠️ 发现空菜单项');
+            return false;
+          }
+          if (!item.key) {
+            console.warn('⚠️ 菜单项缺少key:', item);
+            return false;
+          }
+
+          // 检查key唯一性
+          if (usedKeys.has(item.key)) {
+            console.warn('⚠️ 发现重复的key:', item.key, item);
+            return false; // 过滤掉重复的key
+          }
+          usedKeys.add(item.key);
+
+          return true;
+        })
+        .map(item => ({
+          ...item,
+          children: item.children ? validateAndClean(item.children) : undefined,
+        }));
+    };
+
+    return validateAndClean(menuData);
   };
 
   // 获取文件夹列表
@@ -1204,7 +1224,7 @@ const FolderMenu = () => {
       );
 
       // 将文档转换为菜单项并添加到children中
-      const documentMenuItems = folderDocumentList.map(doc => {
+      const documentMenuItems = folderDocumentList.map((doc, index) => {
         const docKey = `doc_${doc.documentId}`;
         return {
           key: docKey,
@@ -1254,7 +1274,7 @@ const FolderMenu = () => {
     const sortedFolderTree = sortFolders(folderTree);
 
     // 将根级文档转换为菜单项
-    const rootDocumentMenuItems = rootDocuments.map(doc => {
+    const rootDocumentMenuItems = rootDocuments.map((doc, index) => {
       const docKey = `doc_${doc.documentId}`;
       return {
         key: docKey,
@@ -1269,7 +1289,6 @@ const FolderMenu = () => {
         isLeaf: true,
         backendData: doc,
         documentId: doc.documentId,
-        // 移除onClick属性，因为Antd Menu不支持，改为在handleMenuSelect中处理
       };
     });
 
@@ -1328,28 +1347,30 @@ const FolderMenu = () => {
     else if (selectedKey === 'collaboration') {
       navigate('/collaboration');
     }
-    // 处理协同文档中的文档点击
-    else if (
-      selectedKey &&
-      selectedKey.includes('collab_user_') &&
-      selectedKey.includes('_doc_')
-    ) {
-      // 解析协同文档的key: collab_user_{userId}_doc_{documentId}
-      const parts = selectedKey.split('_');
-      const documentId = parts[parts.length - 1]; // 获取文档ID
-
-      // 跳转到协同编辑器，添加协同标识
-      navigate(`/doc-editor/${documentId}?collaborative=true`);
-    }
     // 处理普通文档点击导航
     else if (selectedKey && selectedKey.startsWith('doc_')) {
-      const documentId = selectedKey.replace('doc_', '');
+      // 新的key格式: doc_${documentId}_${index}
+      const parts = selectedKey.split('_');
+      const documentId = parts[1]; // 获取documentId部分
 
       if (documentId) {
         navigate(`/doc-editor/${documentId}`);
       } else {
         console.warn('⚠️ 无法从key中解析documentId:', selectedKey);
       }
+    }
+    // 处理协同文档中的文档点击
+    else if (
+      selectedKey &&
+      selectedKey.includes('collab_user_') &&
+      selectedKey.includes('_doc_')
+    ) {
+      // 新的key格式: collab_user_{userId}_doc_{documentId}_{index}
+      const parts = selectedKey.split('_');
+      const documentId = parts[parts.length - 2]; // 获取倒数第二个部分作为documentId
+
+      // 跳转到协同编辑器，添加协同标识
+      navigate(`/doc-editor/${documentId}?collaborative=true`);
     }
     // 处理以doc开头的其他文档格式
     else if (
@@ -2217,7 +2238,9 @@ const FolderMenu = () => {
           onClick={e => {
             // 如果是文档项，点击文档名可以直接跳转
             if (isFile && !item.key.includes('collab_user_')) {
-              const documentId = item.key.replace('doc_', '');
+              // 新的key格式: doc_${documentId}_${index}
+              const parts = item.key.split('_');
+              const documentId = parts[1]; // 获取documentId部分
               if (documentId) {
                 // 阻止事件冒泡，因为我们要自己处理导航
                 e.stopPropagation();
