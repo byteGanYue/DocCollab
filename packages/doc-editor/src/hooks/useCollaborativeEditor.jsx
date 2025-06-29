@@ -446,6 +446,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   // 创建编辑器实例，使用 useMemo 避免重复创建
   const editor = useMemo(() => {
     if (!provider) {
+      // 本地模式下使用强制布局
       const e = withLayout(withHistory(withReact(createEditor())));
       editorRef.current = e;
       return e;
@@ -453,8 +454,14 @@ export function useCollaborativeEditor(documentId = 'default-document') {
 
     // 使用当前文档的共享类型
     const sharedType = docRef.current.get('content', Y.XmlText);
-    const e = withLayout(
-      withYHistory(
+
+    // 在协同模式下，只有当文档为空时才应用强制布局
+    const hasContent = sharedType && sharedType.toString() !== '';
+
+    // 如果文档已有内容，不使用强制布局
+    let e;
+    if (hasContent) {
+      e = withYHistory(
         withCursors(
           withYjs(withReact(createEditor()), sharedType),
           provider.awareness,
@@ -465,8 +472,25 @@ export function useCollaborativeEditor(documentId = 'default-document') {
             },
           },
         ),
-      ),
-    );
+      );
+    } else {
+      // 文档为空时才应用强制布局
+      e = withLayout(
+        withYHistory(
+          withCursors(
+            withYjs(withReact(createEditor()), sharedType),
+            provider.awareness,
+            {
+              data: {
+                name: `用户${Math.floor(Math.random() * 1000)}`,
+                color: '#' + Math.floor(Math.random() * 16777215).toString(16),
+              },
+            },
+          ),
+        ),
+      );
+    }
+
     e.docRef = docRef;
 
     // 自定义 insertText 方法，确保新输入的内容不继承评论标记
@@ -484,13 +508,14 @@ export function useCollaborativeEditor(documentId = 'default-document') {
       insertText(text);
     };
 
-    // 保证至少有一个段落
+    // 保证至少有一个段落，但不强制插入标题
     const { normalizeNode } = e;
     e.normalizeNode = entry => {
       const [node] = entry;
       if (!Editor.isEditor(node) || node.children.length > 0) {
         return normalizeNode(entry);
       }
+      // 只插入一个空段落，不插入标题
       Transforms.insertNodes(
         e,
         {
@@ -550,10 +575,13 @@ export function useCollaborativeEditor(documentId = 'default-document') {
       }
       const sharedType = YjsEditor.sharedType(editor);
       if (sharedType && sharedType.toString() === '') {
+        // 只有在文档为空时才插入默认内容
+        console.log('[文档初始化] 新文档，插入默认内容');
         const delta = slateNodesToInsertDelta(defaultInitialValue);
         sharedType.applyDelta(delta);
         valueInitialized.current = true;
       } else {
+        console.log('[文档初始化] 文档已存在内容，不插入默认内容');
         valueInitialized.current = true;
       }
     };

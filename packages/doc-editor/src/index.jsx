@@ -32,7 +32,7 @@ import {
   ColorButton,
   AIDrawer,
 } from './components';
-import { HOTKEYS, toggleMark, withLayout } from './utils/editorHelpers';
+import { HOTKEYS, toggleMark } from './utils/editorHelpers';
 import { normalizeTokens } from './utils/normalize-tokens';
 import { prismThemeCss } from './utils/prismTheme';
 
