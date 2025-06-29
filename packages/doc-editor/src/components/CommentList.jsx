@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Editor, Node } from 'slate';
 
 const CommentList = ({
@@ -8,13 +8,71 @@ const CommentList = ({
   onNavigateToComment,
 }) => {
   const [localComments, setLocalComments] = useState([]);
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [position, setPosition] = useState({
+    x: window.innerWidth - 320,
+    y: 80,
+  });
+  const dragRef = useRef(null);
+  const isDraggingRef = useRef(false);
+  const dragStartPos = useRef({ x: 0, y: 0 });
+
   // 同步评论数据
   useEffect(() => {
     if (comments && Array.isArray(comments)) {
       setLocalComments(comments);
     }
   }, [comments]);
+
+  // 拖拽相关事件处理
+  useEffect(() => {
+    const handleMouseDown = e => {
+      // 检查是否点击了拖拽区域（标题栏）
+      if (e.target.closest('.comment-drag-handle')) {
+        isDraggingRef.current = true;
+        setIsDragging(true);
+        dragStartPos.current = {
+          x: e.clientX - position.x,
+          y: e.clientY - position.y,
+        };
+        e.preventDefault();
+      }
+    };
+
+    const handleMouseMove = e => {
+      if (isDraggingRef.current) {
+        const newX = e.clientX - dragStartPos.current.x;
+        const newY = e.clientY - dragStartPos.current.y;
+
+        // 限制在窗口范围内
+        const maxX = window.innerWidth - 300;
+        const maxY = window.innerHeight - 200;
+
+        setPosition({
+          x: Math.max(0, Math.min(newX, maxX)),
+          y: Math.max(0, Math.min(newY, maxY)),
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        setIsDragging(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [position]);
 
   if (localComments.length === 0) return null;
 
@@ -37,67 +95,108 @@ const CommentList = ({
   };
 
   return (
-    <>
-      {isCollapsed ? (
-        <div
-          style={{
-            position: 'fixed',
-            right: 20,
-            top: 80,
-            width: 300,
-            maxHeight: 'calc(100vh - 98px)',
-            background: '#fff',
-            border: '1px solid #e0e0e0',
-            borderRadius: 8,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            zIndex: 1000,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          {/* 标题栏 */}
-          <div
+    <div
+      ref={dragRef}
+      style={{
+        position: 'fixed',
+        left: position.x,
+        top: position.y,
+        width: 300,
+        maxHeight: 'calc(100vh - 100px)',
+        background: '#fff',
+        border: '1px solid #e0e0e0',
+        borderRadius: 8,
+        boxShadow: isDragging
+          ? '0 8px 24px rgba(0,0,0,0.25)'
+          : '0 4px 12px rgba(0,0,0,0.15)',
+        zIndex: 1000,
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        cursor: isDragging ? 'grabbing' : 'default',
+        userSelect: 'none',
+        transition: isDragging ? 'none' : 'box-shadow 0.2s ease',
+      }}
+    >
+      {/* 标题栏 - 可拖拽区域 */}
+      <div
+        className="comment-drag-handle"
+        style={{
+          padding: '12px 16px',
+          borderBottom: '1px solid #e0e0e0',
+          background: '#f8f9fa',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: 'grab',
+          userSelect: 'none',
+          flexShrink: 0,
+        }}
+        onMouseDown={e => {
+          if (e.target.closest('.comment-drag-handle')) {
+            e.currentTarget.style.cursor = 'grabbing';
+          }
+        }}
+        onMouseUp={e => {
+          e.currentTarget.style.cursor = 'grab';
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '16px' }}>💬</span>
+          <h4
             style={{
-              padding: '12px 16px',
-              borderBottom: '1px solid #e0e0e0',
-              background: '#f8f9fa',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
+              margin: 0,
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#333',
             }}
           >
-            <h4
-              style={{
-                margin: 0,
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#333',
-              }}
-            >
-              评论列表 ({localComments.length})
-            </h4>
-            <span
-              style={{
-                fontSize: '12px',
-                color: '#666',
-                cursor: 'pointer',
-              }}
-              onClick={() => setLocalComments([])}
-            >
-              清空
-            </span>
-            <button onClick={() => setIsCollapsed(!isCollapsed)}>
-              {!isCollapsed ? '展开' : '收起'}
-            </button>
-          </div>
+            评论列表 ({localComments.length})
+          </h4>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              borderRadius: '4px',
+              fontSize: '16px',
+              color: '#666',
+            }}
+            title={isCollapsed ? '展开' : '折叠'}
+          >
+            {isCollapsed ? '▼' : '▲'}
+          </button>
+          <button
+            onClick={() => setLocalComments([])}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              borderRadius: '4px',
+              fontSize: '12px',
+              color: '#666',
+            }}
+            title="清空评论"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
 
-          {/* 评论列表 */}
+      {/* 评论列表内容 */}
+      {!isCollapsed && (
+        <>
           <div
             style={{
               flex: 1,
               overflowY: 'auto',
               padding: '8px',
+              minHeight: 0,
             }}
           >
             {localComments.map((comment, index) => (
@@ -260,67 +359,14 @@ const CommentList = ({
               background: '#f8f9fa',
               borderTop: '1px solid #e0e0e0',
               textAlign: 'center',
+              flexShrink: 0,
             }}
           >
             共 {localComments.length} 条评论
           </div>
-        </div>
-      ) : (
-        <div
-          style={{
-            position: 'fixed',
-            right: 20,
-            top: 80,
-            width: 300,
-            maxHeight: 'calc(100vh - 98px)',
-            background: '#fff',
-            border: '1px solid #e0e0e0',
-            borderRadius: 8,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            zIndex: 1000,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          {/* 标题栏 */}
-          <div
-            style={{
-              padding: '12px 16px',
-              borderBottom: '1px solid #e0e0e0',
-              background: '#f8f9fa',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <h4
-              style={{
-                margin: 0,
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#333',
-              }}
-            >
-              评论列表 ({localComments.length})
-            </h4>
-            <span
-              style={{
-                fontSize: '12px',
-                color: '#666',
-                cursor: 'pointer',
-              }}
-              onClick={() => setLocalComments([])}
-            >
-              清空
-            </span>
-            <button onClick={() => setIsCollapsed(!isCollapsed)}>
-              {!isCollapsed ? '展开' : '收起'}
-            </button>
-          </div>
-        </div>
+        </>
       )}
-    </>
+    </div>
   );
 };
 
