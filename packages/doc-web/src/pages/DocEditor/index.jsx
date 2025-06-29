@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo } from 'react';
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  useCallback,
+} from 'react';
 import { EditorSDK } from '@byteganyue/editorsdk';
 import { useParams } from 'react-router-dom';
 import { documentAPI } from '@/utils/api';
@@ -8,6 +14,8 @@ import { documentAPI } from '@/utils/api';
  * 使用唯一的documentId作为key，确保切换文档时完全重新创建编辑器实例
  * 实现文档间完全隔离
  */
+const AUTO_SAVE_DELAY = 1000; // 自动保存防抖间隔(ms)
+
 const DocEditor = () => {
   const { id } = useParams();
 
@@ -24,6 +32,71 @@ const DocEditor = () => {
 
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
   const userId = userInfo.userId;
+
+  // 编辑器内容状态
+  const [editorValue, setEditorValue] = useState(undefined);
+  // 加载状态
+  const [loading, setLoading] = useState(false);
+  // 保存状态
+  const [saving, setSaving] = useState(false);
+  // 防抖保存定时器
+  const saveTimer = useRef(null);
+  // 记录上次保存内容
+  const lastSavedValue = useRef(undefined);
+
+  // 加载文档内容
+  const fetchDocumentContent = useCallback(async () => {
+    if (!documentId || !userId || documentId.startsWith('temp_')) {
+      setEditorValue(undefined); // 新建文档用默认内容
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await documentAPI.getDocument(documentId, userId);
+      console.log('API获取后端的response', response);
+      if (response.success && response.data) {
+        // 兼容后端返回的内容为空
+        setEditorValue(response.data.content || undefined);
+        lastSavedValue.current = response.data.content || undefined;
+        console.log('setEditorValue', response.data.content);
+      } else {
+        setEditorValue(undefined);
+        lastSavedValue.current = undefined;
+      }
+    } catch {
+      setEditorValue(undefined);
+      lastSavedValue.current = undefined;
+    } finally {
+      setLoading(false);
+    }
+  }, [documentId, userId]);
+
+  // 自动保存逻辑（防抖）
+  const handleEditorChange = useCallback(
+    value => {
+      setEditorValue(value);
+      // 仅保存已存在的文档
+      if (!documentId || documentId.startsWith('temp_')) return;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(async () => {
+        // 避免重复保存相同内容
+        if (JSON.stringify(value) === JSON.stringify(lastSavedValue.current))
+          return;
+        setSaving(true);
+        try {
+          await documentAPI.updateDocument(documentId, {
+            content: JSON.stringify(value),
+          });
+          lastSavedValue.current = value;
+        } catch {
+          // 可加错误提示
+        } finally {
+          setSaving(false);
+        }
+      }, AUTO_SAVE_DELAY);
+    },
+    [documentId],
+  );
 
   // 组件挂载时打印调试信息
   useEffect(() => {
@@ -54,16 +127,65 @@ const DocEditor = () => {
     };
   }, [documentId]);
 
+  // 切换文档时加载内容
+  useEffect(() => {
+    fetchDocumentContent();
+    // 切换文档时清除保存定时器
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [fetchDocumentContent]);
+
+  // 组件卸载时自动保存一次
+  useEffect(() => {
+    return () => {
+      if (
+        documentId &&
+        !documentId.startsWith('temp_') &&
+        editorValue &&
+        JSON.stringify(editorValue) !== JSON.stringify(lastSavedValue.current)
+      ) {
+        documentAPI.updateDocument(documentId, {
+          content: JSON.stringify(editorValue),
+        });
+      }
+    };
+  }, [documentId, editorValue]);
+
   // 监控组件重新渲染
   console.log(`[DocEditor] 渲染 - 文档ID: ${documentId}`);
 
   return (
     <div className="doc-editor-page">
+      {/* 编辑器加载中提示 */}
+      {loading && (
+        <div style={{ padding: 20, color: '#888' }}>文档加载中...</div>
+      )}
+      {/* 自动保存状态提示 */}
+      {saving && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 10,
+            right: 10,
+            color: '#888',
+            zIndex: 9999,
+          }}
+        >
+          正在自动保存...
+        </div>
+      )}
       {/* 
         使用documentId作为key属性，确保文档切换时编辑器组件被完全卸载和重建
         这样可以确保文档间的协同上下文完全隔离，避免互相干扰
       */}
-      <EditorSDK key={documentId} documentId={documentId} userId={userId} />
+      <EditorSDK
+        key={documentId}
+        documentId={documentId}
+        userId={userId}
+        value={editorValue}
+        onChange={handleEditorChange}
+      />
 
       {/* 调试信息 */}
       <div

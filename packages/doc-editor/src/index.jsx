@@ -76,12 +76,16 @@ const defaultInitialValue = [
  * 支持代码高亮功能
  * 支持多用户实时协同编辑
  */
-const EditorSDK = ({ documentId = 'default-document' }) => {
+const EditorSDK = ({
+  documentId = 'default-document',
+  value: externalValue,
+  onChange: externalOnChange,
+}) => {
   // 使用自定义 hook 管理协同编辑器状态
   const {
     editor,
-    value,
-    setValue,
+    value: internalValue,
+    setValue: setInternalValue,
     isConnected,
     onlineUsers,
     remoteUsers,
@@ -100,6 +104,9 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
     printYjsStructure,
   } = useCollaborativeEditor(documentId);
   // value 就是当前文档内容（Slate节点数组）
+  // 优先使用外部传入的 value
+  const value = externalValue !== undefined ? externalValue : internalValue;
+  const setValue = externalOnChange || setInternalValue;
   console.log('当前文档内容（Slate节点数组）', value);
   // 评论弹窗相关状态
   const [showCommentModal, setShowCommentModal] = useState(false);
