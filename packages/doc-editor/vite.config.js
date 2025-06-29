@@ -46,8 +46,5 @@ export default defineConfig({
     root: '.',
     publicDir: false,
     appType: 'spa',
-    optimizeDeps: {
-      entries: ['src/examples/HoveringToolbarExample.jsx'],
-    },
   }),
 });

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Modal } from 'antd';
-
 const ActionButtons = ({ onBackHistoryProps, onAI, onHelp }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
