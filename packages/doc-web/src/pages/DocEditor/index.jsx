@@ -1,17 +1,29 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { EditorSDK } from '@byteganyue/editorsdk';
 import { useParams } from 'react-router-dom';
 import { documentAPI } from '@/utils/api';
 
 const DocEditor = () => {
-  const documentId = useParams().id;
+  const { id } = useParams();
+
+  // 使用 useMemo 确保 documentId 稳定，避免重复渲染
+  const documentId = useMemo(() => {
+    // 如果没有 id 参数，生成一个唯一的临时 ID
+    if (!id) {
+      const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log('生成临时文档ID:', tempId);
+      return tempId;
+    }
+    return id;
+  }, [id]);
+
   useEffect(() => {
     // 组件卸载时的清理函数
     return () => {
       const isEdit = localStorage.getItem('isEdit') === 'true';
       console.log('isEdit', isEdit);
       console.log('documentId', documentId);
-      if (isEdit && documentId) {
+      if (isEdit && documentId && !documentId.startsWith('temp_')) {
         console.log('documentId', documentId);
         // 调用创建历史版本API
         documentAPI
@@ -30,7 +42,7 @@ const DocEditor = () => {
 
   return (
     <div className="doc-editor-page">
-      <EditorSDK />
+      <EditorSDK documentId={documentId} />
     </div>
   );
 };

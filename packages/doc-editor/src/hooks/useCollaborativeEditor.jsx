@@ -33,6 +33,8 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   const docRef = useRef(new Y.Doc());
   const isServerRunning = useRef(false);
   const editorRef = useRef(null);
+  const providerRef = useRef(null);
+  const lastDocumentId = useRef(documentId);
 
   // 评论相关状态
   const [comments, setComments] = useState([]);
@@ -346,10 +348,20 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     }
   }, []);
 
-  // 创建Hocuspocus Provider
+  // 创建Hocuspocus Provider，使用 useMemo 避免重复创建
   const provider = useMemo(() => {
+    // 如果 documentId 没有变化，返回现有的 provider
+    if (providerRef.current && lastDocumentId.current === documentId) {
+      return providerRef.current;
+    }
+
+    // 清理旧的 provider
+    if (providerRef.current) {
+      providerRef.current.disconnect();
+    }
+
     try {
-      return new HocuspocusProvider({
+      const newProvider = new HocuspocusProvider({
         url: WS_URL,
         name: documentId,
         document: docRef.current,
@@ -357,19 +369,30 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         onConnect: () => setIsConnected(true),
         onDisconnect: () => setIsConnected(false),
       });
-    } catch {
+
+      providerRef.current = newProvider;
+      lastDocumentId.current = documentId;
+      return newProvider;
+    } catch (error) {
+      console.error('创建 Provider 失败:', error);
       return null;
     }
   }, [documentId]);
 
-  // 创建编辑器实例
+  // 创建编辑器实例，使用 useMemo 避免重复创建
   const editor = useMemo(() => {
+    // 如果编辑器已经存在且 documentId 没有变化，返回现有编辑器
+    if (editorRef.current && lastDocumentId.current === documentId) {
+      return editorRef.current;
+    }
+
     if (!provider) {
       const e = withLayout(withHistory(withReact(createEditor())));
       editorRef.current = e;
       e.docRef = docRef;
       return e;
     }
+
     const sharedType = provider.document.get('content', Y.XmlText);
     const e = withLayout(
       withYHistory(
@@ -404,7 +427,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     };
     editorRef.current = e;
     return e;
-  }, [provider]);
+  }, [provider, documentId]);
 
   // 检查服务器并尝试连接
   useEffect(() => {
@@ -538,6 +561,18 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     const sharedTypes = docRef.current.share;
     console.log('所有共享类型:', sharedTypes);
     console.log('========================');
+  }, []);
+
+  // 清理函数
+  useEffect(() => {
+    return () => {
+      if (providerRef.current) {
+        providerRef.current.disconnect();
+      }
+      if (editorRef.current && YjsEditor.isYjsEditor(editorRef.current)) {
+        YjsEditor.disconnect(editorRef.current);
+      }
+    };
   }, []);
 
   return {
