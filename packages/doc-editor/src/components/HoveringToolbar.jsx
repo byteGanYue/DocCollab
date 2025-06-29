@@ -36,7 +36,7 @@ const getFormatTitle = format => {
  * 悬浮工具栏组件
  * 当用户选中文本时，会在选中区域上方显示格式化工具栏
  */
-const HoveringToolbar = () => {
+const HoveringToolbar = ({ onAddComment }) => {
   const ref = useRef(null);
   const editor = useSlate();
   const inFocus = useFocused();
@@ -211,6 +211,14 @@ const HoveringToolbar = () => {
     );
   };
 
+  // 评论按钮处理函数
+  const handleAddComment = e => {
+    e.preventDefault();
+    if (onAddComment) {
+      onAddComment();
+    }
+  };
+
   return (
     <Portal>
       <Menu
@@ -283,6 +291,17 @@ const HoveringToolbar = () => {
         <BlockFormatButton format="left" icon="format_align_left" />
         <BlockFormatButton format="center" icon="format_align_center" />
         <BlockFormatButton format="right" icon="format_align_right" />
+
+        <Divider />
+
+        {/* 评论按钮 */}
+        <Button
+          reversed
+          onMouseDown={handleAddComment}
+          title="添加评论 (Ctrl+Shift+C)"
+        >
+          <Icon>mode_comment</Icon>
+        </Button>
       </Menu>
     </Portal>
   );

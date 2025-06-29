@@ -197,6 +197,20 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
           editor.insertText('  ');
           return;
         }
+
+        // 添加评论快捷键 Ctrl+Shift+C
+        if (isHotkey('mod+shift+c', event)) {
+          event.preventDefault();
+          if (!editor.selection || Range.isCollapsed(editor.selection)) {
+            alert('请先选中要评论的文本');
+            return;
+          }
+          // 保存当前选区
+          editorSelectionRef.current = { ...editor.selection };
+          setShowCommentModal(true);
+          return;
+        }
+
         for (const hotkey in HOTKEYS) {
           if (isHotkey(hotkey, event)) {
             event.preventDefault();
@@ -205,7 +219,7 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
           }
         }
       } catch (error) {
-        console.error('键盘处理失败:', error);
+        console.error('键盘事件处理失败:', error);
       }
     },
     [editor],
@@ -364,7 +378,17 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
         value={value}
       >
         {/* 悬浮工具栏 */}
-        <HoveringToolbar />
+        <HoveringToolbar
+          onAddComment={() => {
+            if (!editor.selection || Range.isCollapsed(editor.selection)) {
+              alert('请先选中要评论的文本');
+              return;
+            }
+            // 保存当前选区
+            editorSelectionRef.current = { ...editor.selection };
+            setShowCommentModal(true);
+          }}
+        />
 
         {/* 工具栏 */}
         <Toolbar>

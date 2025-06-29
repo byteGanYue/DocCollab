@@ -34,7 +34,7 @@ const getFormatTitle = format => {
 /**
  * 调试版本的悬浮工具栏组件
  */
-const HoveringToolbarDebug = () => {
+const HoveringToolbarDebug = ({ onAddComment }) => {
   const ref = useRef(null);
   const editor = useSlate();
   const inFocus = useFocused();
@@ -230,6 +230,14 @@ const HoveringToolbarDebug = () => {
     );
   };
 
+  // 评论按钮处理函数
+  const handleAddComment = e => {
+    e.preventDefault();
+    if (onAddComment) {
+      onAddComment();
+    }
+  };
+
   return createPortal(
     <div
       ref={ref}
@@ -314,6 +322,17 @@ const HoveringToolbarDebug = () => {
       <BlockFormatButton format="left" icon="format_align_left" />
       <BlockFormatButton format="center" icon="format_align_center" />
       <BlockFormatButton format="right" icon="format_align_right" />
+
+      <Divider />
+
+      {/* 评论按钮 */}
+      <Button
+        reversed
+        onMouseDown={handleAddComment}
+        title="添加评论 (Ctrl+Shift+C)"
+      >
+        <Icon>mode_comment</Icon>
+      </Button>
     </div>,
     document.body,
   );
