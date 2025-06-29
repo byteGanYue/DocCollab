@@ -17,6 +17,9 @@ const DocEditor = () => {
     return id;
   }, [id]);
 
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  const userId = userInfo.userId;
+
   useEffect(() => {
     // 组件卸载时的清理函数
     return () => {
@@ -42,7 +45,7 @@ const DocEditor = () => {
 
   return (
     <div className="doc-editor-page">
-      <EditorSDK documentId={documentId} />
+      <EditorSDK documentId={documentId} userId={userId} />
     </div>
   );
 };
