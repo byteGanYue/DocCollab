@@ -55,10 +55,20 @@ const DocEditor = () => {
       const response = await documentAPI.getDocument(documentId, userId);
       console.log('API获取后端的response', response);
       if (response.success && response.data) {
-        // 兼容后端返回的内容为空
-        setEditorValue(response.data.content || undefined);
-        lastSavedValue.current = response.data.content || undefined;
-        console.log('setEditorValue', response.data.content);
+        let content = response.data.content;
+        let parsed = undefined;
+        if (typeof content === 'string') {
+          try {
+            parsed = JSON.parse(content);
+          } catch {
+            parsed = undefined;
+          }
+        } else if (Array.isArray(content)) {
+          parsed = content;
+        }
+        setEditorValue(parsed);
+        lastSavedValue.current = parsed;
+        console.log('setEditorValue', parsed);
       } else {
         setEditorValue(undefined);
         lastSavedValue.current = undefined;
