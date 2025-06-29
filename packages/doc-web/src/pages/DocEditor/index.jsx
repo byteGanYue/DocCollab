@@ -5,14 +5,15 @@ import { documentAPI } from '@/utils/api';
 
 const DocEditor = () => {
   const documentId = useParams().id;
+  console.log('documentId', documentId);
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  const userId = userInfo.userId;
+  console.log('userId', userId);
   useEffect(() => {
     // 组件卸载时的清理函数
     return () => {
       const isEdit = localStorage.getItem('isEdit') === 'true';
-      console.log('isEdit', isEdit);
-      console.log('documentId', documentId);
       if (isEdit && documentId) {
-        console.log('documentId', documentId);
         // 调用创建历史版本API
         documentAPI
           .createDocumentHistory(documentId)
@@ -30,7 +31,7 @@ const DocEditor = () => {
 
   return (
     <div className="doc-editor-page">
-      <EditorSDK />
+      <EditorSDK documentId={documentId} userId={userId} />
     </div>
   );
 };
