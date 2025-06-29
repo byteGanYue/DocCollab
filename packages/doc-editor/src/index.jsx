@@ -350,7 +350,7 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
       `}</style>
 
       {/* 连接状态指示器 */}
-      <StatusIndicator isConnected={isConnected} />
+      <StatusIndicator isConnected={isConnected} documentId={documentId} />
 
       {/* 操作按钮区域 */}
       <div
