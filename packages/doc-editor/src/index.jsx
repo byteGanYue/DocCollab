@@ -316,6 +316,14 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
     [navigateToComment],
   );
 
+  // 处理清空所有评论
+  const handleClearAllComments = useCallback(() => {
+    if (yComments.current) {
+      yComments.current.delete(0, yComments.current.length);
+      console.log('清空所有评论');
+    }
+  }, [yComments]);
+
   return (
     <div
       style={{
@@ -598,6 +606,7 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
         onDeleteComment={handleDeleteComment}
         onResolveComment={handleResolveComment}
         onNavigateToComment={handleNavigateToComment}
+        onClearAllComments={handleClearAllComments}
       />
     </div>
   );

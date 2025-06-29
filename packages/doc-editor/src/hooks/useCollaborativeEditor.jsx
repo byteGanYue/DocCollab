@@ -46,48 +46,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     if (!docRef.current) return;
     yCommentsRef.current = docRef.current.getArray('comments');
     yTextRef.current = docRef.current.get('content', Y.XmlText);
-
-    // 从本地存储加载评论
-    loadCommentsFromStorage();
   }, [docRef, documentId]);
-
-  // 从本地存储加载评论
-  const loadCommentsFromStorage = useCallback(() => {
-    try {
-      const storageKey = `comments_${documentId}`;
-      const savedComments = localStorage.getItem(storageKey);
-      if (savedComments) {
-        const parsedComments = JSON.parse(savedComments);
-        setComments(parsedComments);
-
-        // 如果有 Yjs 评论数组，同步到 Yjs
-        if (yCommentsRef.current && parsedComments.length > 0) {
-          parsedComments.forEach(comment => {
-            if (
-              !yCommentsRef.current.toArray().some(c => c.id === comment.id)
-            ) {
-              yCommentsRef.current.push([comment]);
-            }
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load comments from storage:', error);
-    }
-  }, [documentId]);
-
-  // 保存评论到本地存储
-  const saveCommentsToStorage = useCallback(
-    commentsToSave => {
-      try {
-        const storageKey = `comments_${documentId}`;
-        localStorage.setItem(storageKey, JSON.stringify(commentsToSave));
-      } catch (error) {
-        console.error('Failed to save comments to storage:', error);
-      }
-    },
-    [documentId],
-  );
 
   // 检查是否存在相同范围的评论
   const checkDuplicateComment = useCallback(
@@ -170,9 +129,6 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         const updatedComments = [...comments, newComment];
         setComments(updatedComments);
 
-        // 保存到本地存储
-        saveCommentsToStorage(updatedComments);
-
         // 保存到 Yjs 数组以便协同
         if (yCommentsRef.current) {
           yCommentsRef.current.push([newComment]);
@@ -193,7 +149,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         return false;
       }
     },
-    [comments, checkDuplicateComment, saveCommentsToStorage],
+    [comments, checkDuplicateComment],
   );
 
   // 删除评论方法
@@ -206,9 +162,6 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         // 从本地状态中移除
         const updatedComments = comments.filter(c => c.id !== commentId);
         setComments(updatedComments);
-
-        // 保存到本地存储
-        saveCommentsToStorage(updatedComments);
 
         // 从 Yjs 数组中移除
         if (yCommentsRef.current) {
@@ -233,7 +186,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         return false;
       }
     },
-    [comments, saveCommentsToStorage],
+    [comments],
   );
 
   // 解析评论方法
@@ -246,9 +199,6 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         // 从本地状态中移除
         const updatedComments = comments.filter(c => c.id !== commentId);
         setComments(updatedComments);
-
-        // 保存到本地存储
-        saveCommentsToStorage(updatedComments);
 
         // 从 Yjs 数组中移除
         if (yCommentsRef.current) {
@@ -273,7 +223,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         return false;
       }
     },
-    [comments, saveCommentsToStorage],
+    [comments],
   );
 
   // 定位到评论位置
@@ -518,7 +468,6 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     const handler = () => {
       const yCommentsArray = yCommentsRef.current.toArray();
       setComments(yCommentsArray);
-      saveCommentsToStorage(yCommentsArray);
 
       // 打印 Yjs 协同数据结构
       console.log('=== Yjs 协同数据结构 ===');
@@ -538,7 +487,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         yCommentsRef.current.unobserve(handler);
       }
     };
-  }, [yCommentsRef, saveCommentsToStorage]);
+  }, [yCommentsRef]);
 
   // 添加打印 Yjs 结构的方法
   const printYjsStructure = useCallback(() => {

@@ -6,6 +6,7 @@ const CommentList = ({
   onDeleteComment,
   onResolveComment,
   onNavigateToComment,
+  onClearAllComments,
 }) => {
   const [localComments, setLocalComments] = useState([]);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -171,7 +172,7 @@ const CommentList = ({
             {isCollapsed ? '▼' : '▲'}
           </button>
           <button
-            onClick={() => setLocalComments([])}
+            onClick={() => onClearAllComments()}
             style={{
               background: 'none',
               border: 'none',
@@ -183,7 +184,7 @@ const CommentList = ({
             }}
             title="清空评论"
           >
-            ✕
+            清空评论
           </button>
         </div>
       </div>
