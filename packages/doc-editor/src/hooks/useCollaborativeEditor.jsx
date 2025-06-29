@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Y from 'yjs';
 import { HocuspocusProvider } from '@hocuspocus/provider';
-import { createEditor, Editor, Transforms, Node } from 'slate';
+import { createEditor, Editor, Transforms, Node, Text } from 'slate';
 import { withHistory } from 'slate-history';
 import { withReact } from 'slate-react';
 import {
@@ -117,8 +117,23 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         const commentRange = { anchor, focus };
         Transforms.select(editor, commentRange);
 
-        // 添加评论标记到文本
-        Editor.addMark(editor, 'comment', commentId);
+        // 在特定范围内添加评论标记，确保不影响后续输入
+        const range = {
+          anchor: commentRange.anchor,
+          focus: commentRange.focus,
+        };
+
+        // 使用更精确的方式添加评论标记
+        Transforms.setNodes(
+          editor,
+          { comment: commentId },
+          {
+            at: range,
+            match: n => Text.isText(n),
+            split: true,
+            voids: false,
+          },
+        );
 
         // 恢复原始选区
         if (savedSelection) {
@@ -359,6 +374,22 @@ export function useCollaborativeEditor(documentId = 'default-document') {
       ),
     );
     e.docRef = docRef;
+
+    // 自定义 insertText 方法，确保新输入的内容不继承评论标记
+    const { insertText } = e;
+    e.insertText = text => {
+      // 清除当前选区的评论标记
+      if (e.selection) {
+        Transforms.setNodes(
+          e,
+          { comment: undefined },
+          { at: e.selection, match: n => Text.isText(n) },
+        );
+      }
+      // 调用原始的 insertText 方法
+      insertText(text);
+    };
+
     // 保证至少有一个段落
     const { normalizeNode } = e;
     e.normalizeNode = entry => {
