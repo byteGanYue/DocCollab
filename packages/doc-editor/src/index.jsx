@@ -32,7 +32,7 @@ import {
   ColorButton,
   AIDrawer,
 } from './components';
-import { HOTKEYS, toggleMark, withLayout } from './utils/editorHelpers';
+import { HOTKEYS, toggleMark } from './utils/editorHelpers';
 import { normalizeTokens } from './utils/normalize-tokens';
 import { prismThemeCss } from './utils/prismTheme';
 
@@ -350,7 +350,7 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
       `}</style>
 
       {/* 连接状态指示器 */}
-      <StatusIndicator isConnected={isConnected} />
+      <StatusIndicator isConnected={isConnected} documentId={documentId} />
 
       {/* 操作按钮区域 */}
       <div
