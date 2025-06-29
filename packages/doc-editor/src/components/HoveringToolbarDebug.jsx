@@ -70,7 +70,6 @@ const HoveringToolbarDebug = ({ onAddComment }) => {
       Range.isCollapsed(selection) ||
       Editor.string(editor, selection) === ''
     ) {
-      console.log('Hiding toolbar - conditions not met');
       el.style.opacity = '0';
       el.style.visibility = 'hidden';
       return;

@@ -47,14 +47,6 @@ const HoveringToolbar = ({ onAddComment }) => {
     const el = ref.current;
     const { selection } = editor;
 
-    console.log('HoveringToolbar useEffect triggered', {
-      hasElement: !!el,
-      hasSelection: !!selection,
-      inFocus,
-      isCollapsed: selection ? Range.isCollapsed(selection) : null,
-      selectionString: selection ? Editor.string(editor, selection) : null,
-    });
-
     if (!el) {
       console.log('No element reference');
       return;
@@ -67,7 +59,6 @@ const HoveringToolbar = ({ onAddComment }) => {
       Range.isCollapsed(selection) ||
       Editor.string(editor, selection) === ''
     ) {
-      console.log('Hiding toolbar - no valid selection');
       // 隐藏工具栏
       el.style.opacity = '0';
       el.style.top = '-10000px';

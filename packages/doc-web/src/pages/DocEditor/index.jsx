@@ -3,6 +3,11 @@ import { EditorSDK } from '@byteganyue/editorsdk';
 import { useParams } from 'react-router-dom';
 import { documentAPI } from '@/utils/api';
 
+/**
+ * 文档编辑器页面组件
+ * 使用唯一的documentId作为key，确保切换文档时完全重新创建编辑器实例
+ * 实现文档间完全隔离
+ */
 const DocEditor = () => {
   const { id } = useParams();
 
@@ -20,9 +25,15 @@ const DocEditor = () => {
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
   const userId = userInfo.userId;
 
+  // 组件挂载时打印调试信息
   useEffect(() => {
+    console.log(`[DocEditor] 组件挂载 - 文档ID: ${documentId}`);
+    console.log(`[DocEditor] 使用key = ${documentId} 强制隔离编辑器实例`);
+
     // 组件卸载时的清理函数
     return () => {
+      console.log(`[DocEditor] 组件卸载 - 文档ID: ${documentId}`);
+
       const isEdit = localStorage.getItem('isEdit') === 'true';
       console.log('isEdit', isEdit);
       console.log('documentId', documentId);
@@ -43,9 +54,33 @@ const DocEditor = () => {
     };
   }, [documentId]);
 
+  // 监控组件重新渲染
+  console.log(`[DocEditor] 渲染 - 文档ID: ${documentId}`);
+
   return (
     <div className="doc-editor-page">
-      <EditorSDK documentId={documentId} userId={userId} />
+      {/* 
+        使用documentId作为key属性，确保文档切换时编辑器组件被完全卸载和重建
+        这样可以确保文档间的协同上下文完全隔离，避免互相干扰
+      */}
+      <EditorSDK key={documentId} documentId={documentId} userId={userId} />
+
+      {/* 调试信息 */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: '10px',
+          right: '10px',
+          background: 'rgba(0,0,0,0.7)',
+          color: 'white',
+          padding: '5px 10px',
+          borderRadius: '4px',
+          fontSize: '12px',
+          zIndex: 9999,
+        }}
+      >
+        文档ID: {documentId}
+      </div>
     </div>
   );
 };

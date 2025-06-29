@@ -22,6 +22,42 @@ const defaultInitialValue = [
   },
 ];
 
+// 文档管理器 - 用于维护不同文档的 Y.Doc 实例
+const DocumentManager = (() => {
+  const documents = new Map();
+
+  return {
+    /**
+     * 获取或创建特定ID的文档
+     * @param {string} docId - 文档ID
+     * @returns {Y.Doc} - Y.Doc实例
+     */
+    getDocument: docId => {
+      if (!documents.has(docId)) {
+        // 创建新的文档实例
+        const ydoc = new Y.Doc({ guid: docId });
+        // 初始化文档数据结构
+        ydoc.getArray('comments');
+        ydoc.get('content', Y.XmlText);
+        documents.set(docId, ydoc);
+      }
+      return documents.get(docId);
+    },
+
+    /**
+     * 清理不再使用的文档实例
+     * @param {string} docId - 文档ID
+     */
+    cleanupDocument: docId => {
+      const doc = documents.get(docId);
+      if (doc) {
+        // 仅从缓存中移除，不销毁文档实例，以便后续可能的重用
+        documents.delete(docId);
+      }
+    },
+  };
+})();
+
 export function useCollaborativeEditor(documentId = 'default-document') {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showAIDrawer, setShowAIDrawer] = useState(false);
@@ -30,23 +66,79 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   const [remoteUsers, setRemoteUsers] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState(1);
   const valueInitialized = useRef(false);
-  const docRef = useRef(new Y.Doc());
   const isServerRunning = useRef(false);
   const editorRef = useRef(null);
   const providerRef = useRef(null);
   const lastDocumentId = useRef(documentId);
+
+  // 获取当前文档的 Y.Doc 实例
+  const docRef = useRef(DocumentManager.getDocument(documentId));
 
   // 评论相关状态
   const [comments, setComments] = useState([]);
   const yCommentsRef = useRef();
   const yTextRef = useRef();
 
+  // 文档ID变化时重置状态
+  useEffect(() => {
+    if (lastDocumentId.current !== documentId) {
+      console.log(
+        `[文档隔离] 切换文档: ${lastDocumentId.current} -> ${documentId}`,
+      );
+
+      // 断开旧文档
+      if (providerRef.current) {
+        console.log(`[文档隔离] 断开旧文档连接: ${lastDocumentId.current}`);
+        providerRef.current.disconnect();
+        providerRef.current = null;
+      }
+
+      if (editorRef.current && YjsEditor.isYjsEditor(editorRef.current)) {
+        console.log(`[文档隔离] 断开旧编辑器连接: ${lastDocumentId.current}`);
+        YjsEditor.disconnect(editorRef.current);
+      }
+
+      // 设置新文档
+      docRef.current = DocumentManager.getDocument(documentId);
+      console.log(`[文档隔离] 获取文档实例: ${documentId}`, {
+        clientID: docRef.current.clientID,
+        guid: docRef.current.guid,
+      });
+
+      yCommentsRef.current = null;
+      yTextRef.current = null;
+      valueInitialized.current = false;
+
+      // 更新lastDocumentId
+      lastDocumentId.current = documentId;
+    }
+  }, [documentId]);
+
   // 初始化 yComments 和 yText
   useEffect(() => {
     if (!docRef.current) return;
     yCommentsRef.current = docRef.current.getArray('comments');
     yTextRef.current = docRef.current.get('content', Y.XmlText);
-  }, [docRef, documentId]);
+
+    // 监听 yComments 变化，同步到本地状态
+    if (yCommentsRef.current) {
+      const handler = () => {
+        const yCommentsArray = yCommentsRef.current.toArray();
+        setComments(yCommentsArray);
+      };
+
+      yCommentsRef.current.observe(handler);
+
+      // 初始同步一次
+      handler();
+
+      return () => {
+        if (yCommentsRef.current) {
+          yCommentsRef.current.unobserve(handler);
+        }
+      };
+    }
+  }, [docRef.current]);
 
   // 检查是否存在相同范围的评论
   const checkDuplicateComment = useCallback(
@@ -164,7 +256,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         return false;
       }
     },
-    [comments, checkDuplicateComment],
+    [comments, checkDuplicateComment, documentId],
   );
 
   // 删除评论方法
@@ -315,28 +407,35 @@ export function useCollaborativeEditor(documentId = 'default-document') {
 
   // 创建Hocuspocus Provider，使用 useMemo 避免重复创建
   const provider = useMemo(() => {
-    // 如果 documentId 没有变化，返回现有的 provider
-    if (providerRef.current && lastDocumentId.current === documentId) {
-      return providerRef.current;
-    }
-
-    // 清理旧的 provider
-    if (providerRef.current) {
-      providerRef.current.disconnect();
-    }
-
     try {
+      // 清理旧的 provider
+      if (providerRef.current) {
+        providerRef.current.disconnect();
+      }
+
+      // 为当前文档创建新的provider
       const newProvider = new HocuspocusProvider({
         url: WS_URL,
-        name: documentId,
-        document: docRef.current,
+        // 使用文档ID创建房间隔离
+        name: `doc-${documentId}`,
+        document: docRef.current, // 使用当前文档的Y.Doc实例
         connect: false,
-        onConnect: () => setIsConnected(true),
-        onDisconnect: () => setIsConnected(false),
+        onConnect: () => {
+          setIsConnected(true);
+          console.log(`[文档隔离] 成功连接到文档房间: doc-${documentId}`, {
+            clientID: docRef.current.clientID,
+            provider: 'connected',
+            awarenessClientID: newProvider.awareness.clientID,
+          });
+        },
+        onDisconnect: () => {
+          setIsConnected(false);
+          console.log(`[文档隔离] 断开文档房间连接: doc-${documentId}`);
+        },
       });
 
       providerRef.current = newProvider;
-      lastDocumentId.current = documentId;
+      console.log(`[文档隔离] 创建新的Provider: doc-${documentId}`);
       return newProvider;
     } catch (error) {
       console.error('创建 Provider 失败:', error);
@@ -346,19 +445,14 @@ export function useCollaborativeEditor(documentId = 'default-document') {
 
   // 创建编辑器实例，使用 useMemo 避免重复创建
   const editor = useMemo(() => {
-    // 如果编辑器已经存在且 documentId 没有变化，返回现有编辑器
-    if (editorRef.current && lastDocumentId.current === documentId) {
-      return editorRef.current;
-    }
-
     if (!provider) {
       const e = withLayout(withHistory(withReact(createEditor())));
       editorRef.current = e;
-      e.docRef = docRef;
       return e;
     }
 
-    const sharedType = provider.document.get('content', Y.XmlText);
+    // 使用当前文档的共享类型
+    const sharedType = docRef.current.get('content', Y.XmlText);
     const e = withLayout(
       withYHistory(
         withCursors(
@@ -406,6 +500,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         { at: [0] },
       );
     };
+
     editorRef.current = e;
     return e;
   }, [provider, documentId]);
@@ -493,36 +588,10 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   const handleOpenAIDrawer = useCallback(() => setShowAIDrawer(true), []);
   const handleCloseAIDrawer = useCallback(() => setShowAIDrawer(false), []);
 
-  // 监听 yComments 变化，同步到本地状态
-  useEffect(() => {
-    if (!yCommentsRef.current) return;
-    const handler = () => {
-      const yCommentsArray = yCommentsRef.current.toArray();
-      setComments(yCommentsArray);
-
-      // 打印 Yjs 协同数据结构
-      console.log('=== Yjs 协同数据结构 ===');
-      console.log('Yjs 评论数组:', yCommentsArray);
-      console.log('Yjs 评论数组长度:', yCommentsArray.length);
-      console.log('Yjs 文档对象:', docRef.current);
-      console.log('Yjs 文档客户端ID:', docRef.current.clientID);
-      console.log('Yjs 文档根节点:', docRef.current.getMap());
-      console.log('Yjs 文本内容:', yTextRef.current);
-      console.log('Yjs 文本长度:', yTextRef.current?.length);
-      console.log('Yjs 文本内容字符串:', yTextRef.current?.toString());
-      console.log('========================');
-    };
-    yCommentsRef.current.observe(handler);
-    return () => {
-      if (yCommentsRef.current) {
-        yCommentsRef.current.unobserve(handler);
-      }
-    };
-  }, [yCommentsRef]);
-
   // 添加打印 Yjs 结构的方法
   const printYjsStructure = useCallback(() => {
     console.log('=== 手动打印 Yjs 结构 ===');
+    console.log('当前文档ID:', documentId);
     console.log('Yjs 文档:', docRef.current);
     console.log('Yjs 评论数组:', yCommentsRef.current);
     console.log('Yjs 文本内容:', yTextRef.current);
@@ -541,19 +610,29 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     const sharedTypes = docRef.current.share;
     console.log('所有共享类型:', sharedTypes);
     console.log('========================');
-  }, []);
+  }, [documentId]);
 
-  // 清理函数
+  // 清理函数 - 组件卸载时断开连接
   useEffect(() => {
     return () => {
+      console.log(`[文档隔离] 组件卸载，清理文档: ${documentId}`);
+
       if (providerRef.current) {
+        console.log(`[文档隔离] 断开Provider连接: doc-${documentId}`);
         providerRef.current.disconnect();
+        providerRef.current = null;
       }
+
       if (editorRef.current && YjsEditor.isYjsEditor(editorRef.current)) {
+        console.log(`[文档隔离] 断开编辑器连接: ${documentId}`);
         YjsEditor.disconnect(editorRef.current);
       }
+
+      // 清理文档实例
+      console.log(`[文档隔离] 清理文档实例: ${documentId}`);
+      DocumentManager.cleanupDocument(documentId);
     };
-  }, []);
+  }, [documentId]);
 
   return {
     editor,
