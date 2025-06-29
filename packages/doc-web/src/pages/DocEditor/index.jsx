@@ -43,6 +43,8 @@ const DocEditor = () => {
   const saveTimer = useRef(null);
   // 记录上次保存内容
   const lastSavedValue = useRef(undefined);
+  // 是否正在切换文档的标志
+  const isSwitchingDocs = useRef(false);
 
   // 加载文档内容
   const fetchDocumentContent = useCallback(async () => {
@@ -51,6 +53,8 @@ const DocEditor = () => {
       return;
     }
     setLoading(true);
+    // 设置切换文档标志
+    isSwitchingDocs.current = true;
     try {
       const response = await documentAPI.getDocument(documentId, userId);
       console.log('API获取后端的response', response);
@@ -78,15 +82,39 @@ const DocEditor = () => {
       lastSavedValue.current = undefined;
     } finally {
       setLoading(false);
+      // 文档加载完成后重置标志
+      setTimeout(() => {
+        isSwitchingDocs.current = false;
+      }, 500); // 稍微延迟以确保状态更新完成
     }
   }, [documentId, userId]);
 
   // 自动保存逻辑（防抖）
   const handleEditorChange = useCallback(
     value => {
+      // 如果正在切换文档，跳过内容更新
+      if (isSwitchingDocs.current) {
+        console.log('[DocEditor] 正在切换文档，跳过内容更新');
+        return;
+      }
+
       setEditorValue(value);
       // 仅保存已存在的文档
       if (!documentId || documentId.startsWith('temp_')) return;
+
+      // 检查是否是空内容，如果是则跳过保存
+      const isEmpty =
+        Array.isArray(value) &&
+        value.length === 1 &&
+        value[0].type === 'paragraph' &&
+        value[0].children?.length === 1 &&
+        value[0].children[0].text === '';
+
+      if (isEmpty) {
+        console.log('[DocEditor] 检测到空内容，跳过保存');
+        return;
+      }
+
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(async () => {
         // 避免重复保存相同内容
@@ -116,6 +144,12 @@ const DocEditor = () => {
     // 组件卸载时的清理函数
     return () => {
       console.log(`[DocEditor] 组件卸载 - 文档ID: ${documentId}`);
+
+      // 在切换文档时不创建历史版本
+      if (isSwitchingDocs.current) {
+        console.log(`[DocEditor] 正在切换文档，不创建历史版本`);
+        return;
+      }
 
       const isEdit = localStorage.getItem('isEdit') === 'true';
       console.log('isEdit', isEdit);
@@ -153,8 +187,20 @@ const DocEditor = () => {
         documentId &&
         !documentId.startsWith('temp_') &&
         editorValue &&
-        JSON.stringify(editorValue) !== JSON.stringify(lastSavedValue.current)
+        JSON.stringify(editorValue) !==
+          JSON.stringify(lastSavedValue.current) &&
+        // 添加此检查，防止保存空内容
+        !(
+          Array.isArray(editorValue) &&
+          editorValue.length === 1 &&
+          editorValue[0].type === 'paragraph' &&
+          editorValue[0].children?.length === 1 &&
+          editorValue[0].children[0].text === ''
+        ) &&
+        // 不在切换文档过程中
+        !isSwitchingDocs.current
       ) {
+        console.log('组件卸载时保存文档:', documentId);
         documentAPI.updateDocument(documentId, {
           content: JSON.stringify(editorValue),
         });
