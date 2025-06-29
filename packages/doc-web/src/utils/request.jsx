@@ -3,7 +3,7 @@ import { message } from 'antd';
 
 // 创建axios实例
 const instance = axios.create({
-  baseURL: 'http://localhost:3000/api',
+  baseURL: '/api', // 使用相对路径，通过Vite代理转发
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
