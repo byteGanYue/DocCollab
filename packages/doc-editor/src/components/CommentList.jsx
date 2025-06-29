@@ -7,10 +7,12 @@ const CommentList = ({
   onResolveComment,
   onNavigateToComment,
   onClearAllComments,
+  editor,
 }) => {
   const [localComments, setLocalComments] = useState([]);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectText, setSelectText] = useState('');
   const [position, setPosition] = useState({
     x: window.innerWidth - 320,
     y: 80,
@@ -19,12 +21,82 @@ const CommentList = ({
   const isDraggingRef = useRef(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
 
-  // 同步评论数据
+  // 根据起始索引和结束索引获取文本内容
+  const getTextByIndex = (startIndex, endIndex) => {
+    if (!editor || startIndex === undefined || endIndex === undefined) {
+      return '';
+    }
+
+    try {
+      console.log('=== 开始获取文本 ===');
+      console.log('输入参数 - 起始索引:', startIndex, '结束索引:', endIndex);
+
+      // 使用全局索引找到对应的 Slate 范围
+      let count = 0;
+      let anchor = null;
+      let focus = null;
+
+      for (const [node, path] of Node.texts(editor)) {
+        const len = Node.string(node).length;
+        if (anchor === null && count + len >= startIndex) {
+          anchor = { path, offset: startIndex - count };
+          console.log('找到起始位置:', anchor, '当前累计字符数:', count);
+        }
+        if (focus === null && count + len >= endIndex) {
+          focus = { path, offset: endIndex - count };
+          console.log('找到结束位置:', focus, '当前累计字符数:', count);
+          break;
+        }
+        count += len;
+      }
+
+      if (anchor && focus) {
+        const range = { anchor, focus };
+        console.log('计算出的 Slate 范围:', range);
+
+        // 使用 Editor.string 获取指定范围的文本内容
+        const text = Editor.string(editor, range);
+        console.log('获取到的文本:', text, '文本长度:', text.length);
+        console.log('=== 文本获取完成 ===');
+        return text;
+      } else {
+        console.log('无法找到对应的 Slate 范围');
+        console.log('=== 文本获取失败 ===');
+      }
+    } catch (error) {
+      console.error('获取文本内容失败:', error);
+    }
+
+    return '';
+  };
+
+  // 获取指定评论的文本内容
+  const getCommentText = comment => {
+    if (comment.text) {
+      return comment.text; // 优先使用保存的文本
+    }
+
+    if (comment.startIndex !== undefined && comment.endIndex !== undefined) {
+      return getTextByIndex(comment.startIndex, comment.endIndex);
+    }
+
+    return '';
+  };
+
+  // 同步评论数据并获取文本
   useEffect(() => {
     if (comments && Array.isArray(comments)) {
       setLocalComments(comments);
+
+      // 如果有评论，获取第一个评论的文本作为示例
+      if (comments.length > 0) {
+        const firstComment = comments[0];
+        const text = getCommentText(firstComment);
+        setSelectText(text);
+        console.log('设置选中文本状态:', text);
+      }
     }
-  }, [comments]);
+  }, [comments, editor]);
 
   // 拖拽相关事件处理
   useEffect(() => {
@@ -259,12 +331,11 @@ const CommentList = ({
                       onClick={() => handleNavigate(comment)}
                       title="点击定位到评论位置"
                     >
-                      <span style={{ fontWeight: '500' }}>选中的文本:</span>
+                      <span style={{ fontWeight: '500' }}>
+                        选中的文本: {getCommentText(comment)}
+                      </span>
                       <div style={{ marginTop: '4px', fontStyle: 'italic' }}>
-                        "
-                        {comment.text ||
-                          `位置 ${comment.startIndex}-${comment.endIndex}`}
-                        "
+                        {`位置 ${comment.startIndex}-${comment.endIndex}`}
                       </div>
                     </div>
                   )}

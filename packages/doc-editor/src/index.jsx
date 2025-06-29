@@ -607,6 +607,7 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
         onResolveComment={handleResolveComment}
         onNavigateToComment={handleNavigateToComment}
         onClearAllComments={handleClearAllComments}
+        editor={editor}
       />
     </div>
   );
