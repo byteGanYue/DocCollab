@@ -99,7 +99,8 @@ const EditorSDK = ({ documentId = 'default-document' }) => {
     yComments,
     printYjsStructure,
   } = useCollaborativeEditor(documentId);
-
+  // value 就是当前文档内容（Slate节点数组）
+  console.log('当前文档内容（Slate节点数组）', value);
   // 评论弹窗相关状态
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentSelection, setCommentSelection] = useState(null);
