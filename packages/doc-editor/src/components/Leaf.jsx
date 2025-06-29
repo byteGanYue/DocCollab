@@ -28,16 +28,19 @@ const Leaf = ({ attributes, children, leaf }) => {
 
   // 评论高亮处理
   if (leaf.comment) {
-    // 评论标记现在是字符串 ID
+    // 如果 comment 是对象（包含评论信息），使用更明显的高亮样式
     style.backgroundColor = 'rgba(255, 230, 0, 0.4)';
     style.borderBottom = '2px solid #ffc107';
     style.borderRadius = '2px';
     style.padding = '0 1px';
     style.cursor = 'pointer';
 
-    // 添加评论 ID 作为数据属性
-    attributes['data-comment-id'] = leaf.comment;
-    attributes['title'] = '点击查看评论';
+    // 添加标题提示，显示评论内容
+    if (typeof leaf.comment === 'object') {
+      attributes['title'] =
+        `${leaf.comment.author || '匿名'}: ${leaf.comment.content || ''}`;
+      attributes['data-comment-id'] = leaf.comment.id;
+    }
   }
 
   // 处理语法高亮token

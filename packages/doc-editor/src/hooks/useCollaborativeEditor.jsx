@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Y from 'yjs';
 import { HocuspocusProvider } from '@hocuspocus/provider';
-import { createEditor, Editor, Transforms, Node, Text } from 'slate';
+import { createEditor, Editor, Transforms, Node } from 'slate';
 import { withHistory } from 'slate-history';
 import { withReact } from 'slate-react';
 import {
@@ -22,42 +22,6 @@ const defaultInitialValue = [
   },
 ];
 
-// 文档管理器 - 用于维护不同文档的 Y.Doc 实例
-const DocumentManager = (() => {
-  const documents = new Map();
-
-  return {
-    /**
-     * 获取或创建特定ID的文档
-     * @param {string} docId - 文档ID
-     * @returns {Y.Doc} - Y.Doc实例
-     */
-    getDocument: docId => {
-      if (!documents.has(docId)) {
-        // 创建新的文档实例
-        const ydoc = new Y.Doc({ guid: docId });
-        // 初始化文档数据结构
-        ydoc.getArray('comments');
-        ydoc.get('content', Y.XmlText);
-        documents.set(docId, ydoc);
-      }
-      return documents.get(docId);
-    },
-
-    /**
-     * 清理不再使用的文档实例
-     * @param {string} docId - 文档ID
-     */
-    cleanupDocument: docId => {
-      const doc = documents.get(docId);
-      if (doc) {
-        // 仅从缓存中移除，不销毁文档实例，以便后续可能的重用
-        documents.delete(docId);
-      }
-    },
-  };
-})();
-
 export function useCollaborativeEditor(documentId = 'default-document') {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showAIDrawer, setShowAIDrawer] = useState(false);
@@ -66,284 +30,33 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   const [remoteUsers, setRemoteUsers] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState(1);
   const valueInitialized = useRef(false);
+  const docRef = useRef(new Y.Doc());
   const isServerRunning = useRef(false);
   const editorRef = useRef(null);
-  const providerRef = useRef(null);
-  const lastDocumentId = useRef(documentId);
 
-  // 获取当前文档的 Y.Doc 实例
-  const docRef = useRef(DocumentManager.getDocument(documentId));
-
-  // 评论相关状态
-  const [comments, setComments] = useState([]);
+  // 评论相关 Yjs 数据结构
   const yCommentsRef = useRef();
   const yTextRef = useRef();
-
-  // 文档ID变化时重置状态
-  useEffect(() => {
-    if (lastDocumentId.current !== documentId) {
-      console.log(
-        `[文档隔离] 切换文档: ${lastDocumentId.current} -> ${documentId}`,
-      );
-
-      // 断开旧文档
-      if (providerRef.current) {
-        console.log(`[文档隔离] 断开旧文档连接: ${lastDocumentId.current}`);
-        providerRef.current.disconnect();
-        providerRef.current = null;
-      }
-
-      if (editorRef.current && YjsEditor.isYjsEditor(editorRef.current)) {
-        console.log(`[文档隔离] 断开旧编辑器连接: ${lastDocumentId.current}`);
-        YjsEditor.disconnect(editorRef.current);
-      }
-
-      // 设置新文档
-      docRef.current = DocumentManager.getDocument(documentId);
-      console.log(`[文档隔离] 获取文档实例: ${documentId}`, {
-        clientID: docRef.current.clientID,
-        guid: docRef.current.guid,
-      });
-
-      yCommentsRef.current = null;
-      yTextRef.current = null;
-      valueInitialized.current = false;
-
-      // 更新lastDocumentId
-      lastDocumentId.current = documentId;
-    }
-  }, [documentId]);
 
   // 初始化 yComments 和 yText
   useEffect(() => {
     if (!docRef.current) return;
     yCommentsRef.current = docRef.current.getArray('comments');
     yTextRef.current = docRef.current.get('content', Y.XmlText);
-
-    // 监听 yComments 变化，同步到本地状态
-    if (yCommentsRef.current) {
-      const handler = () => {
-        const yCommentsArray = yCommentsRef.current.toArray();
-        setComments(yCommentsArray);
-      };
-
-      yCommentsRef.current.observe(handler);
-
-      // 初始同步一次
-      handler();
-
-      return () => {
-        if (yCommentsRef.current) {
-          yCommentsRef.current.unobserve(handler);
-        }
-      };
-    }
-  }, [docRef.current]);
-
-  // 检查是否存在相同范围的评论
-  const checkDuplicateComment = useCallback(
-    (startIndex, endIndex) => {
-      return comments.some(
-        comment =>
-          comment.startIndex === startIndex && comment.endIndex === endIndex,
-      );
-    },
-    [comments],
-  );
+  }, [docRef]);
 
   // 添加评论方法
-  const addComment = useCallback(
-    (startIndex, endIndex, content, author) => {
-      if (!yCommentsRef.current || !yTextRef.current || !editorRef.current) {
-        console.error('Comments, text reference or editor not initialized');
-        return;
-      }
+  const addComment = useCallback((startIndex, endIndex, content, author) => {
+    if (!yCommentsRef.current || !yTextRef.current || !editorRef.current) {
+      console.error('Comments, text reference or editor not initialized');
+      return;
+    }
 
-      // 检查是否已存在相同范围的评论
-      if (checkDuplicateComment(startIndex, endIndex)) {
-        console.warn('Comment already exists for this range');
-        return false;
-      }
-
-      try {
-        const editor = editorRef.current;
-        const commentId = `comment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-        // 创建评论对象
-        const newComment = {
-          id: commentId,
-          startIndex,
-          endIndex,
-          content,
-          author,
-          time: Date.now(),
-          documentId,
-        };
-
-        // 保存当前选区
-        const savedSelection = editor.selection;
-
-        // 使用全局索引找到对应的 Slate 范围
-        let count = 0;
-        let anchor = null;
-        let focus = null;
-
-        for (const [node, path] of Node.texts(editor)) {
-          const len = Node.string(node).length;
-          if (anchor === null && count + len >= startIndex) {
-            anchor = { path, offset: startIndex - count };
-          }
-          if (focus === null && count + len >= endIndex) {
-            focus = { path, offset: endIndex - count };
-            break;
-          }
-          count += len;
-        }
-
-        if (!anchor || !focus) {
-          console.error('Failed to find text range for comment');
-          return false;
-        }
-
-        // 设置选区到要评论的文本
-        const commentRange = { anchor, focus };
-        Transforms.select(editor, commentRange);
-
-        // 在特定范围内添加评论标记，确保不影响后续输入
-        const range = {
-          anchor: commentRange.anchor,
-          focus: commentRange.focus,
-        };
-
-        // 使用更精确的方式添加评论标记
-        Transforms.setNodes(
-          editor,
-          { comment: commentId },
-          {
-            at: range,
-            match: n => Text.isText(n),
-            split: true,
-            voids: false,
-          },
-        );
-
-        // 恢复原始选区
-        if (savedSelection) {
-          Transforms.select(editor, savedSelection);
-        }
-
-        // 更新本地评论状态
-        const updatedComments = [...comments, newComment];
-        setComments(updatedComments);
-
-        // 保存到 Yjs 数组以便协同
-        if (yCommentsRef.current) {
-          yCommentsRef.current.push([newComment]);
-
-          // 打印添加评论后的 Yjs 结构
-          console.log('=== 添加评论后的 Yjs 结构 ===');
-          console.log('新评论:', newComment);
-          console.log('Yjs 评论数组:', yCommentsRef.current.toArray());
-          console.log('Yjs 评论数组长度:', yCommentsRef.current.length);
-          console.log('Yjs 文本内容:', yTextRef.current.toString());
-          console.log('========================');
-        }
-
-        console.log('Comment added successfully:', newComment);
-        return true;
-      } catch (error) {
-        console.error('Error adding comment:', error);
-        return false;
-      }
-    },
-    [comments, checkDuplicateComment, documentId],
-  );
-
-  // 删除评论方法
-  const deleteComment = useCallback(
-    commentId => {
-      try {
-        const editor = editorRef.current;
-        if (!editor) return false;
-
-        // 从本地状态中移除
-        const updatedComments = comments.filter(c => c.id !== commentId);
-        setComments(updatedComments);
-
-        // 从 Yjs 数组中移除
-        if (yCommentsRef.current) {
-          const yCommentsArray = yCommentsRef.current.toArray();
-          const index = yCommentsArray.findIndex(c => c.id === commentId);
-          if (index !== -1) {
-            yCommentsRef.current.delete(index);
-          }
-        }
-
-        // 从编辑器中移除评论标记
-        for (const [node, path] of Node.texts(editor)) {
-          if (node.comment === commentId) {
-            Transforms.setNodes(editor, { comment: undefined }, { at: path });
-          }
-        }
-
-        console.log('Comment deleted successfully:', commentId);
-        return true;
-      } catch (error) {
-        console.error('Error deleting comment:', error);
-        return false;
-      }
-    },
-    [comments],
-  );
-
-  // 解析评论方法
-  const resolveComment = useCallback(
-    commentId => {
-      try {
-        const editor = editorRef.current;
-        if (!editor) return false;
-
-        // 从本地状态中移除
-        const updatedComments = comments.filter(c => c.id !== commentId);
-        setComments(updatedComments);
-
-        // 从 Yjs 数组中移除
-        if (yCommentsRef.current) {
-          const yCommentsArray = yCommentsRef.current.toArray();
-          const index = yCommentsArray.findIndex(c => c.id === commentId);
-          if (index !== -1) {
-            yCommentsRef.current.delete(index);
-          }
-        }
-
-        // 从编辑器中移除评论标记
-        for (const [node, path] of Node.texts(editor)) {
-          if (node.comment === commentId) {
-            Transforms.setNodes(editor, { comment: undefined }, { at: path });
-          }
-        }
-
-        console.log('Comment resolved successfully:', commentId);
-        return true;
-      } catch (error) {
-        console.error('Error resolving comment:', error);
-        return false;
-      }
-    },
-    [comments],
-  );
-
-  // 定位到评论位置
-  const navigateToComment = useCallback(comment => {
     try {
       const editor = editorRef.current;
-      if (
-        !editor ||
-        comment.startIndex === undefined ||
-        comment.endIndex === undefined
-      ) {
-        return false;
-      }
+
+      // 保存当前选区
+      const savedSelection = editor.selection;
 
       // 使用全局索引找到对应的 Slate 范围
       let count = 0;
@@ -352,34 +65,80 @@ export function useCollaborativeEditor(documentId = 'default-document') {
 
       for (const [node, path] of Node.texts(editor)) {
         const len = Node.string(node).length;
-        if (anchor === null && count + len >= comment.startIndex) {
-          anchor = { path, offset: comment.startIndex - count };
+        if (anchor === null && count + len >= startIndex) {
+          anchor = { path, offset: startIndex - count };
         }
-        if (focus === null && count + len >= comment.endIndex) {
-          focus = { path, offset: comment.endIndex - count };
+        if (focus === null && count + len >= endIndex) {
+          focus = { path, offset: endIndex - count };
           break;
         }
         count += len;
       }
 
-      if (anchor && focus) {
-        const range = { anchor, focus };
-        Transforms.select(editor, range);
-
-        // 滚动到选中位置
-        const editorElement = document.querySelector(
-          '[data-slate-editor="true"]',
-        );
-        if (editorElement) {
-          editorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        return true;
+      if (!anchor || !focus) {
+        console.error('Failed to find text range for comment');
+        return;
       }
-      return false;
+
+      // 设置选区到要评论的文本
+      const commentRange = { anchor, focus };
+      Transforms.select(editor, commentRange);
+
+      // 直接添加评论标记
+      Editor.addMark(editor, 'comment', {
+        id: Date.now().toString(),
+        content,
+        author,
+        time: Date.now(),
+      });
+
+      // 恢复原始选区
+      if (savedSelection) {
+        Transforms.select(editor, savedSelection);
+      }
+
+      console.log('Comment added successfully');
+
+      // 同时也保存到 Yjs 数组中以便协同
+      if (startIndex !== undefined && endIndex !== undefined) {
+        // 确保索引在有效范围内
+        const validStartIndex = Math.max(
+          0,
+          Math.min(startIndex, yTextRef.current.length),
+        );
+        const validEndIndex = Math.max(
+          validStartIndex,
+          Math.min(endIndex, yTextRef.current.length),
+        );
+
+        // 创建相对位置
+        const start = Y.createRelativePositionFromTypeIndex(
+          yTextRef.current,
+          validStartIndex,
+        );
+        const end = Y.createRelativePositionFromTypeIndex(
+          yTextRef.current,
+          validEndIndex,
+        );
+
+        if (start && end) {
+          const startJSON = JSON.stringify(start);
+          const endJSON = JSON.stringify(end);
+
+          // 添加评论到 Yjs 数组
+          yCommentsRef.current.push([
+            {
+              start: startJSON,
+              end: endJSON,
+              content,
+              author,
+              time: Date.now(),
+            },
+          ]);
+        }
+      }
     } catch (error) {
-      console.error('Error navigating to comment:', error);
-      return false;
+      console.error('Error adding comment:', error);
     }
   }, []);
 
@@ -405,63 +164,33 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     }
   }, []);
 
-  // 创建Hocuspocus Provider，使用 useMemo 避免重复创建
+  // 创建Hocuspocus Provider
   const provider = useMemo(() => {
     try {
-      // 清理旧的 provider
-      if (providerRef.current) {
-        providerRef.current.disconnect();
-      }
-
-      // 为当前文档创建新的provider
-      const newProvider = new HocuspocusProvider({
+      return new HocuspocusProvider({
         url: WS_URL,
-        // 使用文档ID创建房间隔离
-        name: `doc-${documentId}`,
-        document: docRef.current, // 使用当前文档的Y.Doc实例
+        name: documentId,
+        document: docRef.current,
         connect: false,
-        onConnect: () => {
-          setIsConnected(true);
-          console.log(`[文档隔离] 成功连接到文档房间: doc-${documentId}`, {
-            clientID: docRef.current.clientID,
-            provider: 'connected',
-            awarenessClientID: newProvider.awareness.clientID,
-          });
-        },
-        onDisconnect: () => {
-          setIsConnected(false);
-          console.log(`[文档隔离] 断开文档房间连接: doc-${documentId}`);
-        },
+        onConnect: () => setIsConnected(true),
+        onDisconnect: () => setIsConnected(false),
       });
-
-      providerRef.current = newProvider;
-      console.log(`[文档隔离] 创建新的Provider: doc-${documentId}`);
-      return newProvider;
-    } catch (error) {
-      console.error('创建 Provider 失败:', error);
+    } catch {
       return null;
     }
   }, [documentId]);
 
-  // 创建编辑器实例，使用 useMemo 避免重复创建
+  // 创建编辑器实例
   const editor = useMemo(() => {
     if (!provider) {
-      // 本地模式下使用强制布局
       const e = withLayout(withHistory(withReact(createEditor())));
       editorRef.current = e;
+      e.docRef = docRef;
       return e;
     }
-
-    // 使用当前文档的共享类型
-    const sharedType = docRef.current.get('content', Y.XmlText);
-
-    // 在协同模式下，只有当文档为空时才应用强制布局
-    const hasContent = sharedType && sharedType.toString() !== '';
-
-    // 如果文档已有内容，不使用强制布局
-    let e;
-    if (hasContent) {
-      e = withYHistory(
+    const sharedType = provider.document.get('content', Y.XmlText);
+    const e = withLayout(
+      withYHistory(
         withCursors(
           withYjs(withReact(createEditor()), sharedType),
           provider.awareness,
@@ -472,50 +201,16 @@ export function useCollaborativeEditor(documentId = 'default-document') {
             },
           },
         ),
-      );
-    } else {
-      // 文档为空时才应用强制布局
-      e = withLayout(
-        withYHistory(
-          withCursors(
-            withYjs(withReact(createEditor()), sharedType),
-            provider.awareness,
-            {
-              data: {
-                name: `用户${Math.floor(Math.random() * 1000)}`,
-                color: '#' + Math.floor(Math.random() * 16777215).toString(16),
-              },
-            },
-          ),
-        ),
-      );
-    }
-
+      ),
+    );
     e.docRef = docRef;
-
-    // 自定义 insertText 方法，确保新输入的内容不继承评论标记
-    const { insertText } = e;
-    e.insertText = text => {
-      // 清除当前选区的评论标记
-      if (e.selection) {
-        Transforms.setNodes(
-          e,
-          { comment: undefined },
-          { at: e.selection, match: n => Text.isText(n) },
-        );
-      }
-      // 调用原始的 insertText 方法
-      insertText(text);
-    };
-
-    // 保证至少有一个段落，但不强制插入标题
+    // 保证至少有一个段落
     const { normalizeNode } = e;
     e.normalizeNode = entry => {
       const [node] = entry;
       if (!Editor.isEditor(node) || node.children.length > 0) {
         return normalizeNode(entry);
       }
-      // 只插入一个空段落，不插入标题
       Transforms.insertNodes(
         e,
         {
@@ -525,10 +220,9 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         { at: [0] },
       );
     };
-
     editorRef.current = e;
     return e;
-  }, [provider, documentId]);
+  }, [provider]);
 
   // 检查服务器并尝试连接
   useEffect(() => {
@@ -575,13 +269,10 @@ export function useCollaborativeEditor(documentId = 'default-document') {
       }
       const sharedType = YjsEditor.sharedType(editor);
       if (sharedType && sharedType.toString() === '') {
-        // 只有在文档为空时才插入默认内容
-        console.log('[文档初始化] 新文档，插入默认内容');
         const delta = slateNodesToInsertDelta(defaultInitialValue);
         sharedType.applyDelta(delta);
         valueInitialized.current = true;
       } else {
-        console.log('[文档初始化] 文档已存在内容，不插入默认内容');
         valueInitialized.current = true;
       }
     };
@@ -616,51 +307,28 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   const handleOpenAIDrawer = useCallback(() => setShowAIDrawer(true), []);
   const handleCloseAIDrawer = useCallback(() => setShowAIDrawer(false), []);
 
-  // 添加打印 Yjs 结构的方法
-  const printYjsStructure = useCallback(() => {
-    console.log('=== 手动打印 Yjs 结构 ===');
-    console.log('当前文档ID:', documentId);
-    console.log('Yjs 文档:', docRef.current);
-    console.log('Yjs 评论数组:', yCommentsRef.current);
-    console.log('Yjs 文本内容:', yTextRef.current);
-
-    if (yCommentsRef.current) {
-      console.log('评论数组内容:', yCommentsRef.current.toArray());
-      console.log('评论数组长度:', yCommentsRef.current.length);
-    }
-
-    if (yTextRef.current) {
-      console.log('文本内容长度:', yTextRef.current.length);
-      console.log('文本内容:', yTextRef.current.toString());
-    }
-
-    // 打印所有共享类型
-    const sharedTypes = docRef.current.share;
-    console.log('所有共享类型:', sharedTypes);
-    console.log('========================');
-  }, [documentId]);
-
-  // 清理函数 - 组件卸载时断开连接
+  // 监听 yComments 变化，强制刷新外部组件
   useEffect(() => {
-    return () => {
-      console.log(`[文档隔离] 组件卸载，清理文档: ${documentId}`);
-
-      if (providerRef.current) {
-        console.log(`[文档隔离] 断开Provider连接: doc-${documentId}`);
-        providerRef.current.disconnect();
-        providerRef.current = null;
+    if (!yCommentsRef.current) return;
+    const handler = () => {
+      setValue(v => [...v]);
+      // 触发编辑器重新装饰
+      if (editorRef.current) {
+        const currentSelection = editorRef.current.selection;
+        editorRef.current.onChange();
+        // 保持选区
+        if (currentSelection) {
+          editorRef.current.selection = currentSelection;
+        }
       }
-
-      if (editorRef.current && YjsEditor.isYjsEditor(editorRef.current)) {
-        console.log(`[文档隔离] 断开编辑器连接: ${documentId}`);
-        YjsEditor.disconnect(editorRef.current);
-      }
-
-      // 清理文档实例
-      console.log(`[文档隔离] 清理文档实例: ${documentId}`);
-      DocumentManager.cleanupDocument(documentId);
     };
-  }, [documentId]);
+    yCommentsRef.current.observe(handler);
+    return () => {
+      if (yCommentsRef.current) {
+        yCommentsRef.current.unobserve(handler);
+      }
+    };
+  }, [yCommentsRef]);
 
   return {
     editor,
@@ -676,12 +344,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     handleOpenAIDrawer,
     handleCloseAIDrawer,
     // 评论相关
-    comments,
-    addComment,
-    deleteComment,
-    resolveComment,
-    navigateToComment,
     yComments: yCommentsRef,
-    printYjsStructure,
+    addComment,
   };
 }

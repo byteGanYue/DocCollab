@@ -95,19 +95,15 @@ const EditorSDK = ({
     setShowAIDrawer,
     handleOpenAIDrawer,
     handleCloseAIDrawer,
-    comments,
     addComment,
-    deleteComment,
-    resolveComment,
-    navigateToComment,
     yComments,
-    printYjsStructure,
   } = useCollaborativeEditor(documentId);
   // value 就是当前文档内容（Slate节点数组）
   // 优先使用外部传入的 value
   const value = externalValue !== undefined ? externalValue : internalValue;
   const setValue = externalOnChange || setInternalValue;
   console.log('当前文档内容（Slate节点数组）', value);
+
   // 评论弹窗相关状态
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentSelection, setCommentSelection] = useState(null);
@@ -266,71 +262,18 @@ const EditorSDK = ({
     // 为了兼容 Yjs 协同，仍然计算全局索引
     const startIndex = getGlobalIndex(editor, anchor.path, anchor.offset);
     const endIndex = getGlobalIndex(editor, focus.path, focus.offset);
-    console.log('startIndex', startIndex, 'endIndex', endIndex);
-    console.log('content', content);
 
     // 添加评论
-    const success = addComment(
+    addComment(
       Math.min(startIndex, endIndex),
       Math.max(startIndex, endIndex),
       content,
       '用户A',
     );
 
-    if (success) {
-      setShowCommentModal(false);
-      editorSelectionRef.current = null;
-    } else {
-      alert('该文本范围已有评论，请选择其他文本');
-    }
+    setShowCommentModal(false);
+    editorSelectionRef.current = null;
   };
-
-  // 处理评论删除
-  const handleDeleteComment = useCallback(
-    commentId => {
-      const success = deleteComment(commentId);
-      if (success) {
-        console.log('评论删除成功');
-      } else {
-        console.error('评论删除失败');
-      }
-    },
-    [deleteComment],
-  );
-
-  // 处理评论解决
-  const handleResolveComment = useCallback(
-    commentId => {
-      const success = resolveComment(commentId);
-      if (success) {
-        console.log('评论解决成功');
-      } else {
-        console.error('评论解决失败');
-      }
-    },
-    [resolveComment],
-  );
-
-  // 处理评论定位
-  const handleNavigateToComment = useCallback(
-    comment => {
-      const success = navigateToComment(comment);
-      if (success) {
-        console.log('定位到评论位置成功');
-      } else {
-        console.error('定位到评论位置失败');
-      }
-    },
-    [navigateToComment],
-  );
-
-  // 处理清空所有评论
-  const handleClearAllComments = useCallback(() => {
-    if (yComments.current) {
-      yComments.current.delete(0, yComments.current.length);
-      console.log('清空所有评论');
-    }
-  }, [yComments]);
 
   return (
     <div
@@ -505,32 +448,6 @@ const EditorSDK = ({
             </span>{' '}
             评论
           </button>
-
-          {/* 调试按钮 - 打印 Yjs 结构 */}
-          <button
-            type="button"
-            style={{
-              marginLeft: 8,
-              padding: '0 12px',
-              border: '1px solid #ff9800',
-              borderRadius: 4,
-              background: '#fff',
-              color: '#ff9800',
-              cursor: 'pointer',
-              height: 32,
-              fontSize: '12px',
-            }}
-            onClick={() => {
-              printYjsStructure();
-              console.log('=== 当前评论状态 ===');
-              console.log('本地评论数组:', comments);
-              console.log('评论数量:', comments.length);
-              console.log('==================');
-            }}
-            title="打印 Yjs 协同数据结构"
-          >
-            🔍 调试
-          </button>
         </Toolbar>
 
         {/* 编辑区域 + 协同光标覆盖层 */}
@@ -609,14 +526,7 @@ const EditorSDK = ({
         onCancel={() => setShowCommentModal(false)}
       />
 
-      <CommentList
-        comments={comments}
-        onDeleteComment={handleDeleteComment}
-        onResolveComment={handleResolveComment}
-        onNavigateToComment={handleNavigateToComment}
-        onClearAllComments={handleClearAllComments}
-        editor={editor}
-      />
+      <CommentList yComments={yComments} editor={editor} />
     </div>
   );
 };
