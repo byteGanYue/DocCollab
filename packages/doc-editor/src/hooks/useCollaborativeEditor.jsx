@@ -38,6 +38,53 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   const yCommentsRef = useRef();
   const yTextRef = useRef();
 
+  // 文档ID变化时重置状态
+  useEffect(() => {
+    if (lastDocumentId.current !== documentId) {
+      console.log(
+        `[文档隔离] 切换文档: ${lastDocumentId.current} -> ${documentId}`,
+      );
+
+      // 断开旧文档
+      if (providerRef.current) {
+        console.log(`[文档隔离] 断开旧文档连接: ${lastDocumentId.current}`);
+        try {
+          providerRef.current.disconnect();
+        } catch (e) {
+          console.error('[文档隔离] 断开旧文档连接出错:', e);
+        }
+        providerRef.current = null;
+      }
+
+      if (editorRef.current) {
+        try {
+          if (YjsEditor.isYjsEditor(editorRef.current)) {
+            console.log(
+              `[文档隔离] 断开旧编辑器连接: ${lastDocumentId.current}`,
+            );
+            YjsEditor.disconnect(editorRef.current);
+          }
+        } catch (e) {
+          console.error('[文档隔离] 断开旧编辑器连接出错:', e);
+        }
+      }
+
+      // 设置新文档
+      docRef.current = DocumentManager.getDocument(documentId);
+      console.log(`[文档隔离] 获取文档实例: ${documentId}`, {
+        clientID: docRef.current.clientID,
+        guid: docRef.current.guid,
+      });
+
+      yCommentsRef.current = null;
+      yTextRef.current = null;
+      valueInitialized.current = false;
+
+      // 更新lastDocumentId
+      lastDocumentId.current = documentId;
+    }
+  }, [documentId]);
+
   // 初始化 yComments 和 yText
   useEffect(() => {
     if (!docRef.current) return;
@@ -188,9 +235,17 @@ export function useCollaborativeEditor(documentId = 'default-document') {
       e.docRef = docRef;
       return e;
     }
-    const sharedType = provider.document.get('content', Y.XmlText);
-    const e = withLayout(
-      withYHistory(
+
+    // 使用当前文档的共享类型
+    const sharedType = docRef.current.get('content', Y.XmlText);
+
+    // 在协同模式下，只有当文档为空时才应用强制布局
+    const hasContent = sharedType && sharedType.toString() !== '';
+
+    // 如果文档已有内容，不使用强制布局
+    let e;
+    if (hasContent) {
+      e = withYHistory(
         withCursors(
           withYjs(withReact(createEditor()), sharedType),
           provider.awareness,
@@ -201,10 +256,47 @@ export function useCollaborativeEditor(documentId = 'default-document') {
             },
           },
         ),
-      ),
-    );
+      );
+    } else {
+      // 文档为空时才应用强制布局
+      e = withLayout(
+        withYHistory(
+          withCursors(
+            withYjs(withReact(createEditor()), sharedType),
+            provider.awareness,
+            {
+              data: {
+                name: `用户${Math.floor(Math.random() * 1000)}`,
+                color: '#' + Math.floor(Math.random() * 16777215).toString(16),
+              },
+            },
+          ),
+        ),
+      );
+    }
+
+    // 存储文档引用
     e.docRef = docRef;
-    // 保证至少有一个段落
+
+    // 存储sharedType引用，便于后续访问
+    e.sharedType = sharedType;
+
+    // 自定义 insertText 方法，确保新输入的内容不继承评论标记
+    const { insertText } = e;
+    e.insertText = text => {
+      // 清除当前选区的评论标记
+      if (e.selection) {
+        Transforms.setNodes(
+          e,
+          { comment: undefined },
+          { at: e.selection, match: n => Text.isText(n) },
+        );
+      }
+      // 调用原始的 insertText 方法
+      insertText(text);
+    };
+
+    // 保证至少有一个段落，但不强制插入标题
     const { normalizeNode } = e;
     e.normalizeNode = entry => {
       const [node] = entry;
@@ -245,12 +337,70 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   // 连接编辑器与协同服务
   useEffect(() => {
     if (!editor || !provider || !isConnected) return;
-    if (YjsEditor.isYjsEditor(editor)) {
-      YjsEditor.connect(editor);
+
+    try {
+      // 检查编辑器是否有必要的Yjs集成能力
+      const hasYjsCapability =
+        typeof editor.connect === 'function' &&
+        typeof editor.disconnect === 'function' &&
+        editor.sharedType;
+
+      if (hasYjsCapability) {
+        console.log('[编辑器连接] 连接编辑器到Yjs');
+
+        // 在连接之前确保有正确的共享类型关联
+        if (!editor.sharedType) {
+          console.warn('[编辑器连接] 编辑器缺少sharedType，尝试重新关联');
+          const sharedType = docRef.current?.get('content', Y.XmlText);
+          if (sharedType) {
+            editor.sharedType = sharedType;
+          } else {
+            console.error('[编辑器连接] 无法获取共享类型');
+          }
+        }
+
+        // 添加延迟连接，确保文档已完全初始化
+        setTimeout(() => {
+          try {
+            editor.connect();
+            console.log('[编辑器连接] 连接成功');
+          } catch (err) {
+            console.error('[编辑器连接] 延迟连接失败:', err);
+          }
+        }, 100);
+      } else if (YjsEditor.isYjsEditor(editor)) {
+        console.log('[编辑器连接] YjsEditor.connect方式连接编辑器');
+
+        // 添加延迟连接，确保文档已完全初始化
+        setTimeout(() => {
+          try {
+            YjsEditor.connect(editor);
+            console.log('[编辑器连接] 通过YjsEditor.connect连接成功');
+          } catch (err) {
+            console.error('[编辑器连接] 延迟YjsEditor.connect连接失败:', err);
+          }
+        }, 100);
+      } else {
+        console.warn(
+          '[编辑器连接] 编辑器不是Yjs编辑器或缺少必要属性，无法连接',
+        );
+      }
+    } catch (error) {
+      console.error('[编辑器连接] 连接编辑器失败:', error);
     }
+
     return () => {
-      if (editor && YjsEditor.isYjsEditor(editor)) {
-        YjsEditor.disconnect(editor);
+      try {
+        // 同样检查编辑器的连接能力
+        if (editor && typeof editor.disconnect === 'function') {
+          console.log('[编辑器连接] 通过editor.disconnect断开编辑器连接');
+          editor.disconnect();
+        } else if (editor && YjsEditor.isYjsEditor(editor)) {
+          console.log('[编辑器连接] 通过YjsEditor.disconnect断开编辑器连接');
+          YjsEditor.disconnect(editor);
+        }
+      } catch (error) {
+        console.error('[编辑器连接] 断开编辑器连接失败:', error);
       }
     };
   }, [editor, provider, isConnected]);
@@ -258,24 +408,65 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   // 初始化文档内容
   useEffect(() => {
     const initializeContent = async () => {
-      if (
-        valueInitialized.current ||
-        !editor ||
-        !provider ||
-        !isConnected ||
-        !YjsEditor.isYjsEditor(editor)
-      ) {
+      if (valueInitialized.current || !editor || !provider || !isConnected) {
         return;
       }
-      const sharedType = YjsEditor.sharedType(editor);
-      if (sharedType && sharedType.toString() === '') {
-        const delta = slateNodesToInsertDelta(defaultInitialValue);
-        sharedType.applyDelta(delta);
+
+      // 先检查编辑器是否是协同模式的编辑器
+      if (!YjsEditor.isYjsEditor(editor)) {
+        console.log('[文档初始化] 非协同模式编辑器，跳过初始化');
         valueInitialized.current = true;
-      } else {
+        return;
+      }
+
+      try {
+        // 通过正确的方式获取 sharedType
+        // 重要：YjsEditor.sharedType 不是一个函数，而是一个 Symbol 属性访问器
+        const sharedType = editor.sharedType;
+
+        console.log(
+          '[文档初始化] 获取sharedType:',
+          sharedType ? '成功' : '失败',
+        );
+
+        if (sharedType && sharedType.toString() === '') {
+          // 只有在文档为空时才插入默认内容
+          console.log('[文档初始化] 新文档，插入默认内容');
+          try {
+            // 改为使用直接设置Y.XmlText的内容的方式插入默认值，避免path不匹配的问题
+            const ytext = docRef.current.get('content', Y.XmlText);
+
+            // 检查文档是否真的为空
+            if (ytext && ytext.toString() === '') {
+              // 使用insertEmbed比applyDelta更安全
+              const firstNode = {
+                type: 'paragraph',
+                children: [{ text: '协同编辑器示例' }],
+              };
+
+              // 直接使用Y.Doc的API操作，避免Slate层的path问题
+              ytext.applyDelta([{ insert: JSON.stringify(firstNode) }]);
+
+              console.log('[文档初始化] 默认内容插入成功');
+              valueInitialized.current = true;
+            } else {
+              console.log('[文档初始化] 文档不为空，跳过插入默认内容');
+              valueInitialized.current = true;
+            }
+          } catch (insertError) {
+            console.error('[文档初始化] 插入默认内容失败:', insertError);
+            valueInitialized.current = true;
+          }
+        } else {
+          console.log('[文档初始化] 文档已存在内容，不插入默认内容');
+          valueInitialized.current = true;
+        }
+      } catch (error) {
+        console.error('[文档初始化] 初始化文档内容失败:', error);
         valueInitialized.current = true;
       }
     };
+
     if (isConnected) {
       initializeContent();
     }
@@ -324,8 +515,27 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     };
     yCommentsRef.current.observe(handler);
     return () => {
-      if (yCommentsRef.current) {
-        yCommentsRef.current.unobserve(handler);
+      console.log(`[文档隔离] 组件卸载，清理文档: ${documentId}`);
+
+      try {
+        if (providerRef.current) {
+          console.log(`[文档隔离] 断开Provider连接: doc-${documentId}`);
+          providerRef.current.disconnect();
+          providerRef.current = null;
+        }
+      } catch (error) {
+        console.error('[文档隔离] 断开Provider连接失败:', error);
+      }
+
+      try {
+        if (editorRef.current) {
+          if (YjsEditor.isYjsEditor(editorRef.current)) {
+            console.log(`[文档隔离] 断开编辑器连接: ${documentId}`);
+            YjsEditor.disconnect(editorRef.current);
+          }
+        }
+      } catch (error) {
+        console.error('[文档隔离] 断开编辑器连接失败:', error);
       }
     };
   }, [yCommentsRef]);
