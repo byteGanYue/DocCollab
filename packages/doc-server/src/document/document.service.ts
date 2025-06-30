@@ -436,27 +436,6 @@ export class DocumentService {
         throw new NotFoundException('文档更新失败');
       }
 
-      // 添加到历史版本记录表，versionId在上一版本基础上加1
-      try {
-        await this.documentHistoryService.addDocumentHistory({
-          userId: updatedDocument.userId,
-          documentId: updatedDocument.documentId,
-          documentName: updatedDocument.documentName,
-          content: updatedDocument.content,
-          create_username: updatedDocument.create_username,
-          update_username: updatedDocument.update_username,
-        });
-        this.logger.log('已添加文档历史版本记录', {
-          documentId: updatedDocument.documentId,
-        });
-      } catch (historyError) {
-        // 历史版本记录失败不影响文档更新成功
-        this.logger.warn(
-          `添加文档历史版本记录失败: ${(historyError as Error).message}`,
-          { documentId: updatedDocument.documentId },
-        );
-      }
-
       const result = {
         success: true,
         message: '文档更新成功',
