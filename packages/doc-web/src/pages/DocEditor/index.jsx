@@ -6,7 +6,7 @@ import React, {
   useCallback,
 } from 'react';
 import { EditorSDK } from '@byteganyue/editorsdk';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { documentAPI } from '@/utils/api';
 
 /**
@@ -18,6 +18,8 @@ const AUTO_SAVE_DELAY = 1000; // 自动保存防抖间隔(ms)
 
 const DocEditor = () => {
   const { id } = useParams();
+  // 获取location对象用于解析URL查询参数
+  const location = useLocation();
 
   // 使用 useMemo 确保 documentId 稳定，避免重复渲染
   const documentId = useMemo(() => {
@@ -45,6 +47,12 @@ const DocEditor = () => {
   const lastSavedValue = useRef(undefined);
   // 是否正在切换文档的标志
   const isSwitchingDocs = useRef(false);
+  // 编辑器版本回退props
+  const [onBackHistoryProps, setOnBackHistoryProps] = useState({
+    versionId: null,
+    isShow: false,
+    onClick: () => {},
+  });
 
   // 加载文档内容
   const fetchDocumentContent = useCallback(async () => {
@@ -140,6 +148,60 @@ const DocEditor = () => {
     },
     [documentId],
   );
+
+  // 点击版本回退按钮回调函数
+  const handleBackHistory = useCallback(
+    async versionId => {
+      try {
+        // 调用版本回退API
+        const result = await documentAPI.restoreDocument(documentId, versionId);
+        if (result.success) {
+          console.log(`[DocEditor] 成功回退到版本: ${versionId}`);
+          // 回退成功后刷新页面内容
+          fetchDocumentContent();
+          // 清除URL中的version参数
+          window.history.replaceState({}, '', `${location.pathname}`);
+          // 重置回退属性
+          setOnBackHistoryProps({
+            versionId: null,
+            isShow: false,
+            onClick: () => {},
+          });
+        } else {
+          console.error(`[DocEditor] 版本回退失败:`, result.message);
+          // 可以添加错误提示
+        }
+      } catch (error) {
+        console.error(`[DocEditor] 版本回退出错:`, error);
+        // 可以添加错误提示
+      }
+    },
+    [documentId, location, fetchDocumentContent],
+  );
+  // 检查URL中是否包含version参数
+  useEffect(() => {
+    // 解析URL查询参数
+    const searchParams = new URLSearchParams(location.search);
+    const versionId = searchParams.get('version');
+
+    if (versionId) {
+      console.log(`[DocEditor] 检测到版本ID参数: ${versionId}`);
+
+      // 设置版本回退属性
+      setOnBackHistoryProps({
+        versionId: parseInt(versionId),
+        isShow: true,
+        onClick: () => handleBackHistory(parseInt(versionId)),
+      });
+    } else {
+      // 没有version参数时重置回退属性
+      setOnBackHistoryProps({
+        versionId: null,
+        isShow: false,
+        onClick: () => {},
+      });
+    }
+  }, [documentId, location, fetchDocumentContent, handleBackHistory]);
 
   // 组件挂载时打印调试信息
   useEffect(() => {
@@ -246,6 +308,7 @@ const DocEditor = () => {
         userId={userId}
         value={editorValue}
         onChange={handleEditorChange}
+        onBackHistoryProps={onBackHistoryProps}
       />
 
       {/* 调试信息 */}

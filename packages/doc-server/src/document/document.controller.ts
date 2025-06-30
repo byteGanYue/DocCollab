@@ -452,8 +452,8 @@ export class DocumentController {
    */
   @Post(':id/restore')
   @ApiOperation({
-    summary: '恢复文档到指定版本',
-    description: '将文档恢复到指定的历史版本，会创建一个新的版本',
+    summary: '根据文档ID恢复到指定历史版本',
+    description: '恢复文档到指定的历史版本，并删除该版本之后的所有版本记录',
   })
   @ApiParam({
     name: 'id',
@@ -481,11 +481,11 @@ export class DocumentController {
     schema: {
       example: {
         success: true,
-        message: '版本恢复成功',
+        message: '版本恢复成功，并已删除该版本后的所有历史记录',
         data: {
           documentId: 123,
-          restoredFromVersion: 2,
-          newVersionId: 5,
+          restoredToVersion: 2,
+          deletedVersionsCount: 3,
         },
       },
     },
@@ -518,19 +518,30 @@ export class DocumentController {
       documentName: targetVersion.documentName,
       content: targetVersion.content,
       update_username: targetVersion.create_username, // 使用当前用户或原创建者
+      // 注意: update_time 会通过 MongoDB 的 timestamps 选项自动更新为当前时间
     });
 
     if (updateResult.success) {
+      // 更新目标版本的时间戳为当前时间
+      await this.documentHistoryService.updateVersionTimestamp(
+        documentId,
+        body.versionId,
+      );
+
+      // 删除该版本之后的所有版本记录
+      const deleteResult =
+        await this.documentHistoryService.deleteVersionsAfter(
+          documentId,
+          body.versionId,
+        );
+
       return {
         success: true,
-        message: '版本恢复成功',
+        message: '版本恢复成功，并已删除该版本后的所有历史记录',
         data: {
           documentId,
-          restoredFromVersion: body.versionId,
-          newVersionId: await this.documentHistoryService.getLatestVersionId(
-            targetVersion.userId,
-            documentId,
-          ),
+          restoredToVersion: body.versionId,
+          deletedVersionsCount: deleteResult.deletedCount,
         },
       };
     }

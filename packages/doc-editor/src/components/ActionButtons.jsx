@@ -1,94 +1,115 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Modal } from 'antd';
 
-const ActionButtons = ({ onCancel, onSave, onAI, onHelp }) => (
-  <div
-    style={{
-      display: 'flex',
-      gap: '12px',
-    }}
-  >
-    <button
+const ActionButtons = ({ onBackHistoryProps, onAI, onHelp }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // 显示确认弹窗
+  const showModal = () => {
+    setIsModalOpen(true);
+  };
+
+  // 确认回退版本
+  const handleOk = () => {
+    setIsModalOpen(false);
+    if (onBackHistoryProps.onClick) {
+      onBackHistoryProps.onClick();
+    }
+  };
+
+  // 取消回退版本
+  const handleCancel = () => {
+    setIsModalOpen(false);
+  };
+
+  return (
+    <div
       style={{
-        padding: '8px 16px',
-        fontSize: '14px',
-        fontWeight: '500',
-        border: '1px solid #dee2e6',
-        borderRadius: '6px',
-        backgroundColor: '#f8f9fa',
-        color: '#6c757d',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease-in-out',
-        outline: 'none',
-        minWidth: '80px',
-      }}
-      onClick={onCancel}
-    >
-      取消
-    </button>
-    <button
-      style={{
-        padding: '8px 16px',
-        fontSize: '14px',
-        fontWeight: '500',
-        border: '1px solid #0d6efd',
-        borderRadius: '6px',
-        backgroundColor: '#0d6efd',
-        color: '#ffffff',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease-in-out',
-        outline: 'none',
-        minWidth: '80px',
-      }}
-      onClick={onSave}
-    >
-      保存
-    </button>
-    <button
-      onClick={onAI}
-      style={{
-        padding: '8px 16px',
-        fontSize: '14px',
-        fontWeight: '500',
-        border: '1px solid #6610f2',
-        borderRadius: '6px',
-        backgroundColor: '#6610f2',
-        color: '#ffffff',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease-in-out',
-        outline: 'none',
-        minWidth: '80px',
         display: 'flex',
-        alignItems: 'center',
-        gap: '4px',
+        gap: '12px',
       }}
     >
-      AI摘要
-    </button>
-    <button
-      onClick={onHelp}
-      style={{
-        padding: '8px 16px',
-        fontSize: '14px',
-        fontWeight: '500',
-        border: '1px solid #6c757d',
-        borderRadius: '6px',
-        backgroundColor: '#ffffff',
-        color: '#6c757d',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease-in-out',
-        outline: 'none',
-        minWidth: '80px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '4px',
-      }}
-    >
-      <span className="material-icons" style={{ fontSize: '16px' }}>
-        help_outline
-      </span>
-      使用说明
-    </button>
-  </div>
-);
+      {onBackHistoryProps.isShow && (
+        <button
+          style={{
+            padding: '8px 16px',
+            fontSize: '14px',
+            fontWeight: '500',
+            border: '1px solid #0d6efd',
+            borderRadius: '6px',
+            backgroundColor: '#0d6efd',
+            color: '#ffffff',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease-in-out',
+            outline: 'none',
+            minWidth: '80px',
+          }}
+          onClick={showModal}
+        >
+          版本回退
+        </button>
+      )}
+      <button
+        onClick={onAI}
+        style={{
+          padding: '8px 16px',
+          fontSize: '14px',
+          fontWeight: '500',
+          border: '1px solid #6610f2',
+          borderRadius: '6px',
+          backgroundColor: '#6610f2',
+          color: '#ffffff',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease-in-out',
+          outline: 'none',
+          minWidth: '80px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+        }}
+      >
+        AI摘要
+      </button>
+      <button
+        onClick={onHelp}
+        style={{
+          padding: '8px 16px',
+          fontSize: '14px',
+          fontWeight: '500',
+          border: '1px solid #6c757d',
+          borderRadius: '6px',
+          backgroundColor: '#ffffff',
+          color: '#6c757d',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease-in-out',
+          outline: 'none',
+          minWidth: '80px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+        }}
+      >
+        <span className="material-icons" style={{ fontSize: '16px' }}>
+          help_outline
+        </span>
+        使用说明
+      </button>
+
+      {/* Antd Modal 确认弹窗 */}
+      <Modal
+        title="确认回退版本"
+        open={isModalOpen}
+        onOk={handleOk}
+        onCancel={handleCancel}
+        okText="确认回退"
+        cancelText="取消"
+        okButtonProps={{ danger: true }}
+      >
+        <p>您确定要回退到版本 #{onBackHistoryProps.versionId} 吗？</p>
+        <p>回退后当前版本的内容将被覆盖，此操作不可逆。</p>
+      </Modal>
+    </div>
+  );
+};
 
 export default ActionButtons;

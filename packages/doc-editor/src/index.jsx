@@ -80,6 +80,11 @@ const EditorSDK = ({
   documentId = 'default-document',
   value: externalValue,
   onChange: externalOnChange,
+  onBackHistoryProps = {
+    versionId: null,
+    isShow: false,
+    onClick: () => {},
+  },
 }) => {
   // 保存外部传入的值到全局变量，供useCollaborativeEditor检查
   if (externalValue !== undefined) {
@@ -97,7 +102,6 @@ const EditorSDK = ({
     showHelpModal,
     setShowHelpModal,
     showAIDrawer,
-    setShowAIDrawer,
     handleOpenAIDrawer,
     handleCloseAIDrawer,
     addComment,
@@ -339,8 +343,7 @@ const EditorSDK = ({
         />
         {/* 右侧操作按钮 */}
         <ActionButtons
-          onCancel={() => {}}
-          onSave={() => {}}
+          onBackHistoryProps={onBackHistoryProps}
           onAI={handleOpenAIDrawer}
           onHelp={() => setShowHelpModal(true)}
         />
@@ -469,6 +472,8 @@ const EditorSDK = ({
         {/* 编辑区域 + 协同光标覆盖层 */}
         <CursorOverlay>
           <Editable
+            // 查看历史版本的时候只读的
+            readOnly={onBackHistoryProps.isShow}
             decorate={decorate}
             renderElement={renderElement}
             renderLeaf={renderLeaf}

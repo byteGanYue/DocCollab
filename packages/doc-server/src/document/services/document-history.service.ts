@@ -208,4 +208,74 @@ export class DocumentHistoryService {
       throw new Error(`获取最新版本号失败: ${errorMessage}`);
     }
   }
+
+  /**
+   * 删除指定版本之后的所有版本记录
+   * @param documentId 文档ID
+   * @param versionId 目标版本号（该版本将保留）
+   * @returns 删除结果
+   */
+  async deleteVersionsAfter(
+    documentId: number,
+    versionId: number,
+  ): Promise<DeleteResult> {
+    try {
+      // 删除所有大于指定版本号的记录
+      const result = await this.documentHistoryModel
+        .deleteMany({
+          documentId,
+          versionId: { $gt: versionId },
+        })
+        .exec();
+
+      this.logger.log(
+        `删除指定版本后的历史记录成功: documentId=${documentId}, afterVersion=${versionId}, deletedCount=${result.deletedCount}`,
+      );
+
+      return result;
+    } catch (error: unknown) {
+      this.logger.error('删除指定版本后的历史记录失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      throw new Error(`删除指定版本后的历史记录失败: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * 更新指定版本的时间戳为当前时间
+   * @param documentId 文档ID
+   * @param versionId 版本号
+   * @returns 更新结果
+   */
+  async updateVersionTimestamp(
+    documentId: number,
+    versionId: number,
+  ): Promise<DocumentHistoryEntity | null> {
+    try {
+      // 更新指定版本的update_time为当前时间
+      const updatedVersion = await this.documentHistoryModel
+        .findOneAndUpdate(
+          { documentId, versionId },
+          // 使用$currentDate更新字段为当前时间
+          { $currentDate: { update_time: true } },
+          { new: true }, // 返回更新后的文档
+        )
+        .exec();
+
+      if (updatedVersion) {
+        this.logger.log(
+          `更新版本时间戳成功: documentId=${documentId}, versionId=${versionId}, newTimestamp=${updatedVersion.update_time.toISOString()}`,
+        );
+      } else {
+        this.logger.warn(
+          `未找到要更新时间戳的版本: documentId=${documentId}, versionId=${versionId}`,
+        );
+      }
+
+      return updatedVersion;
+    } catch (error: unknown) {
+      this.logger.error('更新版本时间戳失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      throw new Error(`更新版本时间戳失败: ${errorMessage}`);
+    }
+  }
 }
