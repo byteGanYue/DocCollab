@@ -81,6 +81,11 @@ const EditorSDK = ({
   value: externalValue,
   onChange: externalOnChange,
 }) => {
+  // 保存外部传入的值到全局变量，供useCollaborativeEditor检查
+  if (externalValue !== undefined) {
+    window.currentExternalValue = externalValue;
+  }
+
   // 使用自定义 hook 管理协同编辑器状态
   const {
     editor,
@@ -274,6 +279,17 @@ const EditorSDK = ({
     setShowCommentModal(false);
     editorSelectionRef.current = null;
   };
+
+  // 组件卸载时清理全局变量
+  useEffect(() => {
+    return () => {
+      // 清理全局变量
+      if (window.currentExternalValue) {
+        console.log('[EditorSDK] 组件卸载，清理全局变量');
+        window.currentExternalValue = null;
+      }
+    };
+  }, []);
 
   return (
     <div

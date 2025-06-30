@@ -73,6 +73,11 @@ const DocEditor = () => {
         setEditorValue(parsed);
         lastSavedValue.current = parsed;
         console.log('setEditorValue', parsed);
+        // 清除window上的全局变量，以便重置初始化状态
+        if (window.currentExternalValue) {
+          console.log('清除当前外部值缓存，准备使用新加载的内容');
+          window.currentExternalValue = null;
+        }
       } else {
         setEditorValue(undefined);
         lastSavedValue.current = undefined;

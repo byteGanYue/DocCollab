@@ -22,8 +22,14 @@ export const withLayout = editor => {
   const { normalizeNode } = editor;
 
   editor.normalizeNode = ([node, path]) => {
-    // 只处理根节点
+    console.log('只处理根节点', path);
     if (path.length === 0) {
+      // 检查是否是从API加载的内容
+      const isLoadedFromAPI =
+        window.currentExternalValue &&
+        Array.isArray(window.currentExternalValue) &&
+        window.currentExternalValue.length > 0;
+
       // 如果编辑器为空或只有一个空节点，插入标题
       if (
         editor.children.length === 0 ||
@@ -39,6 +45,7 @@ export const withLayout = editor => {
           at: path.concat(0),
           select: true,
         });
+        console.log('插入"无标题文档"', editor.children);
       }
 
       // 确保至少有两个节点（标题 + 段落）
@@ -50,37 +57,43 @@ export const withLayout = editor => {
         Transforms.insertNodes(editor, paragraph, { at: path.concat(1) });
       }
 
-      // 强制第一个节点为标题，其余为段落或其他内容
-      for (const [child, childPath] of Node.children(editor, path)) {
-        const slateIndex = childPath[0];
+      // 如果是API加载的内容，不要强制第一个节点为标题
+      if (!isLoadedFromAPI) {
+        console.log('不是API加载的内容，执行强制布局', editor.children);
+        // 强制第一个节点为标题，其余为段落或其他内容
+        for (const [child, childPath] of Node.children(editor, path)) {
+          const slateIndex = childPath[0];
 
-        const enforceType = type => {
-          if (SlateElement.isElement(child) && child.type !== type) {
-            const newProperties = { type };
-            Transforms.setNodes(editor, newProperties, {
-              at: childPath,
-            });
-          }
-        };
+          const enforceType = type => {
+            if (SlateElement.isElement(child) && child.type !== type) {
+              const newProperties = { type };
+              Transforms.setNodes(editor, newProperties, {
+                at: childPath,
+              });
+            }
+          };
 
-        // 第一个节点必须是标题
-        if (slateIndex === 0) {
-          enforceType('title');
-        }
-        // 第二个节点必须是段落（如果不是特殊类型）
-        else if (slateIndex === 1 && SlateElement.isElement(child)) {
-          // 如果不是列表、引用等特殊类型，则强制为段落
-          if (
-            !LIST_TYPES.includes(child.type) &&
-            child.type !== 'block-quote' &&
-            child.type !== 'heading-one' &&
-            child.type !== 'heading-two' &&
-            child.type !== 'code-block' &&
-            child.type !== 'code-line'
-          ) {
-            enforceType('paragraph');
+          // 第一个节点必须是标题
+          if (slateIndex === 0) {
+            enforceType('title');
+          }
+          // 第二个节点必须是段落（如果不是特殊类型）
+          else if (slateIndex === 1 && SlateElement.isElement(child)) {
+            // 如果不是列表、引用等特殊类型，则强制为段落
+            if (
+              !LIST_TYPES.includes(child.type) &&
+              child.type !== 'block-quote' &&
+              child.type !== 'heading-one' &&
+              child.type !== 'heading-two' &&
+              child.type !== 'code-block' &&
+              child.type !== 'code-line'
+            ) {
+              enforceType('paragraph');
+            }
           }
         }
+      } else {
+        console.log('[布局规范化] 检测到API数据，跳过强制布局');
       }
     }
 

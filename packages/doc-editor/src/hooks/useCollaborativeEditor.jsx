@@ -435,6 +435,22 @@ export function useCollaborativeEditor(documentId = 'default-document') {
           sharedType ? '成功' : '失败',
         );
 
+        // 检查是否有外部传入的文档内容（通过props.value传入）
+        // 如果有外部文档内容，不应该覆盖它
+        const externalValueProvided = !!(
+          window.currentExternalValue &&
+          Array.isArray(window.currentExternalValue) &&
+          window.currentExternalValue.length > 0
+        );
+
+        if (externalValueProvided) {
+          console.log(
+            '[文档初始化] 检测到外部传入的文档内容，跳过默认内容初始化',
+          );
+          valueInitialized.current = true;
+          return;
+        }
+
         if (sharedType && sharedType.toString() === '') {
           // 只有在文档为空时才插入默认内容
           console.log('[文档初始化] 新文档，插入默认内容');
