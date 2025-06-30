@@ -4,8 +4,8 @@ layout: home
 
 hero:
   name: "DocCollab"
-  text: "一个开源开箱即用的前端监控SDK"
-  tagline: My great project tagline
+  text: "一个开源的协同富文本文档编辑系统"
+  tagline: 类似飞书文档的在线协同编辑平台
   actions:
     - theme: brand
       text: 🚀🚀🚀 快速开始
@@ -14,15 +14,15 @@ hero:
       text: ⭐⭐⭐ 项目亮点
       link: /项目亮点/index
     - theme: alt
-      text: 😋😋😋 食用文档
+      text: 😋😋😋 使用文档
       link: /使用文档/快速开始
 
 features:
-  - title: 开箱即用
-    details: 简单的配置即可实现前端监控功能，快速接入您的应用
-  - title: 功能丰富
-    details: 支持性能监控、错误监控、请求监控、资源监控等多种监控能力
-  - title: 可扩展性
-    details: 提供插件机制，支持自定义监控指标和监控行为
+  - title: 实时协同编辑
+    details: 基于CRDT算法和Yjs实现的多人实时协作，支持多人同时编辑文档内容
+  - title: 丰富的文本编辑能力
+    details: 支持富文本编辑、Markdown语法、代码块高亮等多种编辑功能
+  - title: 版本历史与权限管理
+    details: 自动保存文档版本历史，支持版本对比和回滚，提供精细的权限控制
 ---
 

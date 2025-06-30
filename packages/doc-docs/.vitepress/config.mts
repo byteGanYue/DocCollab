@@ -3,13 +3,15 @@ import { generateSidebar } from './utils/gennerateSidebar';
 
 export default defineConfig({
   title: 'DocCollab',
-  description: '一个开源开箱即用的前端监控SDK',
+  description: '一个开源的协同富文本文档编辑系统',
   head: [['link', { rel: 'icon', href: '/DocCollab/logo.png' }]],
   themeConfig: {
     nav: [
       { text: '💭 首页', link: '/' },
-      { text: '🦄 介绍', link: '/使用文档/快速开始' },
-      { text: '👫 参与贡献', link: '/贡献文档' },
+      { text: '🚀 快速开始', link: '/使用文档/快速开始' },
+      { text: '📝 系统架构', link: '/系统架构设计' },
+      { text: '⭐ 项目亮点', link: '/项目亮点/' },
+      { text: '👫 参与贡献', link: '/贡献文档/' },
       { text: '👋 关于我们', link: '/about' },
     ],
     // 直接使用相对于 public 目录的路径
