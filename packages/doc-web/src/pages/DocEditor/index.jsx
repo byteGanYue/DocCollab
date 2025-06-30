@@ -40,8 +40,6 @@ const DocEditor = () => {
   const [editorValue, setEditorValue] = useState(undefined);
   // 加载状态
   const [loading, setLoading] = useState(false);
-  // 保存状态
-  const [saving, setSaving] = useState(false);
   // 防抖保存定时器
   const saveTimer = useRef(null);
   // 记录上次保存内容
@@ -60,18 +58,24 @@ const DocEditor = () => {
   // 是否有编辑过的标志
   const hasEdited = useRef(false);
 
+  const defaultValue = [
+    {
+      type: 'paragraph',
+      children: [{ text: '' }],
+    },
+  ];
+
   // 加载文档内容
   const fetchDocumentContent = useCallback(async () => {
+    const thisId = documentId;
+    setLoading(true);
     if (!documentId || !userId || documentId.startsWith('temp_')) {
-      setEditorValue(undefined); // 新建文档用默认内容
+      setEditorValue(defaultValue); // 新建文档用默认内容
+      setLoading(false);
       return;
     }
-    setLoading(true);
-    // 设置切换文档标志
-    isSwitchingDocs.current = true;
     try {
-      const response = await documentAPI.getDocument(documentId, userId);
-      console.log('API获取后端的response', response);
+      const response = await documentAPI.getDocument(thisId, userId);
       if (response.success && response.data) {
         let content = response.data.content;
         let parsed = undefined;
@@ -79,32 +83,21 @@ const DocEditor = () => {
           try {
             parsed = JSON.parse(content);
           } catch {
-            parsed = undefined;
+            parsed = defaultValue;
           }
         } else if (Array.isArray(content)) {
           parsed = content;
         }
-        setEditorValue(parsed);
-        lastSavedValue.current = parsed;
-        console.log('setEditorValue', parsed);
-        // 清除window上的全局变量，以便重置初始化状态
-        if (window.currentExternalValue) {
-          console.log('清除当前外部值缓存，准备使用新加载的内容');
-          window.currentExternalValue = null;
+        if (thisId === documentId && parsed) {
+          setEditorValue(parsed);
+          lastSavedValue.current = parsed;
+          if (window.currentExternalValue) {
+            window.currentExternalValue = null;
+          }
         }
-      } else {
-        setEditorValue(undefined);
-        lastSavedValue.current = undefined;
       }
-    } catch {
-      setEditorValue(undefined);
-      lastSavedValue.current = undefined;
     } finally {
       setLoading(false);
-      // 文档加载完成后重置标志
-      setTimeout(() => {
-        isSwitchingDocs.current = false;
-      }, 500); // 稍微延迟以确保状态更新完成
     }
   }, [documentId, userId]);
 
@@ -157,53 +150,23 @@ const DocEditor = () => {
   // 自动保存逻辑（防抖）
   const handleEditorChange = useCallback(
     value => {
-      // 如果正在切换文档，跳过内容更新
-      if (isSwitchingDocs.current) {
-        console.log('[DocEditor] 正在切换文档，跳过内容更新');
-        return;
-      }
-
+      if (isSwitchingDocs.current) return;
       setEditorValue(value);
-      // 标记有编辑动作
-      hasEdited.current = true;
-      localStorage.setItem('isEdit', 'true');
-
-      // 重置历史版本计时器
-      resetHistoryVersionTimer();
-
-      // 仅保存已存在的文档
-      if (!documentId || documentId.startsWith('temp_')) return;
-
-      // 检查是否是空内容，如果是则跳过保存
+      // 只有内容非空且和 lastSavedValue 不一致时才标记 hasEdited
       const isEmpty =
         Array.isArray(value) &&
         value.length === 1 &&
         value[0].type === 'paragraph' &&
         value[0].children?.length === 1 &&
         value[0].children[0].text === '';
-
-      if (isEmpty) {
-        console.log('[DocEditor] 检测到空内容，跳过保存');
-        return;
+      if (
+        !isEmpty &&
+        JSON.stringify(value) !== JSON.stringify(lastSavedValue.current)
+      ) {
+        hasEdited.current = true;
+        localStorage.setItem('isEdit', 'true');
       }
-
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(async () => {
-        // 避免重复保存相同内容
-        if (JSON.stringify(value) === JSON.stringify(lastSavedValue.current))
-          return;
-        setSaving(true);
-        try {
-          await documentAPI.updateDocument(documentId, {
-            content: JSON.stringify(value),
-          });
-          lastSavedValue.current = value;
-        } catch {
-          // 可加错误提示
-        } finally {
-          setSaving(false);
-        }
-      }, AUTO_SAVE_DELAY);
+      resetHistoryVersionTimer();
     },
     [documentId, resetHistoryVersionTimer],
   );
@@ -357,33 +320,17 @@ const DocEditor = () => {
       {loading && (
         <div style={{ padding: 20, color: '#888' }}>文档加载中...</div>
       )}
-      {/* 自动保存状态提示 */}
-      {saving && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 10,
-            right: 10,
-            color: '#888',
-            zIndex: 9999,
-          }}
-        >
-          正在自动保存...
-        </div>
+      {/* 只有 editorValue 有效且非 loading 时才渲染编辑器 */}
+      {!loading && editorValue && (
+        <EditorSDK
+          key={documentId}
+          documentId={documentId}
+          userId={userId}
+          value={editorValue}
+          onChange={handleEditorChange}
+          onBackHistoryProps={onBackHistoryProps}
+        />
       )}
-      {/* 
-        使用documentId作为key属性，确保文档切换时编辑器组件被完全卸载和重建
-        这样可以确保文档间的协同上下文完全隔离，避免互相干扰
-      */}
-      <EditorSDK
-        key={documentId}
-        documentId={documentId}
-        userId={userId}
-        value={editorValue}
-        onChange={handleEditorChange}
-        onBackHistoryProps={onBackHistoryProps}
-      />
-
       {/* 调试信息 */}
       <div
         style={{
