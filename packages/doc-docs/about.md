@@ -26,8 +26,16 @@ const members = [
     links: [
       { icon: 'github', link: 'https://github.com/wenhuilan' }
     ]
-  }
+  },
   // 可以继续添加更多成员
+        {
+    avatar: 'https://avatars.githubusercontent.com/u/166977518?v=4&size=64',
+    name: 'wangzimian',
+    title: '🍃 Frontend Developer',
+    links: [
+      { icon: 'github', link: 'https://github.com/2042217959' }
+    ]
+  }
 ]
 </script>
 

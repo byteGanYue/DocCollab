@@ -212,19 +212,19 @@ const DocEditor = () => {
 
       // 设置版本回退属性
       setOnBackHistoryProps({
-        versionId: parseInt(versionId),
+        versionId: versionId,
         isShow: true,
-        onClick: () => handleBackHistory(parseInt(versionId)),
+        onClick: () => handleBackHistory(versionId),
       });
     } else {
-      // 没有version参数时重置回退属性
+      // 增加一个 else 分支，确保在没有 versionId 时重置状态
       setOnBackHistoryProps({
         versionId: null,
         isShow: false,
         onClick: () => {},
       });
     }
-  }, [documentId, location, fetchDocumentContent, handleBackHistory]);
+  }, [location.search, handleBackHistory]);
 
   // 组件挂载时打印调试信息
   useEffect(() => {
