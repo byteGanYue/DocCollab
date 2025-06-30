@@ -295,7 +295,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         Transforms.setNodes(
           e,
           { comment: undefined },
-          { at: e.selection, match: n => Text.isText(n) },
+          { at: e.selection, match: n => n.text !== undefined },
         );
       }
       // 调用原始的 insertText 方法
