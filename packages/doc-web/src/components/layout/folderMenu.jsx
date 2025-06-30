@@ -910,11 +910,11 @@ const FolderMenu = () => {
           const findCollaborativeDocumentInMenu = items => {
             if (!Array.isArray(items)) return null;
             for (const item of items) {
-              // 协同文档的key格式：collab_user_{userId}_doc_{documentId}
+              // 协同文档的key格式：collab_user_{userId}_doc_{documentId}_{index}
               if (
                 item.key &&
                 item.key.includes('collab_user_') &&
-                item.key.endsWith(`_doc_${documentId}`)
+                item.key.includes(`_doc_${documentId}_`)
               ) {
                 return item.key;
               }
@@ -944,8 +944,13 @@ const FolderMenu = () => {
           const findDocumentInMenu = items => {
             if (!Array.isArray(items)) return null;
             for (const item of items) {
-              // 新的key格式: doc_${documentId}_${index}
-              if (item.key && item.key.startsWith(`doc_${documentId}_`)) {
+              // 尝试多种key格式匹配
+              if (
+                item.key &&
+                (item.key.startsWith(`doc_${documentId}_`) || // 新格式: doc_${documentId}_${index}
+                  item.key === `doc_${documentId}` || // 标准格式: doc_${documentId}
+                  item.key === `doc${documentId}`) // 简化格式: doc${documentId}
+              ) {
                 return item.key;
               }
               if (item.children) {
@@ -961,8 +966,10 @@ const FolderMenu = () => {
             return [foundDocKey];
           }
 
-          // 如果没找到对应的文档菜单项，返回默认选中
-          return ['home'];
+          // 如果没找到对应的文档菜单项，返回空数组而不是默认高亮首页
+          // 这样可以避免在文档编辑页面时首页被错误高亮
+          console.log('⚠️ 未找到对应的文档菜单项，documentId:', documentId);
+          return [];
         }
       }
     }
@@ -2507,7 +2514,9 @@ const FolderMenu = () => {
       <div className={styles.menu}>
         <Menu
           mode="inline"
-          selectedKeys={[...new Set([...selectedKeys, ...userSelectedKeys])]}
+          selectedKeys={
+            selectedKeys.length > 0 ? selectedKeys : userSelectedKeys
+          }
           openKeys={openKeys}
           onSelect={handleMenuSelect}
           onOpenChange={handleMenuOpenChange}
