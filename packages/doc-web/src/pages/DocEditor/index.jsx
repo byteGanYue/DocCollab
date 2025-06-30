@@ -15,6 +15,7 @@ import { documentAPI } from '@/utils/api';
  * 实现文档间完全隔离
  */
 const AUTO_SAVE_DELAY = 1000; // 自动保存防抖间隔(ms)
+const HISTORY_VERSION_TIMER = 60 * 10 * 1000; // 自动创建历史版本的计时器间隔(10分钟)
 
 const DocEditor = () => {
   const { id } = useParams();
@@ -53,6 +54,11 @@ const DocEditor = () => {
     isShow: false,
     onClick: () => {},
   });
+
+  // 历史版本自动创建计时器
+  const historyVersionTimer = useRef(null);
+  // 是否有编辑过的标志
+  const hasEdited = useRef(false);
 
   // 加载文档内容
   const fetchDocumentContent = useCallback(async () => {
@@ -102,6 +108,52 @@ const DocEditor = () => {
     }
   }, [documentId, userId]);
 
+  // 创建历史版本
+  const createHistoryVersion = useCallback(async () => {
+    // 如果是临时文档或标记为没有编辑，则不创建历史版本
+    if (!documentId || documentId.startsWith('temp_') || !hasEdited.current) {
+      return;
+    }
+
+    console.log(`[DocEditor] 开始创建历史版本: documentId=${documentId}`);
+    try {
+      const result = await documentAPI.createDocumentHistory(documentId);
+      if (result.success) {
+        console.log(
+          `[DocEditor] 历史版本创建成功: documentId=${documentId}, versionId=${result.data.versionId}`,
+        );
+        // 重置编辑标志
+        hasEdited.current = false;
+        // 清除localStorage中的编辑标记
+        localStorage.removeItem('isEdit');
+      }
+    } catch (error) {
+      console.error(`[DocEditor] 历史版本创建失败:`, error);
+    }
+  }, [documentId]);
+
+  // 启动或重置历史版本创建计时器
+  const resetHistoryVersionTimer = useCallback(() => {
+    // 清除现有计时器
+    if (historyVersionTimer.current) {
+      clearTimeout(historyVersionTimer.current);
+      historyVersionTimer.current = null;
+    }
+
+    // 如果是临时文档，不设置计时器
+    if (!documentId || documentId.startsWith('temp_')) return;
+
+    // 设置新计时器
+    historyVersionTimer.current = setTimeout(() => {
+      console.log(`[DocEditor] 历史版本计时器触发: documentId=${documentId}`);
+      createHistoryVersion();
+    }, HISTORY_VERSION_TIMER);
+
+    console.log(
+      `[DocEditor] 启动/重置历史版本计时器: documentId=${documentId}, 计时${HISTORY_VERSION_TIMER / 60000}分钟`,
+    );
+  }, [documentId, createHistoryVersion]);
+
   // 自动保存逻辑（防抖）
   const handleEditorChange = useCallback(
     value => {
@@ -112,6 +164,13 @@ const DocEditor = () => {
       }
 
       setEditorValue(value);
+      // 标记有编辑动作
+      hasEdited.current = true;
+      localStorage.setItem('isEdit', 'true');
+
+      // 重置历史版本计时器
+      resetHistoryVersionTimer();
+
       // 仅保存已存在的文档
       if (!documentId || documentId.startsWith('temp_')) return;
 
@@ -146,7 +205,7 @@ const DocEditor = () => {
         }
       }, AUTO_SAVE_DELAY);
     },
-    [documentId],
+    [documentId, resetHistoryVersionTimer],
   );
 
   // 点击版本回退按钮回调函数
@@ -178,6 +237,7 @@ const DocEditor = () => {
     },
     [documentId, location, fetchDocumentContent],
   );
+
   // 检查URL中是否包含version参数
   useEffect(() => {
     // 解析URL查询参数
@@ -208,9 +268,20 @@ const DocEditor = () => {
     console.log(`[DocEditor] 组件挂载 - 文档ID: ${documentId}`);
     console.log(`[DocEditor] 使用key = ${documentId} 强制隔离编辑器实例`);
 
+    // 重置编辑状态
+    hasEdited.current = false;
+    localStorage.removeItem('isEdit');
+
     // 组件卸载时的清理函数
     return () => {
       console.log(`[DocEditor] 组件卸载 - 文档ID: ${documentId}`);
+
+      // 清除历史版本计时器
+      if (historyVersionTimer.current) {
+        clearTimeout(historyVersionTimer.current);
+        historyVersionTimer.current = null;
+        console.log(`[DocEditor] 清除历史版本计时器`);
+      }
 
       // 在切换文档时不创建历史版本
       if (isSwitchingDocs.current) {
@@ -218,11 +289,11 @@ const DocEditor = () => {
         return;
       }
 
-      const isEdit = localStorage.getItem('isEdit') === 'true';
-      console.log('isEdit', isEdit);
-      console.log('documentId', documentId);
-      if (isEdit && documentId && !documentId.startsWith('temp_')) {
-        console.log('documentId', documentId);
+      // 如果有编辑过，创建历史版本
+      if (hasEdited.current && documentId && !documentId.startsWith('temp_')) {
+        console.log(
+          `[DocEditor] 组件卸载时创建历史版本: documentId=${documentId}`,
+        );
         // 调用创建历史版本API
         documentAPI
           .createDocumentHistory(documentId)
@@ -234,6 +305,8 @@ const DocEditor = () => {
           .catch(error => {
             console.error('创建历史版本失败:', error);
           });
+      } else {
+        console.log(`[DocEditor] 组件卸载时未检测到编辑，不创建历史版本`);
       }
     };
   }, [documentId]);
