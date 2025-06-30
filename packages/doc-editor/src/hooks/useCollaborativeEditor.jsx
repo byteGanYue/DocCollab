@@ -38,6 +38,10 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   const yCommentsRef = useRef();
   const yTextRef = useRef();
 
+  // 引用用于跟踪上一个文档ID
+  const lastDocumentId = useRef(documentId);
+  const providerRef = useRef(null);
+
   // 文档ID变化时重置状态
   useEffect(() => {
     if (lastDocumentId.current !== documentId) {
@@ -214,7 +218,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   // 创建Hocuspocus Provider
   const provider = useMemo(() => {
     try {
-      return new HocuspocusProvider({
+      const newProvider = new HocuspocusProvider({
         url: WS_URL,
         name: documentId,
         document: docRef.current,
@@ -222,6 +226,8 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         onConnect: () => setIsConnected(true),
         onDisconnect: () => setIsConnected(false),
       });
+      providerRef.current = newProvider;
+      return newProvider;
     } catch {
       return null;
     }
