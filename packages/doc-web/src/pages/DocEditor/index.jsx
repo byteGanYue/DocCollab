@@ -249,19 +249,19 @@ const DocEditor = () => {
 
       // 设置版本回退属性
       setOnBackHistoryProps({
-        versionId: parseInt(versionId),
+        versionId: versionId,
         isShow: true,
-        onClick: () => handleBackHistory(parseInt(versionId)),
+        onClick: () => handleBackHistory(versionId),
       });
     } else {
-      // 没有version参数时重置回退属性
+      // 增加一个 else 分支，确保在没有 versionId 时重置状态
       setOnBackHistoryProps({
         versionId: null,
         isShow: false,
         onClick: () => {},
       });
     }
-  }, [documentId, location, fetchDocumentContent, handleBackHistory]);
+  }, [location.search, handleBackHistory]);
 
   // 组件挂载时打印调试信息
   useEffect(() => {
@@ -371,7 +371,7 @@ const DocEditor = () => {
           正在自动保存...
         </div>
       )}
-      {/* 
+      {/*
         使用documentId作为key属性，确保文档切换时编辑器组件被完全卸载和重建
         这样可以确保文档间的协同上下文完全隔离，避免互相干扰
       */}

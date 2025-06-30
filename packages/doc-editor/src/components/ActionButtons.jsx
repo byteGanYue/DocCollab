@@ -3,6 +3,13 @@ import { Modal } from 'antd';
 const ActionButtons = ({ onBackHistoryProps, onAI, onHelp }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Ensure onBackHistoryProps has default values
+  const backHistoryProps = onBackHistoryProps || {
+    versionId: null,
+    isShow: false,
+    onClick: () => {},
+  };
+
   // 显示确认弹窗
   const showModal = () => {
     setIsModalOpen(true);
@@ -11,8 +18,8 @@ const ActionButtons = ({ onBackHistoryProps, onAI, onHelp }) => {
   // 确认回退版本
   const handleOk = () => {
     setIsModalOpen(false);
-    if (onBackHistoryProps.onClick) {
-      onBackHistoryProps.onClick();
+    if (backHistoryProps.onClick) {
+      backHistoryProps.onClick();
     }
   };
 
@@ -28,7 +35,7 @@ const ActionButtons = ({ onBackHistoryProps, onAI, onHelp }) => {
         gap: '12px',
       }}
     >
-      {onBackHistoryProps.isShow && (
+      {backHistoryProps.isShow && (
         <button
           style={{
             padding: '8px 16px',
@@ -104,7 +111,7 @@ const ActionButtons = ({ onBackHistoryProps, onAI, onHelp }) => {
         cancelText="取消"
         okButtonProps={{ danger: true }}
       >
-        <p>您确定要回退到版本 #{onBackHistoryProps.versionId} 吗？</p>
+        <p>您确定要回退到版本 #{backHistoryProps.versionId} 吗？</p>
         <p>回退后当前版本的内容将被覆盖，此操作不可逆。</p>
       </Modal>
     </div>

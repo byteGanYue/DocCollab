@@ -80,12 +80,14 @@ const EditorSDK = ({
   documentId = 'default-document',
   value: externalValue,
   onChange: externalOnChange,
-  onBackHistoryProps = {
+  onBackHistoryProps,
+}) => {
+  // Ensure onBackHistoryProps has default values
+  const backHistoryProps = onBackHistoryProps || {
     versionId: null,
     isShow: false,
     onClick: () => {},
-  },
-}) => {
+  };
   // 保存外部传入的值到全局变量，供useCollaborativeEditor检查
   if (externalValue !== undefined) {
     window.currentExternalValue = externalValue;
@@ -473,7 +475,7 @@ const EditorSDK = ({
         <CursorOverlay>
           <Editable
             // 查看历史版本的时候只读的
-            readOnly={onBackHistoryProps.isShow}
+            readOnly={backHistoryProps.isShow}
             decorate={decorate}
             renderElement={renderElement}
             renderLeaf={renderLeaf}
