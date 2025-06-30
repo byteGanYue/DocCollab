@@ -343,6 +343,7 @@ const EditorSDK = ({
         />
         {/* 右侧操作按钮 */}
         <ActionButtons
+          onBackHistoryProps={onBackHistoryProps}
           onAI={handleOpenAIDrawer}
           onHelp={() => setShowHelpModal(true)}
         />

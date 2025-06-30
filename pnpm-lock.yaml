@@ -107,9 +107,6 @@ importers:
       react-markdown:
         specifier: ^9.0.1
         version: 9.1.0(@types/react@19.1.8)(react@19.1.0)
-      react-router-dom:
-        specifier: ^7.6.2
-        version: 7.6.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       rehype-raw:
         specifier: ^7.0.0
         version: 7.0.0
