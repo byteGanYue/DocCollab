@@ -485,7 +485,7 @@ const EditorSDK = ({
             spellCheck
             autoFocus
             style={{
-              minHeight: '300px',
+              minHeight: '500px',
               padding: '16px',
               border: '1px solid #ced4da',
               borderRadius: '0 0 8px 8px',
