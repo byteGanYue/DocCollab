@@ -44,7 +44,6 @@ import UserAvatars from './components/UserAvatars';
 import ActionButtons from './components/ActionButtons';
 import CommentModal from './components/CommentModal';
 import * as Y from 'yjs';
-import CommentList from './components/CommentList';
 
 // 常量定义
 const ParagraphType = 'paragraph';
@@ -107,6 +106,7 @@ const EditorSDK = ({
     handleOpenAIDrawer,
     handleCloseAIDrawer,
     addComment,
+    removeComment,
     yComments,
   } = useCollaborativeEditor(documentId);
   // value 就是当前文档内容（Slate节点数组）
@@ -550,8 +550,6 @@ const EditorSDK = ({
         onOk={handleCommentOk}
         onCancel={() => setShowCommentModal(false)}
       />
-
-      <CommentList yComments={yComments} editor={editor} />
     </div>
   );
 };
