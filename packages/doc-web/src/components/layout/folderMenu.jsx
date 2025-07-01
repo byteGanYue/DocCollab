@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, {
   useState,
   useRef,
@@ -729,18 +730,16 @@ const FolderMenu = () => {
             matchedFolderData.documents &&
             matchedFolderData.documents.length > 0
           ) {
-            const documentMenuItems = matchedFolderData.documents.map(
-              (doc, index) => {
-                const docKey = `doc_${doc.documentId}`;
-                return {
-                  key: docKey,
-                  label: <EllipsisLabel text={doc.documentName} />,
-                  isLeaf: true,
-                  backendData: doc,
-                  documentId: doc.documentId,
-                };
-              },
-            );
+            const documentMenuItems = matchedFolderData.documents.map(doc => {
+              const docKey = `doc_${doc.documentId}`;
+              return {
+                key: docKey,
+                label: <EllipsisLabel text={doc.documentName} />,
+                isLeaf: true,
+                backendData: doc,
+                documentId: doc.documentId,
+              };
+            });
 
             // 将文档添加到子项中
             filteredChildren = [...filteredChildren, ...documentMenuItems];
@@ -1185,7 +1184,6 @@ const FolderMenu = () => {
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userInfo, collaborationUsers]);
 
   // 将后端文件夹数据转换为前端菜单格式
@@ -1231,7 +1229,7 @@ const FolderMenu = () => {
       );
 
       // 将文档转换为菜单项并添加到children中
-      const documentMenuItems = folderDocumentList.map((doc, index) => {
+      const documentMenuItems = folderDocumentList.map(doc => {
         const docKey = `doc_${doc.documentId}`;
         return {
           key: docKey,
@@ -1281,7 +1279,7 @@ const FolderMenu = () => {
     const sortedFolderTree = sortFolders(folderTree);
 
     // 将根级文档转换为菜单项
-    const rootDocumentMenuItems = rootDocuments.map((doc, index) => {
+    const rootDocumentMenuItems = rootDocuments.map(doc => {
       const docKey = `doc_${doc.documentId}`;
       return {
         key: docKey,
