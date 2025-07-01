@@ -35,7 +35,7 @@ import {
 import { HOTKEYS, toggleMark } from './utils/editorHelpers';
 import { normalizeTokens } from './utils/normalize-tokens';
 import { prismThemeCss } from './utils/prismTheme';
-
+import { message } from 'antd';
 // 协同相关
 import CursorOverlay from './components/CursorOverlay';
 import { useCollaborativeEditor } from './hooks/useCollaborativeEditor';
@@ -118,7 +118,7 @@ const EditorSDK = ({
   // 评论弹窗相关状态
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentSelection, setCommentSelection] = useState(null);
-
+  const [messageApi, contextHolder] = message.useMessage();
   // 记录选区
   const editorSelectionRef = useRef(null);
 
@@ -217,7 +217,7 @@ const EditorSDK = ({
         if (isHotkey('mod+shift+c', event)) {
           event.preventDefault();
           if (!editor.selection || Range.isCollapsed(editor.selection)) {
-            alert('请先选中要评论的文本');
+            messageApi.warning('请先选中要评论的文本');
             return;
           }
           // 保存当前选区
@@ -307,6 +307,7 @@ const EditorSDK = ({
         position: 'relative',
       }}
     >
+      {contextHolder}
       {/* 添加Material Icons字体 */}
       <link
         href="https://fonts.googleapis.com/icon?family=Material+Icons"
@@ -361,7 +362,7 @@ const EditorSDK = ({
         <HoveringToolbar
           onAddComment={() => {
             if (!editor.selection || Range.isCollapsed(editor.selection)) {
-              alert('请先选中要评论的文本');
+              messageApi.warning('请先选中要评论的文本');
               return;
             }
             // 保存当前选区
@@ -453,7 +454,7 @@ const EditorSDK = ({
             }}
             onClick={() => {
               if (!editor.selection || Range.isCollapsed(editor.selection)) {
-                alert('请先选中要评论的文本');
+                messageApi.warning('请先选中要评论的文本');
                 return;
               }
               // 保存当前选区

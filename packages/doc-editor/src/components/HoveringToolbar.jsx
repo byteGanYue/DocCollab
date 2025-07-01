@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Editor, Range } from 'slate';
-import { useFocused, useSlate } from 'slate-react';
+import { Editor, Range, Element, Transforms } from 'slate';
+import { useFocused, useSlate, useSlateStatic } from 'slate-react';
 import Button from './Button';
 import Icon from './Icon';
 import Menu from './Menu';
@@ -11,6 +11,7 @@ import {
   toggleBlock,
   isBlockActive,
 } from '../utils/editorHelpers';
+import CodeBlockButton from './CodeBlockButton';
 
 /**
  * 获取格式对应的提示文本
@@ -285,6 +286,11 @@ const HoveringToolbar = ({ onAddComment }) => {
 
         <Divider />
 
+        {/* 代码块按钮 */}
+        <HoveringCodeBlockButton />
+
+        <Divider />
+
         {/* 评论按钮 */}
         <Button
           reversed
@@ -342,6 +348,95 @@ const BlockFormatButton = ({ format, icon }) => {
       title={getFormatTitle(format)}
     >
       <Icon>{icon}</Icon>
+    </Button>
+  );
+};
+
+/**
+ * 代码块按钮组件（适用于悬浮工具栏）
+ * 与其他悬浮工具栏按钮保持一致的样式
+ */
+const HoveringCodeBlockButton = () => {
+  const editor = useSlateStatic();
+
+  /**
+   * 检查当前选区是否在代码块中
+   * @returns {boolean} 是否在代码块中
+   */
+  const isCodeBlockActive = () => {
+    const { selection } = editor;
+    if (!selection) return false;
+
+    const [match] = Array.from(
+      editor.nodes({
+        at: selection,
+        match: n => Element.isElement(n) && n.type === 'code-block',
+      }),
+    );
+
+    return !!match;
+  };
+
+  /**
+   * 处理代码块按钮点击事件
+   * 将选中的段落转换为代码块或从代码块转换回段落
+   */
+  const handleClick = () => {
+    if (isCodeBlockActive()) {
+      // 已经是代码块，转换回普通段落
+      const nodes = Array.from(
+        editor.nodes({
+          match: n => Element.isElement(n) && n.type === 'code-line',
+        }),
+      );
+
+      nodes.forEach(([node, path]) => {
+        // 在同一位置创建新的段落
+        Transforms.setNodes(editor, { type: 'paragraph' }, { at: path });
+      });
+
+      // 从代码块中解包出节点
+      Transforms.unwrapNodes(editor, {
+        match: n => Element.isElement(n) && n.type === 'code-block',
+        split: true,
+      });
+    } else {
+      // 将段落包装成代码块
+      Transforms.wrapNodes(
+        editor,
+        {
+          type: 'code-block',
+          language: 'html',
+          children: [],
+        },
+        {
+          match: n => Element.isElement(n) && n.type === 'paragraph',
+          split: true,
+        },
+      );
+
+      // 将段落转换为代码行
+      Transforms.setNodes(
+        editor,
+        { type: 'code-line' },
+        {
+          match: n => Element.isElement(n) && n.type === 'paragraph',
+        },
+      );
+    }
+  };
+
+  return (
+    <Button
+      reversed
+      active={isCodeBlockActive()}
+      onMouseDown={e => {
+        e.preventDefault();
+        handleClick();
+      }}
+      title="插入/取消代码块"
+    >
+      <Icon>data_object</Icon>
     </Button>
   );
 };
