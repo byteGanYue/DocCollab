@@ -278,7 +278,7 @@ const AIDrawer = ({ isOpen, onClose, documentContent }) => {
         generateSummary();
       }
     }
-  }, [isOpen, documentContent, lastContentHash, summary]);
+  }, [isOpen, documentContent]);
 
   /**
    * 下载摘要为PDF文件
