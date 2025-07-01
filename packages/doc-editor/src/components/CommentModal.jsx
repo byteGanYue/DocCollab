@@ -46,6 +46,7 @@ const CommentModal = ({ isOpen, onOk, onCancel, initialValue = '' }) => {
             marginBottom: 16,
             fontSize: 15,
             padding: 8,
+            outline: 'none',
           }}
           placeholder="请输入评论内容"
         />

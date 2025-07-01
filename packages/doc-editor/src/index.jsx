@@ -446,11 +446,12 @@ const EditorSDK = ({
             style={{
               marginLeft: 8,
               padding: '0 12px',
-              border: '1px solid #aaa',
+              border: '1px solid rgb(221, 221, 221)',
               borderRadius: 4,
               background: '#fff',
               cursor: 'pointer',
               height: 32,
+              color: 'rgb(102, 102, 102)',
             }}
             onClick={() => {
               if (!editor.selection || Range.isCollapsed(editor.selection)) {
