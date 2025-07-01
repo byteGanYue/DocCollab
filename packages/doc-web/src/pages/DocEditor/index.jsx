@@ -74,37 +74,103 @@ const DocEditor = () => {
       setLoading(false);
       return;
     }
+
     try {
-      const response = await documentAPI.getDocument(thisId, userId);
-      if (response.success && response.data) {
-        let content = response.data.content;
-        let parsed = undefined;
-        if (typeof content === 'string') {
-          try {
-            parsed = JSON.parse(content);
-          } catch {
-            parsed = defaultValue;
+      // 解析URL查询参数
+      const searchParams = new URLSearchParams(location.search);
+      const versionId = searchParams.get('version');
+
+      let response;
+
+      // 如果有version参数，获取历史版本内容
+      if (versionId) {
+        console.log(
+          `[DocEditor] 获取历史版本: documentId=${thisId}, versionId=${versionId}`,
+        );
+        response = await documentAPI.getDocumentVersion(thisId, versionId);
+        console.log('历史版本响应数据:', response);
+
+        if (response.success && response.data) {
+          // 特别处理历史版本数据结构
+          let content = null;
+
+          // 直接访问content字段
+          if (response.data.content) {
+            content = response.data.content;
           }
-        } else if (Array.isArray(content)) {
-          parsed = content;
+          // 如果历史版本数据在document字段中
+          else if (response.data.document && response.data.document.content) {
+            content = response.data.document.content;
+          }
+
+          let parsed = undefined;
+          if (typeof content === 'string') {
+            try {
+              parsed = JSON.parse(content);
+            } catch {
+              parsed = defaultValue;
+            }
+          } else if (Array.isArray(content)) {
+            parsed = content;
+          }
+          console.log('parsed1', parsed);
+          if (thisId === documentId && parsed) {
+            console.log('[DocEditor] 成功解析历史版本内容');
+            setEditorValue(parsed);
+            lastSavedValue.current = parsed;
+            if (window.currentExternalValue) {
+              window.currentExternalValue = null;
+            }
+          }
         }
-        if (thisId === documentId && parsed) {
-          setEditorValue(parsed);
-          lastSavedValue.current = parsed;
-          if (window.currentExternalValue) {
-            window.currentExternalValue = null;
+      } else {
+        // 否则获取最新版本
+        console.log(`[DocEditor] 获取当前版本: documentId=${thisId}`);
+        response = await documentAPI.getDocument(thisId, userId);
+
+        if (response.success && response.data) {
+          let content = response.data.content;
+          let parsed = undefined;
+          if (typeof content === 'string') {
+            try {
+              parsed = JSON.parse(content);
+            } catch {
+              parsed = defaultValue;
+            }
+          } else if (Array.isArray(content)) {
+            parsed = content;
+          }
+          console.log('parsed2', parsed);
+          if (thisId === documentId && parsed) {
+            setEditorValue(parsed);
+            lastSavedValue.current = parsed;
+            if (window.currentExternalValue) {
+              window.currentExternalValue = null;
+            }
           }
         }
       }
     } finally {
       setLoading(false);
     }
-  }, [documentId, userId]);
+  }, [documentId, userId, location.search]);
 
   // 创建历史版本
   const createHistoryVersion = useCallback(async () => {
-    // 如果是临时文档或标记为没有编辑，则不创建历史版本
-    if (!documentId || documentId.startsWith('temp_') || !hasEdited.current) {
+    // 解析URL查询参数
+    const searchParams = new URLSearchParams(location.search);
+    const versionId = searchParams.get('version');
+
+    // 如果是临时文档或标记为没有编辑，或者正在查看历史版本，则不创建历史版本
+    if (
+      !documentId ||
+      documentId.startsWith('temp_') ||
+      !hasEdited.current ||
+      versionId
+    ) {
+      if (versionId) {
+        console.log(`[DocEditor] 正在查看历史版本，不创建新的历史版本记录`);
+      }
       return;
     }
 
@@ -123,7 +189,7 @@ const DocEditor = () => {
     } catch (error) {
       console.error(`[DocEditor] 历史版本创建失败:`, error);
     }
-  }, [documentId]);
+  }, [documentId, location.search]);
 
   // 启动或重置历史版本创建计时器
   const resetHistoryVersionTimer = useCallback(() => {
@@ -168,7 +234,7 @@ const DocEditor = () => {
       }
       resetHistoryVersionTimer();
     },
-    [documentId, resetHistoryVersionTimer],
+    [resetHistoryVersionTimer],
   );
 
   // 点击版本回退按钮回调函数
@@ -252,6 +318,16 @@ const DocEditor = () => {
         return;
       }
 
+      // 检查URL中是否有version参数
+      const searchParams = new URLSearchParams(location.search);
+      const versionId = searchParams.get('version');
+
+      // 如果正在查看历史版本，不创建新的历史版本
+      if (versionId) {
+        console.log(`[DocEditor] 正在查看历史版本，组件卸载时不创建历史版本`);
+        return;
+      }
+
       // 如果有编辑过，创建历史版本
       if (hasEdited.current && documentId && !documentId.startsWith('temp_')) {
         console.log(
@@ -272,7 +348,7 @@ const DocEditor = () => {
         console.log(`[DocEditor] 组件卸载时未检测到编辑，不创建历史版本`);
       }
     };
-  }, [documentId]);
+  }, [documentId, location.search]);
 
   // 切换文档时加载内容
   useEffect(() => {
@@ -314,6 +390,14 @@ const DocEditor = () => {
   // 监控组件重新渲染
   console.log(`[DocEditor] 渲染 - 文档ID: ${documentId}`);
 
+  // 获取URL中的版本参数
+  const searchParams = new URLSearchParams(location.search);
+  const versionId = searchParams.get('version');
+
+  // 生成唯一的编辑器key，确保在切换不同版本时完全重新创建编辑器实例
+  const editorKey = versionId ? `${documentId}_v${versionId}` : documentId;
+
+  console.log(`[DocEditor] 使用编辑器key: ${editorKey}`);
   return (
     <div className="doc-editor-page">
       {/* 编辑器加载中提示 */}
@@ -323,7 +407,7 @@ const DocEditor = () => {
       {/* 只有 editorValue 有效且非 loading 时才渲染编辑器 */}
       {!loading && editorValue && (
         <EditorSDK
-          key={documentId}
+          key={editorKey}
           documentId={documentId}
           userId={userId}
           value={editorValue}
