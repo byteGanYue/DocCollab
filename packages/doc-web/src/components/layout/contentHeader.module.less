@@ -27,7 +27,7 @@
 
         .searchContainer {
             position: relative;
-            width: 600px;
+            width: 1000px;
             margin-left: 16px;
             display: flex;
             justify-content: center;
@@ -78,11 +78,11 @@
                         font-size: 12px;
                         line-height: 1.4;
                         display: -webkit-box;
-                        white-space: nowrap;      /* 禁止换行 */
-                        overflow: hidden;         /* 超出部分隐藏 */
-                        text-overflow: ellipsis;  /* 显示省略号 */
+                        white-space: normal;       /* 允许文本换行 */
+                        overflow: hidden;          /* 超出部分隐藏 */
+                        text-overflow: ellipsis;   /* 显示省略号 */
                         -webkit-box-orient: vertical;
-                        overflow: hidden;
+                                           
                     }
 
                     .meta {
