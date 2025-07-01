@@ -338,11 +338,11 @@ const EditorSDK = ({
         }}
       >
         {/* 左侧显示协作状态 */}
-        <UserAvatars
+        {/*<UserAvatars
           isConnected={isConnected}
           onlineUsers={onlineUsers}
           remoteUsers={remoteUsers}
-        />
+        />*}
         {/* 右侧操作按钮 */}
         <ActionButtons
           onBackHistoryProps={onBackHistoryProps}
