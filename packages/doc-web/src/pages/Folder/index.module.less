@@ -1,0 +1,63 @@
+/* 文件夹页面样式 */
+.folderContainer {
+  padding: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  
+  .folderCard {
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .breadcrumb {
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+
+  .folderHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+
+    h2 {
+      margin: 0;
+      font-weight: 500;
+    }
+
+    .folderStats {
+      color: rgba(0, 0, 0, 0.45);
+      font-size: 14px;
+    }
+  }
+
+  :global {
+    .ant-table-thead > tr > th {
+      background-color: #fafafa;
+    }
+
+    .ant-table-row:hover {
+      cursor: pointer;
+    }
+
+    .ant-empty {
+      margin: 40px 0;
+    }
+  }
+}
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .folderContainer {
+    padding: 12px;
+    
+    .folderHeader {
+      flex-direction: column;
+      align-items: flex-start;
+      
+      h2 {
+        margin-bottom: 8px;
+      }
+    }
+  }
+}
