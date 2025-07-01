@@ -112,11 +112,6 @@ const Welcome = () => {
               已有账号？登录
             </Button>
           </div>
-
-          {/* 测试提示 */}
-          <div className={styles.testHint}>
-            💡 支持邮箱注册和第三方登录（Google、GitHub）
-          </div>
         </div>
       </div>
     </div>
