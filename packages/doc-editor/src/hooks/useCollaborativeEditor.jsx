@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Y from 'yjs';
 import { HocuspocusProvider } from '@hocuspocus/provider';
 import { IndexeddbPersistence } from 'y-indexeddb';
+import { yjsMongoSyncService } from '../services/YjsMongoSyncService.js';
 import { createEditor, Editor, Transforms, Node } from 'slate';
 import { withHistory } from 'slate-history';
 import { withReact } from 'slate-react';
@@ -35,6 +36,8 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   const isServerRunning = useRef(false);
   const editorRef = useRef(null);
   const indexeddbProvider = useRef(null);
+  // MongoDB 同步服务引用
+  const mongoSyncRegistered = useRef(false);
 
   // 评论相关 Yjs 数据结构
   const yCommentsRef = useRef();
@@ -183,10 +186,37 @@ export function useCollaborativeEditor(documentId = 'default-document') {
       console.log(`[IndexedDB] 文档 ${documentId} 本地数据已同步`);
     });
 
+    // 注册MongoDB同步服务
+    if (!mongoSyncRegistered.current && documentId) {
+      try {
+        yjsMongoSyncService.registerDocumentSync(documentId, docRef.current, {
+          userId: window.currentUserId || 1, // 从全局获取用户ID
+          username: window.currentUsername || 'Anonymous', // 从全局获取用户名
+          debug: true, // 开启调试模式
+        });
+        mongoSyncRegistered.current = true;
+        console.log('[编辑器] MongoDB同步服务注册成功');
+      } catch (error) {
+        console.error('[编辑器] MongoDB同步服务注册失败:', error);
+      }
+    }
+
     return () => {
       if (indexeddbProvider.current) {
         indexeddbProvider.current.destroy();
         indexeddbProvider.current = null;
+        console.log('[编辑器] IndexedDB持久化已清理');
+      }
+
+      // 注销MongoDB同步服务
+      if (mongoSyncRegistered.current && documentId) {
+        try {
+          yjsMongoSyncService.unregisterDocumentSync(documentId);
+          mongoSyncRegistered.current = false;
+          console.log('[编辑器] MongoDB同步服务已注销');
+        } catch (error) {
+          console.error('[编辑器] MongoDB同步服务注销失败:', error);
+        }
       }
     };
   }, [documentId]);

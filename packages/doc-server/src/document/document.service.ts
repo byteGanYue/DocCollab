@@ -377,6 +377,116 @@ export class DocumentService {
   }
 
   /**
+   * 同步Yjs状态到MongoDB
+   * @param documentId 文档ID
+   * @param yjsState Yjs状态数据
+   * @param content 文档内容
+   * @param username 更新用户名
+   * @returns 同步结果
+   */
+  async syncYjsState(
+    documentId: number,
+    yjsState: number[],
+    content: string,
+    username: string,
+  ) {
+    try {
+      this.logger.log('开始同步Yjs状态', { documentId, username });
+
+      const document = await this.documentModel.findOne({ documentId });
+      if (!document) {
+        throw new NotFoundException('文档不存在');
+      }
+
+      // 更新文档内容和Yjs状态
+      const updatedDocument = await this.documentModel
+        .findOneAndUpdate(
+          { documentId },
+          {
+            $set: {
+              content,
+              yjsState,
+              update_username: username,
+              lastSyncSource: 'yjs',
+              lastYjsSyncTime: new Date(),
+            },
+          },
+          { new: true },
+        )
+        .lean();
+
+      if (!updatedDocument) {
+        throw new NotFoundException('Yjs状态同步失败');
+      }
+
+      const result = {
+        success: true,
+        message: 'Yjs状态同步成功',
+        data: {
+          documentId: updatedDocument.documentId,
+          lastYjsSyncTime: updatedDocument.lastYjsSyncTime,
+          contentLength: content.length,
+        },
+      };
+
+      this.logger.log('Yjs状态同步成功', { documentId });
+      return result;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error('Yjs状态同步失败', err.stack);
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new BadRequestException(`Yjs状态同步失败: ${err.message}`);
+    }
+  }
+
+  /**
+   * 获取文档的Yjs状态
+   * @param documentId 文档ID
+   * @returns Yjs状态数据
+   */
+  async getYjsState(documentId: number) {
+    try {
+      this.logger.log('获取文档Yjs状态', { documentId });
+
+      const document = await this.documentModel
+        .findOne({ documentId })
+        .select('yjsState lastYjsSyncTime lastSyncSource')
+        .lean();
+
+      if (!document) {
+        throw new NotFoundException('文档不存在');
+      }
+
+      const result = {
+        success: true,
+        message: '获取Yjs状态成功',
+        data: {
+          documentId,
+          yjsState: document.yjsState,
+          lastYjsSyncTime: document.lastYjsSyncTime,
+          lastSyncSource: document.lastSyncSource,
+        },
+      };
+
+      this.logger.log('获取Yjs状态成功', { documentId });
+      return result;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error('获取Yjs状态失败', err.stack);
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new BadRequestException(`获取Yjs状态失败: ${err.message}`);
+    }
+  }
+
+  /**
    * 更新文档
    * @param documentId 文档ID
    * @param updateDocumentDto 更新数据
