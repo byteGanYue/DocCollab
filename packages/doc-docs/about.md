@@ -12,7 +12,7 @@ const members = [
   {
     avatar: 'https://avatars.githubusercontent.com/u/146628596?v=4',
     name: 'Ni0duann',
-    title: '💻 Frontend Developer',
+    title: '💻 Frontend Developer && 📝 Backend Developer',
     links: [
       { icon: 'github', link: 'https://github.com/Ni0duann' },
     //   { icon: 'twitter', link: 'https://twitter.com/youyuxi' }
@@ -29,7 +29,7 @@ const members = [
   },
   // 可以继续添加更多成员
         {
-    avatar: 'https://avatars.githubusercontent.com/u/166977518?v=4&size=64',
+    avatar: 'https://avatars.githubusercontent.com/u/166977518?v=4',
     name: 'wangzimian',
     title: '🍃 Frontend Developer',
     links: [
