@@ -131,9 +131,6 @@ const HelpModal = ({ isOpen, onClose }) => {
                   </li>
                   <li style={{ marginBottom: '4px' }}>至少保持一个段落内容</li>
                   <li style={{ marginBottom: '4px' }}>
-                    删除所有内容会自动恢复
-                  </li>
-                  <li style={{ marginBottom: '4px' }}>
                     标题和段落的强制性结构
                   </li>
                 </ul>
@@ -238,28 +235,6 @@ const HelpModal = ({ isOpen, onClose }) => {
                   </li>
                   <li style={{ marginBottom: '4px' }}>
                     文本对齐（左、中、右、两端对齐）
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h4
-                  style={{
-                    margin: '0 0 12px 0',
-                    color: '#212529',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                  }}
-                >
-                  🧪 实验功能
-                </h4>
-                <ul style={{ margin: '0', paddingLeft: '20px' }}>
-                  <li style={{ marginBottom: '4px' }}>
-                    尝试删除标题，看看会发生什么
-                  </li>
-                  <li style={{ marginBottom: '4px' }}>尝试删除所有段落内容</li>
-                  <li style={{ marginBottom: '4px' }}>
-                    编辑器会自动恢复必要的结构
                   </li>
                 </ul>
               </div>
