@@ -69,10 +69,10 @@ const LoginForm = () => {
     }
   };
 
-  // 占位：第三方登录逻辑
-  const handleThirdPartyLogin = provider => {
-    messageApi.info(`暂未实现${provider}登录`);
-  };
+  // // 占位：第三方登录逻辑
+  // const handleThirdPartyLogin = provider => {
+  //   messageApi.info(`暂未实现${provider}登录`);
+  // };
 
   return (
     <div className={styles.loginContainer}>
@@ -163,7 +163,7 @@ const LoginForm = () => {
           </div> */}
 
           {/* 第三方登录 */}
-          <div className={styles.socialLogin}>
+          {/* <div className={styles.socialLogin}>
             <div className={styles.btn1}>
               <Button
                 className={`${styles.socialButton} ${styles.google}`}
@@ -184,7 +184,7 @@ const LoginForm = () => {
                 GitHub
               </Button>
             </div>
-          </div>
+          </div> */}
 
           {/* 注册链接 */}
           <div className={styles.registerLink}>
@@ -196,9 +196,9 @@ const LoginForm = () => {
             </Text>
           </div>
 
-          {/* 测试提示 */}
+          {/* 提示 */}
           <div className={styles.testHint}>
-            💡 测试账号：任意邮箱 + 任意6位以上密码即可登录
+            💡 提示：任意邮箱 + 任意6位以上密码即可登录
           </div>
         </div>
       </div>
