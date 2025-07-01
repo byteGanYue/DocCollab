@@ -36,6 +36,15 @@ export class DocumentEntity extends Document {
   @Prop({ type: Boolean, default: false })
   isPublic: boolean; // 文档是否公开，默认为false
 
+  @Prop({ type: [Number], default: null })
+  yjsState: number[]; // Yjs文档状态数据，用于协同编辑同步
+
+  @Prop({ type: String, default: null })
+  lastSyncSource: string; // 最后同步来源：'yjs', 'manual', 'api'
+
+  @Prop({ type: Date, default: null })
+  lastYjsSyncTime: Date; // 最后Yjs同步时间
+
   // 自动管理字段 (由 timestamps 选项生成)
   create_time: Date;
   update_time: Date;
