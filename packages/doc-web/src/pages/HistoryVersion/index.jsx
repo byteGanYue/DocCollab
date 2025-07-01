@@ -145,7 +145,7 @@ const HistoryVersion = () => {
             id: 'v1',
             versionId: 1,
             versionNumber: 'v1.0',
-            documentName: documentInfo?.documentName || '文档标题',
+            documentName: '文档标题',
             updatedBy: userInfo.username || '当前用户',
             updatedAt: new Date().toISOString(),
             content: '',
@@ -166,7 +166,7 @@ const HistoryVersion = () => {
         setLoading(false);
       }
     },
-    [documentId, userInfo, documentInfo?.documentName],
+    [documentId, userInfo],
   );
 
   /**
