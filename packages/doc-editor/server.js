@@ -5,20 +5,50 @@
 
 import { Server } from '@hocuspocus/server';
 import { Database } from '@hocuspocus/extension-database';
+import fs from 'fs';
+import path from 'path';
 
 // 跟踪文档访问统计
 const documentStats = new Map();
+
+// 确保数据目录存在
+const dataDir = './data';
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
 
 // 创建Hocuspocus服务器实例
 const server = new Server({
   port: 1234,
   address: '0.0.0.0', // 允许从任何IP访问
   extensions: [
-    // 可选：添加数据库扩展用于持久化文档数据
-    // new Database({
-    //   type: 'sqlite',
-    //   database: 'hocuspocus.sqlite',
-    // }),
+    // 启用数据库扩展用于持久化文档数据
+    new Database({
+      fetch: async ({ documentName }) => {
+        try {
+          const filePath = path.join(dataDir, `${documentName}.yjs`);
+          if (fs.existsSync(filePath)) {
+            const data = fs.readFileSync(filePath);
+            console.log(`[数据库] 从文件加载文档: ${documentName}`);
+            return data;
+          }
+          console.log(`[数据库] 文档不存在，创建新文档: ${documentName}`);
+          return null;
+        } catch (error) {
+          console.error(`[数据库] 加载文档失败: ${documentName}`, error);
+          return null;
+        }
+      },
+      store: async ({ documentName, state }) => {
+        try {
+          const filePath = path.join(dataDir, `${documentName}.yjs`);
+          fs.writeFileSync(filePath, state);
+          console.log(`[数据库] 文档已保存: ${documentName}`);
+        } catch (error) {
+          console.error(`[数据库] 保存文档失败: ${documentName}`, error);
+        }
+      },
+    }),
   ],
   async onAuthenticate(data) {
     // 这里可以实现身份验证逻辑

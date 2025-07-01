@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Y from 'yjs';
 import { HocuspocusProvider } from '@hocuspocus/provider';
+import { IndexeddbPersistence } from 'y-indexeddb';
 import { createEditor, Editor, Transforms, Node } from 'slate';
 import { withHistory } from 'slate-history';
 import { withReact } from 'slate-react';
@@ -33,6 +34,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   const docRef = useRef(new Y.Doc());
   const isServerRunning = useRef(false);
   const editorRef = useRef(null);
+  const indexeddbProvider = useRef(null);
 
   // 评论相关 Yjs 数据结构
   const yCommentsRef = useRef();
@@ -164,6 +166,31 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     }
   }, []);
 
+  // 创建IndexedDB持久化Provider
+  useEffect(() => {
+    if (indexeddbProvider.current) {
+      indexeddbProvider.current.destroy();
+    }
+
+    // 创建IndexedDB持久化，确保本地数据持久化
+    indexeddbProvider.current = new IndexeddbPersistence(
+      documentId,
+      docRef.current,
+    );
+
+    // 监听IndexedDB同步完成事件
+    indexeddbProvider.current.on('synced', () => {
+      console.log(`[IndexedDB] 文档 ${documentId} 本地数据已同步`);
+    });
+
+    return () => {
+      if (indexeddbProvider.current) {
+        indexeddbProvider.current.destroy();
+        indexeddbProvider.current = null;
+      }
+    };
+  }, [documentId]);
+
   // 创建Hocuspocus Provider
   const provider = useMemo(() => {
     try {
@@ -172,10 +199,20 @@ export function useCollaborativeEditor(documentId = 'default-document') {
         name: documentId,
         document: docRef.current,
         connect: false,
-        onConnect: () => setIsConnected(true),
-        onDisconnect: () => setIsConnected(false),
+        onConnect: () => {
+          console.log(`[WebSocket] 已连接到服务器: ${documentId}`);
+          setIsConnected(true);
+        },
+        onDisconnect: () => {
+          console.log(`[WebSocket] 已断开连接: ${documentId}`);
+          setIsConnected(false);
+        },
+        onSynced: () => {
+          console.log(`[WebSocket] 文档 ${documentId} 已同步`);
+        },
       });
-    } catch {
+    } catch (error) {
+      console.error('[WebSocket] 创建Provider失败:', error);
       return null;
     }
   }, [documentId]);
@@ -258,28 +295,46 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   // 初始化文档内容
   useEffect(() => {
     const initializeContent = async () => {
-      if (
-        valueInitialized.current ||
-        !editor ||
-        !provider ||
-        !isConnected ||
-        !YjsEditor.isYjsEditor(editor)
-      ) {
+      if (!editor || valueInitialized.current) {
         return;
       }
-      const sharedType = YjsEditor.sharedType(editor);
-      if (sharedType && sharedType.toString() === '') {
-        const delta = slateNodesToInsertDelta(defaultInitialValue);
-        sharedType.applyDelta(delta);
-        valueInitialized.current = true;
-      } else {
+
+      // 等待IndexedDB同步完成
+      if (indexeddbProvider.current && !indexeddbProvider.current.synced) {
+        await new Promise(resolve => {
+          indexeddbProvider.current.on('synced', resolve);
+        });
+      }
+
+      if (YjsEditor.isYjsEditor(editor)) {
+        const sharedType = YjsEditor.sharedType(editor);
+
+        // 检查是否有本地或远程内容
+        const hasContent = sharedType && sharedType.toString() !== '';
+
+        if (!hasContent) {
+          // 检查是否有外部传入的初始值
+          const externalValue = window.currentExternalValue;
+          if (externalValue && Array.isArray(externalValue)) {
+            console.log('[编辑器] 使用外部传入的初始值');
+            const delta = slateNodesToInsertDelta(externalValue);
+            sharedType.applyDelta(delta);
+          } else {
+            console.log('[编辑器] 使用默认初始值');
+            const delta = slateNodesToInsertDelta(defaultInitialValue);
+            sharedType.applyDelta(delta);
+          }
+        } else {
+          console.log('[编辑器] 使用已存在的文档内容');
+        }
+
         valueInitialized.current = true;
       }
     };
-    if (isConnected) {
-      initializeContent();
-    }
-  }, [editor, provider, isConnected]);
+
+    // 无论是否连接到服务器都初始化内容（支持离线模式）
+    initializeContent();
+  }, [editor]);
 
   // 监听远程用户变化
   useEffect(() => {
