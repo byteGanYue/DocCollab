@@ -35,6 +35,14 @@ const members = [
     links: [
       { icon: 'github', link: 'https://github.com/2042217959' }
     ]
+  },
+   {
+    avatar: 'https://avatars.githubusercontent.com/u/148612270?v=4',
+    name: 'L-L777',
+    title: '🍃 Frontend Developer',
+    links: [
+      { icon: 'github', link: 'https://github.com/L-L777' }
+    ]
   }
 ]
 </script>
