@@ -3,7 +3,7 @@ import * as Y from 'yjs';
 import { HocuspocusProvider } from '@hocuspocus/provider';
 import { IndexeddbPersistence } from 'y-indexeddb';
 import { yjsMongoSyncService } from '../services/YjsMongoSyncService.js';
-import { createEditor, Editor, Transforms, Node } from 'slate';
+import { createEditor, Editor, Transforms, Node, Text } from 'slate';
 import { withHistory } from 'slate-history';
 import { withReact } from 'slate-react';
 import {
@@ -89,9 +89,12 @@ export function useCollaborativeEditor(documentId = 'default-document') {
       const commentRange = { anchor, focus };
       Transforms.select(editor, commentRange);
 
-      // 直接添加评论标记
+      // 生成唯一的评论ID
+      const commentId = Date.now().toString();
+
+      // 直接添加评论标记到选中的文本
       Editor.addMark(editor, 'comment', {
-        id: Date.now().toString(),
+        id: commentId,
         content,
         author,
         time: Date.now(),
@@ -101,6 +104,15 @@ export function useCollaborativeEditor(documentId = 'default-document') {
       if (savedSelection) {
         Transforms.select(editor, savedSelection);
       }
+
+      // 清除编辑器的活动标记状态，防止影响后续输入
+      // 注意：这里只清除活动标记，不影响已经应用到文本节点上的标记
+      editor.marks = null;
+
+      // 延迟清除活动标记，确保不影响后续输入
+      setTimeout(() => {
+        editor.marks = null;
+      }, 0);
 
       console.log('Comment added successfully');
 
@@ -133,6 +145,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
           // 添加评论到 Yjs 数组
           yCommentsRef.current.push([
             {
+              id: commentId,
               start: startJSON,
               end: endJSON,
               content,
@@ -414,6 +427,120 @@ export function useCollaborativeEditor(documentId = 'default-document') {
       }
     };
   }, [yCommentsRef]);
+  // 删除评论方法
+  const removeComment = useCallback(
+    commentId => {
+      try {
+        if (!editor || !commentId) {
+          console.error('Editor or commentId is missing');
+          return;
+        }
+
+        console.log('Removing comment:', commentId);
+
+        // 保存当前选区
+        const { selection } = editor;
+
+        // 1. 从 Slate 编辑器中移除评论标记
+        // 遍历所有文本节点，找到包含指定评论ID的节点并移除标记
+        const nodesToUpdate = [];
+        for (const [node, path] of Node.texts(editor)) {
+          if (node.comment && node.comment.id === commentId) {
+            nodesToUpdate.push(path);
+          }
+        }
+
+        // 批量移除评论标记
+        for (const path of nodesToUpdate) {
+          try {
+            // 方法1: 使用 Transforms.unsetNodes 移除 comment 属性
+            Transforms.unsetNodes(editor, 'comment', {
+              at: path,
+              match: n =>
+                Text.isText(n) && n.comment && n.comment.id === commentId,
+            });
+
+            // 方法2: 直接操作节点属性（备用方案）
+            const node = Node.get(editor, path);
+            if (
+              Text.isText(node) &&
+              node.comment &&
+              node.comment.id === commentId
+            ) {
+              // 创建新的节点，不包含 comment 属性
+              const { comment, ...nodeWithoutComment } = node;
+              Transforms.setNodes(editor, nodeWithoutComment, { at: path });
+            }
+          } catch (error) {
+            console.warn(
+              'Failed to remove comment from node at path:',
+              path,
+              error,
+            );
+          }
+        }
+
+        // 2. 清除编辑器中的活动标记，防止影响后续输入
+        // 这是关键步骤：确保光标位置不会继承评论标记
+        if (editor.marks && editor.marks.comment) {
+          delete editor.marks.comment;
+        }
+
+        // 强制移除所有评论相关的活动标记
+        Editor.removeMark(editor, 'comment');
+
+        // 3. 从 Yjs 评论数组中移除评论数据
+        // 注意：Yjs 数组中的评论数据结构可能不同，需要检查多种可能的 ID 字段
+        if (yCommentsRef.current) {
+          const yCommentsArray = yCommentsRef.current.toArray();
+          for (let i = yCommentsArray.length - 1; i >= 0; i--) {
+            const comment = yCommentsArray[i];
+            // 检查不同可能的 ID 字段和数据结构
+            const commentToCheck = Array.isArray(comment)
+              ? comment[0]
+              : comment;
+            if (
+              commentToCheck &&
+              (commentToCheck.id === commentId ||
+                (commentToCheck.content &&
+                  commentToCheck.author &&
+                  JSON.stringify(commentToCheck).includes(commentId)))
+            ) {
+              yCommentsRef.current.delete(i, 1);
+              console.log('Removed comment from Yjs array at index:', i);
+              break;
+            }
+          }
+        }
+
+        // 4. 恢复原始选区并确保清除标记状态
+        if (selection) {
+          Transforms.select(editor, selection);
+          // 再次确保当前选区没有评论标记
+          Editor.removeMark(editor, 'comment');
+        }
+
+        // 5. 强制重新规范化编辑器，确保所有标记都被清除
+        Editor.normalize(editor, { force: true });
+
+        // 6. 强制触发编辑器重新渲染
+        editor.onChange();
+
+        // 7. 延迟再次清除活动标记，确保彻底清除
+        setTimeout(() => {
+          if (editor.marks && editor.marks.comment) {
+            delete editor.marks.comment;
+          }
+          Editor.removeMark(editor, 'comment');
+        }, 0);
+
+        console.log('Comment removed successfully');
+      } catch (error) {
+        console.error('Error removing comment:', error);
+      }
+    },
+    [editor],
+  );
 
   return {
     editor,
@@ -431,5 +558,6 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     // 评论相关
     yComments: yCommentsRef,
     addComment,
+    removeComment,
   };
 }
