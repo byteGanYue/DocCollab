@@ -255,12 +255,14 @@ const Folder = () => {
   // 渲染面包屑导航
   const renderBreadcrumb = () => (
     <Breadcrumb className={styles.breadcrumb}>
-      {breadcrumbs.map(item => (
+      {breadcrumbs.map((item, index) => (
         <Breadcrumb.Item
           key={item.id}
           onClick={() => handleBreadcrumbClick(item)}
           className={styles.breadcrumbItem}
-        ></Breadcrumb.Item>
+        >
+          {index === 0 && <HomeOutlined />} {item.name}
+        </Breadcrumb.Item>
       ))}
     </Breadcrumb>
   );
@@ -275,9 +277,7 @@ const Folder = () => {
       {/* 文件夹标题和操作按钮 */}
       <div className={styles.folderHeader}>
         <div>
-          <h2>
-            <HomeOutlined /> {currentFolder?.folderName || '加载中...'}
-          </h2>
+          <h2>{currentFolder?.folderName || '加载中...'}</h2>
           {folderContents.length > 0 && (
             <div className={styles.folderStats}>
               共 {folderContents.filter(item => item.type === 'folder').length}{' '}

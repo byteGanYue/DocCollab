@@ -322,8 +322,7 @@ const FolderMenu = () => {
 
     // 递归转换文件夹为菜单项
     const convertFolderToMenuItem = folder => {
-      // const folderKey = `collab_user_${userData.userId}_folder_${folder.autoFolderId}`;
-      const folderKey = `${folder.folderId}`;
+      const folderKey = `collab_user_${userData.userId}_folder_${folder.autoFolderId}`;
 
       // 获取该文件夹下的直接文档
       const folderDocuments = documentsByFolder.get(folder.autoFolderId) || [];
@@ -1082,39 +1081,38 @@ const FolderMenu = () => {
     }
 
     // 用于检查key唯一性的Set
-    // const usedKeys = new Set();
+    const usedKeys = new Set();
 
-    // const validateAndClean = items => {
-    //   if (!Array.isArray(items)) return [];
+    const validateAndClean = items => {
+      if (!Array.isArray(items)) return [];
 
-    //   return items
-    //     .filter(item => {
-    //       if (!item) {
-    //         console.warn('⚠️ 发现空菜单项');
-    //         return false;
-    //       }
-    //       if (!item.key) {
-    //         console.warn('⚠️ 菜单项缺少key:', item);
-    //         return false;
-    //       }
+      return items
+        .filter(item => {
+          if (!item) {
+            console.warn('⚠️ 发现空菜单项');
+            return false;
+          }
+          if (!item.key) {
+            console.warn('⚠️ 菜单项缺少key:', item);
+            return false;
+          }
 
-    //       // // 检查key唯一性
-    //       // if (usedKeys.has(item.key)) {
-    //       //   console.warn('⚠️ 发现重复的key:', item.key, item);
-    //       //   return false; // 过滤掉重复的key
-    //       // }
-    //       usedKeys.add(item.key);
+          // 检查key唯一性
+          if (usedKeys.has(item.key)) {
+            console.warn('⚠️ 发现重复的key:', item.key, item);
+            return false; // 过滤掉重复的key
+          }
+          usedKeys.add(item.key);
 
-    //       return true;
-    //     })
-    //     .map(item => ({
-    //       ...item,
-    //       children: item.children ? validateAndClean(item.children) : undefined,
-    //     }));
-    // };
+          return true;
+        })
+        .map(item => ({
+          ...item,
+          children: item.children ? validateAndClean(item.children) : undefined,
+        }));
+    };
 
-    // return validateAndClean(menuData);
-    return menuData;
+    return validateAndClean(menuData);
   };
 
   // 获取文件夹列表
