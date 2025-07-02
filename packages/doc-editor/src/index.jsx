@@ -78,7 +78,7 @@ const defaultInitialValue = [
  * 支持多用户实时协同编辑
  */
 const EditorSDKComponent = ({
-  documentId = 'default-document',
+  documentId = undefined,
   value: externalValue,
   onChange: externalOnChange,
   onBackHistoryProps,

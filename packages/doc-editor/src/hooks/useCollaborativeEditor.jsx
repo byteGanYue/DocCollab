@@ -24,7 +24,7 @@ const defaultInitialValue = [
   },
 ];
 
-export function useCollaborativeEditor(documentId = 'default-document') {
+export function useCollaborativeEditor(documentId) {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showAIDrawer, setShowAIDrawer] = useState(false);
   const [value, setValue] = useState(defaultInitialValue);
@@ -616,6 +616,16 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     },
     [documentId],
   );
+
+  if (!documentId) {
+    // 没有文档ID时不进行协同初始化和请求
+    return {
+      editor: null,
+      provider: null,
+      ydoc: null,
+      status: 'no-document',
+    };
+  }
 
   return {
     editor,
