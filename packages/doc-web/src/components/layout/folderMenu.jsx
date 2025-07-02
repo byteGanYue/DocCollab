@@ -322,7 +322,8 @@ const FolderMenu = () => {
 
     // 递归转换文件夹为菜单项
     const convertFolderToMenuItem = folder => {
-      const folderKey = `collab_user_${userData.userId}_folder_${folder.autoFolderId}`;
+      // const folderKey = `collab_user_${userData.userId}_folder_${folder.autoFolderId}`;
+      const folderKey = `${folder.folderId}`;
 
       // 获取该文件夹下的直接文档
       const folderDocuments = documentsByFolder.get(folder.autoFolderId) || [];
@@ -1080,39 +1081,51 @@ const FolderMenu = () => {
       return [];
     }
 
-    // 用于检查key唯一性的Set
-    const usedKeys = new Set();
+    // // 用于检查key唯一性的Set
+    // const usedKeys = new Set();
 
-    const validateAndClean = items => {
-      if (!Array.isArray(items)) return [];
+    // const validateAndClean = items => {
+    //   if (!Array.isArray(items)) return [];
+    // const validateAndClean = items => {
+    //   if (!Array.isArray(items)) return [];
 
-      return items
-        .filter(item => {
-          if (!item) {
-            console.warn('⚠️ 发现空菜单项');
-            return false;
-          }
-          if (!item.key) {
-            console.warn('⚠️ 菜单项缺少key:', item);
-            return false;
-          }
+    //   return items
+    //     .filter(item => {
+    //       if (!item) {
+    //         console.warn('⚠️ 发现空菜单项');
+    //         return false;
+    //       }
+    //       if (!item.key) {
+    //         console.warn('⚠️ 菜单项缺少key:', item);
+    //         return false;
+    //       }
+    //   return items
+    //     .filter(item => {
+    //       if (!item) {
+    //         console.warn('⚠️ 发现空菜单项');
+    //         return false;
+    //       }
+    //       if (!item.key) {
+    //         console.warn('⚠️ 菜单项缺少key:', item);
+    //         return false;
+    //       }
 
-          // 检查key唯一性
-          if (usedKeys.has(item.key)) {
-            console.warn('⚠️ 发现重复的key:', item.key, item);
-            return false; // 过滤掉重复的key
-          }
-          usedKeys.add(item.key);
+    //       // 检查key唯一性
+    //       if (usedKeys.has(item.key)) {
+    //         console.warn('⚠️ 发现重复的key:', item.key, item);
+    //         return false; // 过滤掉重复的key
+    //       }
+    //       usedKeys.add(item.key);
 
-          return true;
-        })
-        .map(item => ({
-          ...item,
-          children: item.children ? validateAndClean(item.children) : undefined,
-        }));
-    };
+    //       return true;
+    //     })
+    //     .map(item => ({
+    //       ...item,
+    //       children: item.children ? validateAndClean(item.children) : undefined,
+    //     }));
+    // };
 
-    return validateAndClean(menuData);
+    return menuData;
   };
 
   // 获取文件夹列表
@@ -2053,6 +2066,7 @@ const FolderMenu = () => {
 
       // 设置isPublic值 - 'public'对应true, 'private'对应false
       const isPublic = permissionModal.permission === 'public';
+      const newPermission = permissionModal.permission;
 
       // 调用后端API修改用户公开状态，传递isPublic参数
       const response = await userAPI.changePublicStatus(userEmail, isPublic);
@@ -2061,15 +2075,15 @@ const FolderMenu = () => {
       const isSuccess = response.success === true || response.success !== false;
 
       if (isSuccess) {
-        // 更新用户上下文中的权限状态
-        updateUserPermission(permissionModal.permission);
+        // 先更新用户上下文中的权限状态
+        updateUserPermission(newPermission);
 
         // 更新前端状态
         setFolderList(prev =>
           folderUtils.updateNodePermission(
             prev,
             permissionModal.key,
-            permissionModal.permission,
+            newPermission,
           ),
         );
 
@@ -2085,7 +2099,7 @@ const FolderMenu = () => {
         await fetchCollaborationData();
 
         const permissionText =
-          permissionModal.permission === 'public' ? '公开空间' : '私有空间';
+          newPermission === 'public' ? '公开空间' : '私有空间';
         message.success(`工作空间已设置为${permissionText}`);
       } else {
         throw new Error(response.message || '权限修改失败');
