@@ -271,13 +271,17 @@ const Folder = () => {
 
       {/* 面包屑导航 */}
       {renderBreadcrumb()}
-
+      <div
+        className={styles.folderHeaderHome}
+        onClick={() => navigate('/collaboration')}
+      >
+        <HomeOutlined />
+      </div>
+      <br />
       {/* 文件夹标题和操作按钮 */}
       <div className={styles.folderHeader}>
         <div>
-          <h2>
-            <HomeOutlined /> {currentFolder?.folderName || '加载中...'}
-          </h2>
+          <h2>{currentFolder?.folderName || '加载中...'}</h2>
           {folderContents.length > 0 && (
             <div className={styles.folderStats}>
               共 {folderContents.filter(item => item.type === 'folder').length}{' '}
