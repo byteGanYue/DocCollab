@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   Card,
   List,
@@ -23,6 +23,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { folderAPI, documentAPI } from '../../utils/api';
+import { ThemeContext } from '../../contexts/ThemeContext';
 import styles from './index.module.less';
 
 const { Title, Text } = Typography;
@@ -36,6 +37,8 @@ const Collaboration = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [collaborationData, setCollaborationData] = useState([]);
+  const { getCurrentTheme } = useContext(ThemeContext);
+  const theme = getCurrentTheme();
 
   /**
    * 获取协同文档数据
@@ -176,7 +179,9 @@ const Collaboration = () => {
       const documentNodes = folderDocs.map(doc => ({
         title: (
           <Space>
-            <FileTextOutlined style={{ color: '#1890ff' }} />
+            <FileTextOutlined
+              style={{ color: theme?.colors?.primary || '#1890ff' }}
+            />
             <Text>{doc.documentName}</Text>
             <Tag size="small" color="blue">
               文档
@@ -201,7 +206,9 @@ const Collaboration = () => {
       return {
         title: (
           <Space>
-            <FolderOutlined style={{ color: '#faad14' }} />
+            <FolderOutlined
+              style={{ color: theme?.colors?.warning || '#faad14' }}
+            />
             <Text>{folder.folderName}</Text>
             <Tag size="small" color="orange">
               {folder.children?.length || 0}个子文件夹
@@ -220,7 +227,9 @@ const Collaboration = () => {
     const rootDocuments = documentsByFolder.get('root').map(doc => ({
       title: (
         <Space>
-          <FileTextOutlined style={{ color: '#1890ff' }} />
+          <FileTextOutlined
+            style={{ color: theme?.colors?.primary || '#1890ff' }}
+          />
           <Text>{doc.documentName}</Text>
           <Tag size="small" color="blue">
             文档
@@ -268,7 +277,9 @@ const Collaboration = () => {
     return (
       <div className={styles.loadingContainer}>
         <Spin size="large" />
-        <Text style={{ marginTop: 16 }}>正在加载协同文档...</Text>
+        <Text style={{ marginTop: 16, color: theme?.colors?.textSecondary }}>
+          正在加载协同文档...
+        </Text>
       </div>
     );
   }
@@ -291,7 +302,9 @@ const Collaboration = () => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Title level={2}>协同文档</Title>
+        <Title level={2} style={{ color: theme?.colors?.primary }}>
+          协同文档
+        </Title>
         <Text type="secondary">
           发现 {collaborationData.length} 个用户的公开空间，
           点击文档即可开始协同编辑
@@ -306,7 +319,7 @@ const Collaboration = () => {
               <Space>
                 <Avatar
                   icon={<UserOutlined />}
-                  style={{ backgroundColor: '#1890ff' }}
+                  style={{ backgroundColor: theme?.colors?.primary }}
                 />
                 <span>{userInfo.username}的公开空间</span>
                 <Tag color="green">公开</Tag>
