@@ -2053,6 +2053,7 @@ const FolderMenu = () => {
 
       // 设置isPublic值 - 'public'对应true, 'private'对应false
       const isPublic = permissionModal.permission === 'public';
+      const newPermission = permissionModal.permission;
 
       // 调用后端API修改用户公开状态，传递isPublic参数
       const response = await userAPI.changePublicStatus(userEmail, isPublic);
@@ -2061,15 +2062,15 @@ const FolderMenu = () => {
       const isSuccess = response.success === true || response.success !== false;
 
       if (isSuccess) {
-        // 更新用户上下文中的权限状态
-        updateUserPermission(permissionModal.permission);
+        // 先更新用户上下文中的权限状态
+        updateUserPermission(newPermission);
 
         // 更新前端状态
         setFolderList(prev =>
           folderUtils.updateNodePermission(
             prev,
             permissionModal.key,
-            permissionModal.permission,
+            newPermission,
           ),
         );
 
@@ -2085,7 +2086,7 @@ const FolderMenu = () => {
         await fetchCollaborationData();
 
         const permissionText =
-          permissionModal.permission === 'public' ? '公开空间' : '私有空间';
+          newPermission === 'public' ? '公开空间' : '私有空间';
         message.success(`工作空间已设置为${permissionText}`);
       } else {
         throw new Error(response.message || '权限修改失败');

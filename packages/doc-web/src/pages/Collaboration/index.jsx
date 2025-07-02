@@ -14,16 +14,13 @@ import {
 } from 'antd';
 import {
   FileTextOutlined,
-  TeamOutlined,
   UserOutlined,
-  SearchOutlined,
-  EditOutlined,
-  EyeOutlined,
   FolderOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { folderAPI, documentAPI } from '../../utils/api';
 import { ThemeContext } from '../../contexts/ThemeContext';
+import { UserContext } from '../../contexts/UserContext';
 import styles from './index.module.less';
 
 const { Title, Text } = Typography;
@@ -39,6 +36,7 @@ const Collaboration = () => {
   const [collaborationData, setCollaborationData] = useState([]);
   const { getCurrentTheme } = useContext(ThemeContext);
   const theme = getCurrentTheme();
+  const { userPermission } = useContext(UserContext);
 
   /**
    * 获取协同文档数据
@@ -271,7 +269,7 @@ const Collaboration = () => {
 
   useEffect(() => {
     fetchCollaborationData();
-  }, []);
+  }, [userPermission]);
 
   if (loading) {
     return (
