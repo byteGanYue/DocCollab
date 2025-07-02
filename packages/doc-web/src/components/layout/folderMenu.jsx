@@ -1086,7 +1086,19 @@ const FolderMenu = () => {
 
     // const validateAndClean = items => {
     //   if (!Array.isArray(items)) return [];
+    // const validateAndClean = items => {
+    //   if (!Array.isArray(items)) return [];
 
+    //   return items
+    //     .filter(item => {
+    //       if (!item) {
+    //         console.warn('⚠️ 发现空菜单项');
+    //         return false;
+    //       }
+    //       if (!item.key) {
+    //         console.warn('⚠️ 菜单项缺少key:', item);
+    //         return false;
+    //       }
     //   return items
     //     .filter(item => {
     //       if (!item) {

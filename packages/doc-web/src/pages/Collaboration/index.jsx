@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import {
   Card,
   List,
@@ -11,11 +11,15 @@ import {
   Input,
   Spin,
   Tree,
+  message,
 } from 'antd';
 import {
   FileTextOutlined,
   UserOutlined,
   FolderOutlined,
+  CloseOutlined,
+  SearchOutlined,
+  HomeOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { folderAPI, documentAPI } from '../../utils/api';
@@ -34,6 +38,11 @@ const Collaboration = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [collaborationData, setCollaborationData] = useState([]);
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [filteredData, setFilteredData] = useState([]);
+  const [showSearchInput, setShowSearchInput] = useState(false);
+  const searchInputRef = useRef(null);
+  const searchWrapperRef = useRef(null);
   const { getCurrentTheme } = useContext(ThemeContext);
   const theme = getCurrentTheme();
   const { userPermission } = useContext(UserContext);
@@ -57,6 +66,7 @@ const Collaboration = () => {
           documentsResponse.data,
         );
         setCollaborationData(mergedData);
+        setFilteredData(mergedData);
       }
     } catch (error) {
       console.error('获取协同文档数据失败:', error);
@@ -126,6 +136,120 @@ const Collaboration = () => {
       }
     });
     return count;
+  };
+
+  /**
+   * 搜索文件夹和文档
+   * @param {string} keyword 搜索关键字
+   */
+  const handleSearch = keyword => {
+    setSearchKeyword(keyword);
+
+    if (!keyword.trim()) {
+      setFilteredData(collaborationData);
+      return;
+    }
+
+    const lowerKeyword = keyword.toLowerCase().trim();
+
+    // 深拷贝协同数据以避免修改原始数据
+    const filteredResult = collaborationData
+      .map(userInfo => {
+        const result = { ...userInfo };
+
+        // 搜索匹配的文档
+        const matchedDocuments = userInfo.documents.filter(doc =>
+          doc.documentName.toLowerCase().includes(lowerKeyword),
+        );
+
+        // 收集需要保留的文件夹ID
+        const folderIdsToKeep = new Set();
+
+        // 收集匹配文档的所有父文件夹ID路径
+        matchedDocuments.forEach(doc => {
+          if (doc.parentFolderIds && doc.parentFolderIds.length > 0) {
+            doc.parentFolderIds.forEach(folderId => {
+              folderIdsToKeep.add(folderId);
+            });
+          }
+        });
+
+        // 搜索匹配的文件夹，包含名称匹配和需要保留的父文件夹
+        const matchedFolders = searchFoldersWithPath(
+          userInfo.folders,
+          lowerKeyword,
+          folderIdsToKeep,
+        );
+
+        // 更新过滤后的文件夹和文档
+        result.folders = matchedFolders;
+        result.documents = matchedDocuments;
+        result.totalFolders = countTotalFolders(matchedFolders);
+        result.totalDocuments = matchedDocuments.length;
+
+        return result;
+      })
+      .filter(
+        userInfo =>
+          // 仅保留有匹配文件夹或文档的用户
+          userInfo.totalFolders > 0 || userInfo.totalDocuments > 0,
+      );
+
+    setFilteredData(filteredResult);
+
+    // 如果没有搜索结果，显示提示信息
+    if (filteredResult.length === 0) {
+      message.info(`没有找到包含"${keyword}"的文件夹或文档`);
+    }
+  };
+
+  /**
+   * 递归搜索匹配的文件夹，包含需要保留的路径
+   * @param {Array} folders 文件夹数组
+   * @param {string} keyword 搜索关键字
+   * @param {Set} folderIdsToKeep 需要保留的文件夹ID集合
+   * @returns {Array} 匹配的文件夹数组
+   */
+  const searchFoldersWithPath = (folders, keyword, folderIdsToKeep) => {
+    if (!folders || folders.length === 0) return [];
+
+    // 递归检查文件夹是否需要保留（自身或子级匹配，或者ID在需保留集合中）
+    const shouldKeepFolder = folder => {
+      // 检查当前文件夹是否匹配关键字
+      const nameMatches = folder.folderName.toLowerCase().includes(keyword);
+
+      // 检查当前文件夹ID是否在需保留集合中
+      const idMatches = folderIdsToKeep.has(folder.autoFolderId);
+
+      // 如果当前文件夹名称匹配或ID在保留集合中，直接返回true
+      if (nameMatches || idMatches) {
+        return true;
+      }
+
+      // 检查子文件夹是否有匹配的
+      if (folder.children && folder.children.length > 0) {
+        return folder.children.some(childFolder =>
+          shouldKeepFolder(childFolder),
+        );
+      }
+
+      return false;
+    };
+
+    // 过滤并处理每个文件夹
+    return folders.filter(shouldKeepFolder).map(folder => {
+      // 递归处理子文件夹
+      const filteredChildren =
+        folder.children && folder.children.length > 0
+          ? searchFoldersWithPath(folder.children, keyword, folderIdsToKeep)
+          : [];
+
+      // 返回包含过滤后子文件夹的当前文件夹
+      return {
+        ...folder,
+        children: filteredChildren,
+      };
+    });
   };
 
   /**
@@ -267,6 +391,59 @@ const Collaboration = () => {
     }
   };
 
+  /**
+   * 处理搜索框显示/隐藏
+   */
+  const toggleSearchInput = () => {
+    const newVisible = !showSearchInput;
+    setShowSearchInput(newVisible);
+
+    // 当显示搜索框时，自动聚焦到输入框
+    if (newVisible) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+        // 当搜索框显示时设置容器宽度
+        if (searchWrapperRef.current) {
+          searchWrapperRef.current.style.width = '240px';
+        }
+      }, 10);
+    } else {
+      // 当搜索框隐藏时恢复容器宽度
+      if (searchWrapperRef.current) {
+        // 使用延时确保过渡效果结束后再改变宽度
+        setTimeout(() => {
+          if (!showSearchInput && searchWrapperRef.current) {
+            searchWrapperRef.current.style.width = '40px';
+          }
+        }, 200);
+      }
+
+      if (!searchKeyword.trim()) {
+        // 当隐藏搜索框且没有搜索关键字时，恢复全部数据
+        setFilteredData(collaborationData);
+      }
+    }
+  };
+
+  /**
+   * 处理搜索结果清空
+   */
+  const handleClearSearch = () => {
+    setSearchKeyword('');
+    setFilteredData(collaborationData);
+  };
+
+  /**
+   * 处理搜索按键事件
+   */
+  const handleSearchKeyPress = e => {
+    if (e.key === 'Enter') {
+      handleSearch(searchKeyword);
+    } else if (e.key === 'Escape') {
+      toggleSearchInput();
+    }
+  };
+
   useEffect(() => {
     fetchCollaborationData();
   }, [userPermission]);
@@ -300,59 +477,130 @@ const Collaboration = () => {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <Title level={2} style={{ color: theme?.colors?.primary }}>
-          协同文档
-        </Title>
-        <Text type="secondary">
-          发现 {collaborationData.length} 个用户的公开空间，
-          点击文档即可开始协同编辑
-        </Text>
+        <div className={styles.headerContent}>
+          <Title level={2} style={{ color: theme?.colors?.primary }}>
+            协同文档
+          </Title>
+          <Text type="secondary">
+            发现 {collaborationData.length} 个用户的公开空间，
+            点击文档即可开始协同编辑
+          </Text>
+        </div>
+
+        <div
+          className={styles.searchWrapper}
+          ref={searchWrapperRef}
+          style={{
+            width: showSearchInput ? '240px' : '40px',
+            transition: 'width 0.2s ease-in-out',
+          }}
+        >
+          {searchKeyword && !showSearchInput && (
+            <Tag
+              closable
+              onClose={handleClearSearch}
+              className={styles.searchTag}
+            >
+              {`搜索: ${searchKeyword}`}
+            </Tag>
+          )}
+
+          {!showSearchInput ? (
+            <Button
+              type="primary"
+              icon={<SearchOutlined />}
+              onClick={toggleSearchInput}
+              className={styles.searchButton}
+            />
+          ) : (
+            <div className={styles.compactSearchContainer}>
+              <Input
+                ref={searchInputRef}
+                placeholder="输入关键词搜索..."
+                value={searchKeyword}
+                onChange={e => setSearchKeyword(e.target.value)}
+                onKeyDown={handleSearchKeyPress}
+                suffix={
+                  <Space>
+                    {searchKeyword && (
+                      <CloseOutlined
+                        onClick={handleClearSearch}
+                        className={styles.clearIcon}
+                      />
+                    )}
+                    <SearchOutlined
+                      onClick={() => handleSearch(searchKeyword)}
+                      className={styles.searchIcon}
+                    />
+                    <CloseOutlined
+                      onClick={toggleSearchInput}
+                      className={styles.closeIcon}
+                    />
+                  </Space>
+                }
+                className={styles.compactSearchInput}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <div className={styles.content}>
-        {collaborationData.map(userInfo => (
-          <Card
-            key={userInfo.userId}
-            title={
-              <Space>
-                <Avatar
-                  icon={<UserOutlined />}
-                  style={{ backgroundColor: theme?.colors?.primary }}
+        {filteredData.length > 0 ? (
+          filteredData.map(userInfo => (
+            <Card
+              key={userInfo.userId}
+              title={
+                <Space>
+                  <Avatar
+                    icon={<UserOutlined />}
+                    style={{ backgroundColor: theme?.colors?.primary }}
+                  />
+                  <span>{userInfo.username}的公开空间</span>
+                  <Tag color="green">公开</Tag>
+                </Space>
+              }
+              extra={
+                <Space>
+                  <Text type="secondary">{userInfo.totalFolders} 个文件夹</Text>
+                  <Text type="secondary">{userInfo.totalDocuments} 个文档</Text>
+                </Space>
+              }
+              className={styles.userCard}
+            >
+              {userInfo.folders.length > 0 || userInfo.documents.length > 0 ? (
+                <Tree
+                  showLine
+                  showIcon={false}
+                  defaultExpandAll
+                  onSelect={handleTreeSelect}
+                  treeData={convertToTreeData(
+                    userInfo.folders,
+                    userInfo.documents,
+                    userInfo,
+                  )}
+                  className={styles.tree}
                 />
-                <span>{userInfo.username}的公开空间</span>
-                <Tag color="green">公开</Tag>
-              </Space>
-            }
-            extra={
-              <Space>
-                <Text type="secondary">{userInfo.totalFolders} 个文件夹</Text>
-                <Text type="secondary">{userInfo.totalDocuments} 个文档</Text>
-              </Space>
-            }
-            className={styles.userCard}
-          >
-            {userInfo.folders.length > 0 || userInfo.documents.length > 0 ? (
-              <Tree
-                showLine
-                showIcon={false}
-                defaultExpandAll
-                onSelect={handleTreeSelect}
-                treeData={convertToTreeData(
-                  userInfo.folders,
-                  userInfo.documents,
-                  userInfo,
-                )}
-                className={styles.tree}
-              />
-            ) : (
-              <Empty
-                description="该用户暂无公开内容"
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                style={{ margin: '20px 0' }}
-              />
-            )}
-          </Card>
-        ))}
+              ) : (
+                <Empty
+                  description="该用户暂无公开内容"
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  style={{ margin: '20px 0' }}
+                />
+              )}
+            </Card>
+          ))
+        ) : searchKeyword ? (
+          <Empty
+            description={`没有找到包含"${searchKeyword}"的文件夹或文档`}
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        ) : (
+          <Empty
+            description="暂无搜索结果"
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        )}
       </div>
     </div>
   );
