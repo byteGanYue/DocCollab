@@ -1,12 +1,99 @@
 .container {
   padding: 24px;
-  background: var(--color-bgLayout, #f5f5f5);
+  background: var(--bg-color);
   min-height: 100vh;
 }
 
 .header {
   margin-bottom: 24px;
   text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+  
+  .headerContent {
+    width: calc(100% - 48px);
+    padding-right: 56px;
+  }
+  
+  .searchWrapper {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 40px;
+    overflow: hidden;
+    
+    .searchButton {
+      position: absolute;
+      right: 0;
+      top: 0;
+      font-size: 18px;
+      height: 40px;
+      width: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      z-index: 1;
+      
+      &:hover {
+        opacity: 0.85;
+      }
+    }
+    
+    .compactSearchContainer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      z-index: 2;
+      
+      .compactSearchInput {
+        width: 240px;
+        border-radius: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        height: 40px;
+        animation: fadeIn 0.2s ease;
+        
+        .clearIcon,
+        .searchIcon,
+        .closeIcon {
+          cursor: pointer;
+          padding: 4px;
+          
+          &:hover {
+            color: var(--color-primary, #1890ff);
+          }
+        }
+        
+        .clearIcon {
+          color: #999;
+        }
+        
+        .searchIcon {
+          color: var(--color-primary, #1890ff);
+        }
+        
+        .closeIcon {
+          color: #666;
+          margin-left: 4px;
+          border-left: 1px solid #e8e8e8;
+          padding-left: 8px;
+        }
+      }
+    }
+    
+    .searchTag {
+      position: absolute;
+      right: 48px;
+      top: 8px;
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      z-index: 0;
+    }
+  }
   
   h2 {
     margin-bottom: 8px;
@@ -175,4 +262,69 @@
   justify-content: center;
   font-size: 14px;
   background-color: var(--color-primary, #1890ff);
+}
+
+// 添加搜索容器样式
+.searchContainer {
+  margin-bottom: 24px;
+  max-width: 600px;
+}
+
+.popoverSearch {
+  width: 300px;
+  padding: 8px;
+}
+
+// 抽屉式搜索样式
+.searchDrawer {
+  :global {
+    .ant-drawer-header {
+      background-color: var(--color-primary, #1890ff);
+      
+      .ant-drawer-title {
+        color: white;
+        font-weight: 500;
+      }
+      
+      .ant-drawer-close {
+        color: white;
+      }
+    }
+  }
+}
+
+.drawerSearchContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  
+  .searchTips {
+    margin-top: 8px;
+    padding: 8px;
+    background-color: var(--color-bg-gray, #f5f5f5);
+    border-radius: 4px;
+  }
+  
+  .searchInfo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 16px;
+    padding: 12px;
+    background-color: var(--color-bg-light, #e6f7ff);
+    border-radius: 4px;
+    
+    .ant-tag {
+      margin-right: 0;
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 } 

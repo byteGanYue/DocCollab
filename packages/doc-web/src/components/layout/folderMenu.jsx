@@ -324,6 +324,8 @@ const FolderMenu = () => {
     const convertFolderToMenuItem = folder => {
       // const folderKey = `collab_user_${userData.userId}_folder_${folder.autoFolderId}`;
       const folderKey = `${folder.folderId}`;
+      // const folderKey = `collab_user_${userData.userId}_folder_${folder.autoFolderId}`;
+      const folderKey = `${folder.folderId}`;
 
       // 获取该文件夹下的直接文档
       const folderDocuments = documentsByFolder.get(folder.autoFolderId) || [];
@@ -1086,7 +1088,19 @@ const FolderMenu = () => {
 
     // const validateAndClean = items => {
     //   if (!Array.isArray(items)) return [];
+    // const validateAndClean = items => {
+    //   if (!Array.isArray(items)) return [];
 
+    //   return items
+    //     .filter(item => {
+    //       if (!item) {
+    //         console.warn('⚠️ 发现空菜单项');
+    //         return false;
+    //       }
+    //       if (!item.key) {
+    //         console.warn('⚠️ 菜单项缺少key:', item);
+    //         return false;
+    //       }
     //   return items
     //     .filter(item => {
     //       if (!item) {
