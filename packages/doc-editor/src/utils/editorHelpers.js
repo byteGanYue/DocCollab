@@ -30,23 +30,23 @@ export const withLayout = editor => {
         Array.isArray(window.currentExternalValue) &&
         window.currentExternalValue.length > 0;
 
-      // 如果编辑器为空或只有一个空节点，插入标题
-      if (
-        editor.children.length === 0 ||
-        (editor.children.length === 1 &&
-          editor.children[0] &&
-          Editor.string(editor, [0]) === '')
-      ) {
-        const title = {
-          type: 'title',
-          children: [{ text: '无标题文档' }],
-        };
-        Transforms.insertNodes(editor, title, {
-          at: path.concat(0),
-          select: true,
-        });
-        console.log('插入"无标题文档"', editor.children);
-      }
+      // // 如果编辑器为空或只有一个空节点，插入标题
+      // if (
+      //   editor.children.length === 0 ||
+      //   (editor.children.length === 1 &&
+      //     editor.children[0] &&
+      //     Editor.string(editor, [0]) === '')
+      // ) {
+      //   const title = {
+      //     type: 'title',
+      //     children: [{ text: '无标题文档' }],
+      //   };
+      //   Transforms.insertNodes(editor, title, {
+      //     at: path.concat(0),
+      //     select: true,
+      //   });
+      //   console.log('插入"无标题文档"', editor.children);
+      // }
 
       // 确保至少有两个节点（标题 + 段落）
       if (editor.children.length < 2) {
