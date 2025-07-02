@@ -153,8 +153,12 @@ export const documentAPI = {
   },
 
   // 创建文档历史版本记录
-  createDocumentHistory: documentId =>
-    post(`/document/${documentId}/create-history`),
+  createDocumentHistory: async (documentId, content, yjsState) => {
+    return post(`/document/${documentId}/create-history`, {
+      content,
+      yjsState,
+    });
+  },
 
   // 获取所有公开用户的文档
   getPublicDocuments: () => get('/document/public-documents'),

@@ -733,7 +733,10 @@ export class DocumentController {
       },
     },
   })
-  async createHistoryVersion(@Param('id', ParseIntPipe) documentId: number) {
+  async createHistoryVersion(
+    @Param('id', ParseIntPipe) documentId: number,
+    @Body() body: { content?: string; yjsState?: number[] },
+  ) {
     this.logger.log('接收到创建历史版本请求', { documentId });
 
     try {
@@ -749,15 +752,20 @@ export class DocumentController {
         };
       }
 
+      // 优先用前端传来的内容
+      const content = body.content ?? document.content;
+      const yjsState = body.yjsState ?? document.yjsState;
+
       // 创建历史版本记录
       const historyVersion =
         await this.documentHistoryService.addDocumentHistory({
           userId: document.userId,
           documentId: document.documentId,
           documentName: document.documentName,
-          content: document.content,
+          content,
           create_username: document.create_username,
           update_username: document.update_username,
+          yjsState,
         });
 
       return {

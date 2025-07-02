@@ -340,45 +340,42 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   // 初始化文档内容
   useEffect(() => {
     const initializeContent = async () => {
-      if (!editor || valueInitialized.current) {
-        return;
-      }
-
+      if (!editor || valueInitialized.current) return;
       // 等待IndexedDB同步完成
       if (indexeddbProvider.current && !indexeddbProvider.current.synced) {
         await new Promise(resolve => {
           indexeddbProvider.current.on('synced', resolve);
         });
       }
-
-      if (YjsEditor.isYjsEditor(editor)) {
+      if (
+        editor &&
+        typeof YjsEditor.sharedType === 'function' &&
+        typeof YjsEditor.isYjsEditor === 'function' &&
+        YjsEditor.isYjsEditor(editor)
+      ) {
         const sharedType = YjsEditor.sharedType(editor);
-
-        // 检查是否有本地或远程内容
-        const hasContent = sharedType && sharedType.toString() !== '';
-
-        if (!hasContent) {
-          // 检查是否有外部传入的初始值
-          const externalValue = window.currentExternalValue;
-          if (externalValue && Array.isArray(externalValue)) {
-            console.log('[编辑器] 使用外部传入的初始值');
-            const delta = slateNodesToInsertDelta(externalValue);
-            sharedType.applyDelta(delta);
-          } else {
-            console.log('[编辑器] 使用默认初始值');
-            const delta = slateNodesToInsertDelta(defaultInitialValue);
-            sharedType.applyDelta(delta);
+        if (sharedType && typeof sharedType.toString === 'function') {
+          const hasContent = sharedType.toString() !== '';
+          if (!hasContent) {
+            const externalValue = window.currentExternalValue;
+            if (externalValue && Array.isArray(externalValue)) {
+              const delta = slateNodesToInsertDelta(externalValue);
+              sharedType.applyDelta(delta);
+              window.currentExternalValue = null;
+            } else {
+              const delta = slateNodesToInsertDelta(defaultInitialValue);
+              sharedType.applyDelta(delta);
+            }
           }
-        } else {
-          console.log('[编辑器] 使用已存在的文档内容');
         }
-
-        valueInitialized.current = true;
       }
+      valueInitialized.current = true;
     };
-
-    // 无论是否连接到服务器都初始化内容（支持离线模式）
     initializeContent();
+    // 清理副作用
+    return () => {
+      valueInitialized.current = false;
+    };
   }, [editor]);
 
   // 监听远程用户变化
@@ -410,6 +407,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   // 监听 yComments 变化，强制刷新外部组件
   useEffect(() => {
     if (!yCommentsRef.current) return;
+    console.log('yCommentsRef.current', yCommentsRef.current);
     const handler = () => {
       setValue(v => [...v]);
       // 触发编辑器重新装饰

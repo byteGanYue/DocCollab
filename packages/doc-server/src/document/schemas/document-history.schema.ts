@@ -24,6 +24,9 @@ export class DocumentHistoryEntity extends Document {
   @Prop({ type: Number, required: true })
   versionId: number; // 版本号，根据相同userId和documentId从1开始依次递增
 
+  @Prop({ type: [Number], default: [] })
+  yjsState: number[];
+
   // 自动管理字段 (由 timestamps 选项生成)
   create_time: Date;
   update_time: Date;

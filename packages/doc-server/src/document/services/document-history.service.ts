@@ -24,8 +24,13 @@ export class DocumentHistoryService {
     content: string;
     create_username: string;
     update_username?: string;
+    yjsState?: number[];
   }): Promise<DocumentHistoryEntity> {
     try {
+      // 校验content不能为空
+      if (!documentData.content) {
+        throw new Error('content字段不能为空，必须传递当前文档内容');
+      }
       // 获取下一个版本号
       const nextVersionId = await this.getNextVersionId(
         documentData.userId,
@@ -41,18 +46,21 @@ export class DocumentHistoryService {
         create_username: documentData.create_username,
         update_username: documentData.update_username || '',
         versionId: nextVersionId,
+        create_time: new Date(),
+        update_time: new Date(),
+        yjsState: documentData.yjsState,
       });
 
       const savedRecord = await historyRecord.save();
       this.logger.log(
-        `添加文档历史版本记录成功: userId=${documentData.userId}, documentId=${documentData.documentId}, versionId=${nextVersionId}`,
+        `保存历史版本成功: documentId=${documentData.documentId}, versionId=${savedRecord.versionId}`,
       );
 
       return savedRecord;
     } catch (error: unknown) {
-      this.logger.error('添加文档历史版本记录失败:', error);
+      this.logger.error('保存历史版本失败:', error);
       const errorMessage = error instanceof Error ? error.message : '未知错误';
-      throw new Error(`添加文档历史版本记录失败: ${errorMessage}`);
+      throw new Error(`保存历史版本失败: ${errorMessage}`);
     }
   }
 

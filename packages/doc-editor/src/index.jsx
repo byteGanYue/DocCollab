@@ -4,6 +4,7 @@ import React, {
   useState,
   useEffect,
   useRef,
+  memo,
 } from 'react';
 import isHotkey from 'is-hotkey';
 import Prism from 'prismjs';
@@ -75,7 +76,7 @@ const defaultInitialValue = [
  * 支持代码高亮功能
  * 支持多用户实时协同编辑
  */
-const EditorSDK = ({
+const EditorSDKComponent = ({
   documentId = 'default-document',
   value: externalValue,
   onChange: externalOnChange,
@@ -113,6 +114,7 @@ const EditorSDK = ({
   // 优先使用外部传入的 value
   const value = externalValue !== undefined ? externalValue : internalValue;
   const setValue = externalOnChange || setInternalValue;
+  console.log('externalValue', externalValue);
   console.log('当前文档内容（Slate节点数组）', value);
 
   // 评论弹窗相关状态
@@ -553,6 +555,17 @@ const EditorSDK = ({
     </div>
   );
 };
+
+const areEqual = (prevProps, nextProps) => {
+  // 只有documentId或value变化时才重新渲染
+  return (
+    prevProps.documentId === nextProps.documentId &&
+    prevProps.value === nextProps.value &&
+    prevProps.onBackHistoryProps === nextProps.onBackHistoryProps
+  );
+};
+
+const EditorSDK = memo(EditorSDKComponent, areEqual);
 
 export { EditorSDK };
 export default EditorSDK;

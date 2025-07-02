@@ -129,24 +129,37 @@ const DocEditor = () => {
 
   // 创建历史版本（现在主要通过yjsState处理）
   const createHistoryVersion = useCallback(async () => {
-    // 如果是临时文档或标记为没有编辑，或者正在查看历史版本，则不创建历史版本
     if (isTempDocument(documentId) || !hasEdited.current || currentVersionId) {
       return;
     }
-
     try {
-      // 历史版本创建现在主要依赖yjsState，这里保留接口调用但不传递content
-      const result = await documentAPI.createDocumentHistory(documentId);
+      const content = JSON.stringify(editorValue);
+      let yjsState = undefined;
+      if (window.ydoc && window.Y) {
+        // 获取Yjs文档的二进制状态
+        yjsState = Array.from(window.Y.encodeStateAsUpdate(window.ydoc));
+      }
+      if (
+        !content ||
+        content === '[]' ||
+        content === '[{"type":"paragraph","children":[{"text":""}]}]'
+      ) {
+        console.warn('历史版本未保存：内容为空');
+        return;
+      }
+      const result = await documentAPI.createDocumentHistory(
+        documentId,
+        content,
+        yjsState,
+      );
       if (result.success) {
-        // 重置编辑标志
         hasEdited.current = false;
-        // 清除localStorage中的编辑标记
         localStorage.removeItem('isEdit');
       }
     } catch (error) {
       console.error(`[DocEditor] 历史版本创建失败:`, error);
     }
-  }, [documentId, currentVersionId]);
+  }, [documentId, currentVersionId, editorValue]);
 
   // 启动或重置历史版本创建计时器
   const resetHistoryVersionTimer = useCallback(() => {
@@ -250,19 +263,27 @@ const DocEditor = () => {
         return;
       }
 
-      // 如果有编辑过且不是临时文档，创建历史版本
       if (hasEdited.current && !isTempDocument(documentId)) {
-        documentAPI
-          .createDocumentHistory(documentId)
-          .then(() => {
-            localStorage.removeItem('isEdit');
-          })
-          .catch(error => {
-            console.error('创建历史版本失败:', error);
-          });
+        const content = JSON.stringify(editorValue);
+        if (
+          content &&
+          content !== '[]' &&
+          content !== '[{"type":"paragraph","children":[{"text":""}]}]'
+        ) {
+          documentAPI
+            .createDocumentHistory(documentId, content)
+            .then(() => {
+              localStorage.removeItem('isEdit');
+            })
+            .catch(error => {
+              console.error('创建历史版本失败:', error);
+            });
+        } else {
+          console.warn('历史版本未保存（卸载时）：内容为空');
+        }
       }
     };
-  }, [documentId, currentVersionId]);
+  }, [documentId, currentVersionId, editorValue]);
 
   // 切换文档时初始化编辑器
   useEffect(() => {
@@ -273,14 +294,36 @@ const DocEditor = () => {
     };
   }, [initializeEditor]);
 
+  const [contentReady, setContentReady] = useState(false);
+
+  // 监听Yjs/IndexedDB同步完成，内容ready后再渲染编辑器
+  useEffect(() => {
+    setContentReady(false);
+    // 这里假设window.indexeddbProvider由useCollaborativeEditor或EditorSDK暴露
+    // 如果不是，请根据实际情况获取indexeddbProvider
+    const checkReady = () => {
+      if (window.indexeddbProvider && window.indexeddbProvider.synced) {
+        setContentReady(true);
+      } else if (window.indexeddbProvider) {
+        window.indexeddbProvider.on('synced', () => setContentReady(true));
+      } else {
+        // fallback: 最多1秒后兜底显示
+        setTimeout(() => setContentReady(true), 1000);
+      }
+    };
+    checkReady();
+    // 切换文档时重置
+    return () => setContentReady(false);
+  }, [documentId]);
+
   return (
     <div className="doc-editor-page">
       {/* 编辑器加载中提示 */}
       {loading && (
         <div style={{ padding: 20, color: '#888' }}>文档加载中...</div>
       )}
-      {/* 只有 editorValue 有效且非 loading 时才渲染编辑器 */}
-      {!loading && editorValue && (
+      {/* 只有内容同步完成且 editorValue 有效且非 loading 时才渲染编辑器 */}
+      {!loading && contentReady && editorValue && (
         <EditorSDK
           key={editorKey}
           documentId={documentId}
@@ -289,6 +332,10 @@ const DocEditor = () => {
           onChange={handleEditorChange}
           onBackHistoryProps={onBackHistoryProps}
         />
+      )}
+      {/* 内容未同步完成时显示加载中 */}
+      {!loading && !contentReady && (
+        <div style={{ padding: 20, color: '#888' }}>内容同步中...</div>
       )}
     </div>
   );
