@@ -2,6 +2,10 @@
 node_modules
 .pnpm-store
 
+# 不上传 doc-editor 的数据文件夹
+packages/doc-editor/data/
+packages/doc-editor/data/**
+
 # Build output
 dist
 dist-ssr

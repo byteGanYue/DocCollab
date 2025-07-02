@@ -594,6 +594,115 @@ export class DocumentController {
   }
 
   /**
+   * 同步Yjs状态到MongoDB
+   * @param documentId 文档ID
+   * @param body 包含Yjs状态和内容的请求体
+   * @returns 同步结果
+   */
+  @Post(':id/sync-yjs')
+  @ApiOperation({
+    summary: '同步Yjs状态到MongoDB',
+    description: '将协同编辑器的Yjs状态同步到MongoDB数据库',
+  })
+  @ApiParam({
+    name: 'id',
+    description: '文档ID',
+    type: 'number',
+    example: 123,
+  })
+  @ApiBody({
+    description: 'Yjs同步数据',
+    schema: {
+      type: 'object',
+      properties: {
+        yjsState: {
+          type: 'array',
+          items: { type: 'number' },
+          description: 'Yjs文档状态数据',
+        },
+        content: {
+          type: 'string',
+          description: '文档内容',
+        },
+        username: {
+          type: 'string',
+          description: '更新用户名',
+        },
+      },
+      required: ['yjsState', 'content', 'username'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Yjs状态同步成功',
+    schema: {
+      example: {
+        success: true,
+        message: 'Yjs状态同步成功',
+        data: {
+          documentId: 123,
+          lastYjsSyncTime: '2024-01-01T00:00:00.000Z',
+          contentLength: 1024,
+        },
+      },
+    },
+  })
+  async syncYjsState(
+    @Param('id', ParseIntPipe) documentId: number,
+    @Body() body: { yjsState: number[]; content: string; username: string },
+  ) {
+    this.logger.log('接收到Yjs状态同步请求', {
+      documentId,
+      username: body.username,
+      contentLength: body.content?.length || 0,
+      yjsStateLength: body.yjsState?.length || 0,
+    });
+    return this.documentService.syncYjsState(
+      documentId,
+      body.yjsState,
+      body.content,
+      body.username,
+    );
+  }
+
+  /**
+   * 获取文档的Yjs状态
+   * @param documentId 文档ID
+   * @returns Yjs状态数据
+   */
+  @Get(':id/yjs-state')
+  @ApiOperation({
+    summary: '获取文档的Yjs状态',
+    description: '获取文档的Yjs状态数据，用于协同编辑同步',
+  })
+  @ApiParam({
+    name: 'id',
+    description: '文档ID',
+    type: 'number',
+    example: 123,
+  })
+  @ApiResponse({
+    status: 200,
+    description: '获取Yjs状态成功',
+    schema: {
+      example: {
+        success: true,
+        message: '获取Yjs状态成功',
+        data: {
+          documentId: 123,
+          yjsState: [1, 2, 3, 4, 5],
+          lastYjsSyncTime: '2024-01-01T00:00:00.000Z',
+          lastSyncSource: 'yjs',
+        },
+      },
+    },
+  })
+  async getYjsState(@Param('id', ParseIntPipe) documentId: number) {
+    this.logger.log('接收到获取Yjs状态请求', { documentId });
+    return this.documentService.getYjsState(documentId);
+  }
+
+  /**
    * 创建文档历史版本记录
    * @param documentId 文档ID
    * @returns 创建结果
