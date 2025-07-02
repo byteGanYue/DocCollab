@@ -204,11 +204,11 @@ const Collaboration = () => {
             <FolderOutlined style={{ color: '#faad14' }} />
             <Text>{folder.folderName}</Text>
             <Tag size="small" color="orange">
-              {folder.children?.length || 0}个子项
+              {folder.children?.length || 0}个子文件夹
             </Tag>
           </Space>
         ),
-        key: `folder_${folder.autoFolderId}`,
+        key: `folder_${folder.folderId}`,
         children: allChildren.length > 0 ? allChildren : undefined,
       };
     };
@@ -246,12 +246,16 @@ const Collaboration = () => {
   const handleTreeSelect = (selectedKeys, info) => {
     if (selectedKeys.length > 0) {
       const key = selectedKeys[0];
+      console.log('这是key', key);
       if (key.startsWith('doc_')) {
         const documentId = key.replace('doc_', '');
         // 跳转到文档编辑器，并标记为协同文档
         navigate(
           `/doc-editor/${documentId}?collaborative=true&owner=${info.node.userName}`,
         );
+      } else if (key.startsWith('folder_')) {
+        const folderId = key.replace('folder_', '');
+        navigate(`/folderListPage/${folderId}`);
       }
     }
   };

@@ -22,7 +22,6 @@ import {
   FolderAddOutlined,
 } from '@ant-design/icons';
 import styles from './index.module.less';
-import { folderAPI, documentAPI } from '../../utils/api';
 import folderUtils from '../../utils/folder';
 
 /**
@@ -155,34 +154,6 @@ const Folder = () => {
   }, [id, fetchFolderContents, pagination.current, pagination.pageSize]);
 
   /**
-   * 处理删除操作
-   */
-  const handleDelete = async record => {
-    try {
-      if (record.type === 'folder') {
-        const response = await folderAPI.deleteFolder(record.id);
-        if (response.success) {
-          messageApi.success(`文件夹 "${record.name}" 已删除`);
-          fetchFolderContents(id, pagination.current, pagination.pageSize);
-        } else {
-          throw new Error(response.message || '删除文件夹失败');
-        }
-      } else {
-        const response = await documentAPI.deleteDocument(record.id);
-        if (response.success) {
-          messageApi.success(`文档 "${record.name}" 已删除`);
-          fetchFolderContents(id, pagination.current, pagination.pageSize);
-        } else {
-          throw new Error(response.message || '删除文档失败');
-        }
-      }
-    } catch (error) {
-      console.error('删除失败:', error);
-      messageApi.error(`删除失败: ${error.message || '未知错误'}`);
-    }
-  };
-
-  /**
    * 处理打开/进入操作
    */
   const handleOpen = record => {
@@ -209,47 +180,6 @@ const Folder = () => {
   const clearFilters = () => {
     setFilteredInfo({});
     setSortedInfo({});
-  };
-
-  /**
-   * 处理新建文档
-   */
-  const handleCreateDocument = async () => {
-    try {
-      const response = await documentAPI.createDocument({
-        parentFolderId: id,
-        documentName: '新建文档',
-      });
-      if (response.success) {
-        navigate(`/doc-editor/${response.data.documentId}`);
-      } else {
-        throw new Error(response.message || '创建文档失败');
-      }
-    } catch (error) {
-      console.error('创建文档失败:', error);
-      messageApi.error('创建文档失败');
-    }
-  };
-
-  /**
-   * 处理新建文件夹
-   */
-  const handleCreateFolder = async () => {
-    try {
-      const response = await folderAPI.createFolder({
-        parentFolderId: id,
-        folderName: '新建文件夹',
-      });
-      if (response.success) {
-        fetchFolderContents(id, pagination.current, pagination.pageSize);
-        messageApi.success('文件夹创建成功');
-      } else {
-        throw new Error(response.message || '创建文件夹失败');
-      }
-    } catch (error) {
-      console.error('创建文件夹失败:', error);
-      messageApi.error('创建文件夹失败');
-    }
   };
 
   /**
@@ -312,14 +242,6 @@ const Folder = () => {
               onClick={() => handleOpen(record)}
             />
           </Tooltip>
-          <Tooltip title="删除">
-            <Button
-              type="link"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record)}
-            />
-          </Tooltip>
         </Space>
       ),
     },
@@ -370,12 +292,6 @@ const Folder = () => {
 
         {/* 操作按钮组 */}
         <Space>
-          <Button icon={<FileAddOutlined />} onClick={handleCreateDocument}>
-            新建文档
-          </Button>
-          <Button icon={<FolderAddOutlined />} onClick={handleCreateFolder}>
-            新建文件夹
-          </Button>
           {(filteredInfo.type || sortedInfo.order) && (
             <Button onClick={clearFilters}>清除筛选和排序</Button>
           )}
