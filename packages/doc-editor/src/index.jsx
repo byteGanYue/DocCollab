@@ -20,7 +20,8 @@ import 'prismjs/components/prism-sql';
 import 'prismjs/components/prism-tsx';
 import 'prismjs/components/prism-typescript';
 import { Element, Node, Text, Editor, Range } from 'slate';
-import { Editable, Slate } from 'slate-react';
+import { Editable, Slate, withReact } from 'slate-react';
+import { createEditor } from 'slate';
 import {
   Toolbar,
   MarkButton,
@@ -81,6 +82,7 @@ const EditorSDKComponent = ({
   value: externalValue,
   onChange: externalOnChange,
   onBackHistoryProps,
+  disableCollab = false,
 }) => {
   // Ensure onBackHistoryProps has default values
   const backHistoryProps = onBackHistoryProps || {
@@ -93,7 +95,21 @@ const EditorSDKComponent = ({
     window.currentExternalValue = externalValue;
   }
 
-  // 使用自定义 hook 管理协同编辑器状态
+  // 只读快照和协同模式都需要的本地value hook
+  const safeValue =
+    Array.isArray(externalValue) && externalValue.length > 0
+      ? externalValue
+      : defaultInitialValue;
+  const [localValue, setLocalValue] = useState(safeValue);
+  useEffect(() => {
+    if (Array.isArray(externalValue) && externalValue.length > 0) {
+      setLocalValue(externalValue);
+    } else {
+      setLocalValue(defaultInitialValue);
+    }
+  }, [externalValue]);
+
+  // 协同相关hook
   const {
     editor,
     value: internalValue,
@@ -114,8 +130,6 @@ const EditorSDKComponent = ({
   // 优先使用外部传入的 value
   const value = externalValue !== undefined ? externalValue : internalValue;
   const setValue = externalOnChange || setInternalValue;
-  console.log('externalValue', externalValue);
-  console.log('当前文档内容（Slate节点数组）', value);
 
   // 评论弹窗相关状态
   const [showCommentModal, setShowCommentModal] = useState(false);
@@ -298,6 +312,55 @@ const EditorSDKComponent = ({
       }
     };
   }, []);
+
+  // 只读快照渲染分支
+  if (disableCollab) {
+    return (
+      <div
+        style={{
+          maxWidth: '100%',
+          margin: '0 auto',
+          padding: '20px',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          position: 'relative',
+        }}
+      >
+        <Slate
+          editor={useMemo(() => withReact(createEditor()), [])}
+          value={
+            Array.isArray(localValue) && localValue.length > 0
+              ? localValue
+              : defaultInitialValue
+          }
+          initialValue={
+            Array.isArray(localValue) && localValue.length > 0
+              ? localValue
+              : defaultInitialValue
+          }
+          onChange={() => {}}
+        >
+          <Editable
+            readOnly={true}
+            renderElement={props => <ElementComponent {...props} />}
+            renderLeaf={props => <Leaf {...props} />}
+            placeholder="只读历史快照"
+            spellCheck
+            style={{
+              minHeight: '500px',
+              padding: '16px',
+              border: '1px solid #ced4da',
+              borderRadius: '0 0 8px 8px',
+              fontSize: '16px',
+              lineHeight: '1.5',
+              outline: 'none',
+              backgroundColor: '#fff',
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1)',
+            }}
+          />
+        </Slate>
+      </div>
+    );
+  }
 
   return (
     <div

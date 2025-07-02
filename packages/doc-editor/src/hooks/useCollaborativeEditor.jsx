@@ -239,7 +239,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
   // 创建Hocuspocus Provider
   const provider = useMemo(() => {
     try {
-      return new HocuspocusProvider({
+      const p = new HocuspocusProvider({
         url: WS_URL,
         name: documentId,
         document: docRef.current,
@@ -256,6 +256,8 @@ export function useCollaborativeEditor(documentId = 'default-document') {
           console.log(`[WebSocket] 文档 ${documentId} 已同步`);
         },
       });
+      window.provider = p; // 挂载到window，便于全局访问
+      return p;
     } catch (error) {
       console.error('[WebSocket] 创建Provider失败:', error);
       return null;
@@ -542,6 +544,79 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     [editor],
   );
 
+  /**
+   * 强制用历史yjsState重建Y.Doc和协同流
+   * @param {Uint8Array|Array} yjsStateArr 历史版本的yjsState
+   */
+  const forceRestoreYjsState = useCallback(
+    yjsStateArr => {
+      // 1. 断开 provider
+      if (window.provider) window.provider.disconnect();
+      // 2. 销毁 indexeddbProvider
+      if (indexeddbProvider.current) {
+        indexeddbProvider.current.destroy();
+        indexeddbProvider.current = null;
+      }
+      // 3. 注销 MongoDB 同步服务
+      if (mongoSyncRegistered.current && documentId) {
+        try {
+          yjsMongoSyncService.unregisterDocumentSync(documentId);
+          mongoSyncRegistered.current = false;
+        } catch (error) {
+          console.error('[编辑器] MongoDB同步服务注销失败:', error);
+        }
+      }
+      // 4. 彻底重建 Y.Doc
+      const newYDoc = new Y.Doc();
+      const update = new Uint8Array(yjsStateArr);
+      Y.applyUpdate(newYDoc, update);
+      docRef.current = newYDoc;
+      window.ydoc = newYDoc;
+      // 5. 重新初始化 indexeddbProvider
+      indexeddbProvider.current = new IndexeddbPersistence(documentId, newYDoc);
+      window.indexeddbProvider = indexeddbProvider.current;
+      // 6. 重新注册 MongoDB 同步服务
+      try {
+        yjsMongoSyncService.registerDocumentSync(documentId, newYDoc, {
+          userId: JSON.parse(localStorage.getItem('userInfo'))?.userId || 1,
+          username:
+            JSON.parse(localStorage.getItem('userInfo'))?.username ||
+            'Anonymous',
+          debug: true,
+        });
+        mongoSyncRegistered.current = true;
+      } catch (error) {
+        console.error('[编辑器] MongoDB同步服务注册失败:', error);
+      }
+      // 7. 重新创建 provider
+      const newProvider = new HocuspocusProvider({
+        url: WS_URL,
+        name: documentId,
+        document: newYDoc,
+        connect: false,
+        onConnect: () => setIsConnected(true),
+        onDisconnect: () => setIsConnected(false),
+        onSynced: () => {
+          console.log(`[WebSocket] 文档 ${documentId} 已同步`);
+        },
+      });
+      window.provider = newProvider;
+      // 8. 重新连接 provider
+      setTimeout(() => {
+        newProvider.connect();
+      }, 300);
+      // 9. 重新初始化 yComments/yText
+      yCommentsRef.current = newYDoc.getArray('comments');
+      yTextRef.current = newYDoc.get('content', Y.XmlText);
+      // 10. 强制刷新编辑器
+      setValue(v => [...v]);
+      console.log(
+        '[useCollaborativeEditor] 已彻底重建Y.Doc和协同流并恢复历史状态',
+      );
+    },
+    [documentId],
+  );
+
   return {
     editor,
     value,
@@ -559,5 +634,7 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     yComments: yCommentsRef,
     addComment,
     removeComment,
+    // 新增：彻底重建Y.Doc并恢复历史状态
+    forceRestoreYjsState,
   };
 }

@@ -111,6 +111,10 @@ const DocEditor = () => {
     return currentVersionId ? `${documentId}_v${currentVersionId}` : documentId;
   }, [documentId, currentVersionId]);
 
+  // 新增：只读模式和历史快照内容状态
+  const [readOnly, setReadOnly] = useState(false);
+  const [historyContent, setHistoryContent] = useState(null);
+
   // 初始化编辑器内容
   const initializeEditor = useCallback(() => {
     setLoading(true);
@@ -205,8 +209,45 @@ const DocEditor = () => {
         // 调用版本回退API
         const result = await documentAPI.restoreDocument(documentId, versionId);
         if (result.success) {
-          console.log(`[DocEditor] 成功回退到版本: ${versionId}`);
-          // 版本回退成功，内容会通过yjsState自动同步
+          // 回滚成功后，获取该历史版本的yjsState并apply到Y.Doc
+          const versionRes = await documentAPI.getDocumentVersion(
+            documentId,
+            versionId,
+          );
+          if (
+            versionRes.success &&
+            versionRes.data &&
+            versionRes.data.yjsState &&
+            window.ydoc &&
+            window.Y
+          ) {
+            try {
+              const yjsStateArr = versionRes.data.yjsState;
+              // 兼容Uint8Array/Array
+              const update = new Uint8Array(yjsStateArr);
+              // 1. 断开Provider连接
+              if (window.provider) {
+                window.provider.disconnect();
+              }
+              // 2. 清理IndexedDB缓存
+              if (window.indexeddbProvider) {
+                window.indexeddbProvider.destroy();
+              }
+              // 3. apply历史yjsState
+              window.Y.applyUpdate(window.ydoc, update);
+              // 4. 重新连接Provider
+              if (window.provider) {
+                setTimeout(() => {
+                  window.provider.connect();
+                }, 300); // 延迟重连，确保applyUpdate已完成
+              }
+              console.log(
+                '[DocEditor] 已用历史版本yjsState恢复Y.Doc并重置协同流',
+              );
+            } catch (e) {
+              console.error('[DocEditor] 应用历史yjsState失败', e);
+            }
+          }
           // 清除URL中的version参数
           window.history.replaceState({}, '', `${location.pathname}`);
           // 重置回退属性
@@ -316,14 +357,52 @@ const DocEditor = () => {
     return () => setContentReady(false);
   }, [documentId]);
 
+  // 新增：根据version参数获取历史快照内容
+  useEffect(() => {
+    if (currentVersionId) {
+      setReadOnly(true);
+      setHistoryContent(null);
+      setLoading(true);
+      documentAPI
+        .getDocumentVersion(documentId, currentVersionId)
+        .then(res => {
+          let content = DEFAULT_EDITOR_VALUE;
+          if (res.success && res.data && res.data.content) {
+            try {
+              const parsed = JSON.parse(res.data.content);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                content = parsed;
+              }
+            } catch {
+              /* ignore parse error, fallback to default */
+            }
+          }
+          setHistoryContent(content);
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setReadOnly(false);
+      setHistoryContent(null);
+    }
+  }, [currentVersionId, documentId]);
+
   return (
     <div className="doc-editor-page">
       {/* 编辑器加载中提示 */}
       {loading && (
         <div style={{ padding: 20, color: '#888' }}>文档加载中...</div>
       )}
-      {/* 只有内容同步完成且 editorValue 有效且非 loading 时才渲染编辑器 */}
-      {!loading && contentReady && editorValue && (
+      {/* 只读历史快照预览 */}
+      {!loading && readOnly && historyContent && (
+        <EditorSDK
+          key={editorKey}
+          value={historyContent}
+          readOnly={true}
+          disableCollab={true}
+        />
+      )}
+      {/* 协同编辑模式 */}
+      {!loading && !readOnly && contentReady && editorValue && (
         <EditorSDK
           key={editorKey}
           documentId={documentId}
@@ -333,8 +412,7 @@ const DocEditor = () => {
           onBackHistoryProps={onBackHistoryProps}
         />
       )}
-      {/* 内容未同步完成时显示加载中 */}
-      {!loading && !contentReady && (
+      {!loading && !contentReady && !readOnly && (
         <div style={{ padding: 20, color: '#888' }}>内容同步中...</div>
       )}
     </div>
