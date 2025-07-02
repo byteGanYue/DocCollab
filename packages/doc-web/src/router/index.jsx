@@ -9,6 +9,7 @@ import Register from '@/pages/Register';
 import Welcome from '@/pages/Welcome';
 import LayoutComponent from '@/components/layout/layout';
 import EditorDemo from '@/pages/EditorDemo';
+import Folder from '@/pages/Folder';
 // import AuthGuard from '@/components/AuthGuard';
 
 const router = createBrowserRouter([
@@ -48,6 +49,10 @@ const router = createBrowserRouter([
       {
         path: 'doc-editor/:id',
         element: <DocEditor />,
+      },
+      {
+        path: 'folderListPage/:id',
+        element: <Folder />,
       },
       {
         path: 'history-version/:id',

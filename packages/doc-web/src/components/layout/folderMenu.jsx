@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useContext,
   useCallback,
+  useMemo,
 } from 'react';
 import {
   FolderOpenOutlined,
@@ -329,13 +330,32 @@ const FolderMenu = () => {
       // 转换文档为菜单项
       const documentMenuItems = folderDocuments.map((doc, index) => ({
         key: `collab_user_${userData.userId}_doc_${doc.documentId}_${index}`,
-        label: <EllipsisLabel text={doc.documentName} />,
+        label: (
+          <div
+            style={{
+              cursor: 'pointer',
+              display: 'inline-block',
+              width: '100%',
+            }}
+            onClick={() => {
+              console.log(
+                '🚀 协同空间文档直接点击:',
+                doc.documentName,
+                doc.documentId,
+              );
+              navigate(`/doc-editor/${doc.documentId}?collaborative=true`);
+            }}
+          >
+            <EllipsisLabel text={doc.documentName} />
+          </div>
+        ),
         isLeaf: true,
         backendData: doc,
         documentId: doc.documentId,
         userId: userData.userId,
         userName: userData.username,
         isCollaborative: true,
+        selectable: true, // 确保可以选中
       }));
 
       // 递归处理子文件夹
@@ -349,12 +369,28 @@ const FolderMenu = () => {
       return {
         key: folderKey,
         icon: React.createElement(FolderOpenOutlined),
-        label: <EllipsisLabel text={folder.folderName} />,
+        label: (
+          <div
+            style={{
+              cursor: 'pointer',
+              display: 'inline-block',
+              width: '100%',
+            }}
+            onClick={() => {
+              console.log('🚀 协同空间文件夹直接点击:', folder.folderId);
+              navigate(`/folderListPage/${folder.folderId}`);
+            }}
+          >
+            <EllipsisLabel text={folder.folderName} />
+          </div>
+        ),
         children: allChildren.length > 0 ? allChildren : undefined,
         backendData: folder,
         userId: userData.userId,
         userName: userData.username,
         isCollaborative: true,
+        selectable: true, // 确保可以选中
+        disabled: false, // 确保不禁用
       };
     };
 
@@ -366,13 +402,28 @@ const FolderMenu = () => {
     // 处理根级文档
     const rootDocuments = documentsByFolder.get('root').map((doc, index) => ({
       key: `collab_user_${userData.userId}_doc_${doc.documentId}_${index}`,
-      label: <EllipsisLabel text={doc.documentName} />,
+      label: (
+        <div
+          style={{ cursor: 'pointer', display: 'inline-block', width: '100%' }}
+          onClick={() => {
+            console.log(
+              '🚀 协同空间根级文档直接点击:',
+              doc.documentName,
+              doc.documentId,
+            );
+            navigate(`/doc-editor/${doc.documentId}?collaborative=true`);
+          }}
+        >
+          <EllipsisLabel text={doc.documentName} />
+        </div>
+      ),
       isLeaf: true,
       backendData: doc,
       documentId: doc.documentId,
       userId: userData.userId,
       userName: userData.username,
       isCollaborative: true,
+      selectable: true, // 确保可以选中
     }));
 
     // 合并根级文件夹和文档
@@ -381,11 +432,19 @@ const FolderMenu = () => {
     return {
       key: `collab_user_${userData.userId}`,
       icon: React.createElement(UserOutlined),
-      label: <EllipsisLabel text={`${userData.username}的公开空间`} />,
+      label: (
+        <div
+          style={{ cursor: 'pointer', display: 'inline-block', width: '100%' }}
+        >
+          <EllipsisLabel text={`${userData.username}的公开空间`} />
+        </div>
+      ),
       permission: 'public',
       owner: userData.username,
       ownerId: userData.userId,
       children: allChildren.length > 0 ? allChildren : undefined,
+      selectable: true, // 确保可以选中
+      disabled: false, // 确保不禁用
     };
   };
 
@@ -883,7 +942,7 @@ const FolderMenu = () => {
    * 根据当前路由计算应该高亮的菜单项
    * @returns {Array} 应该高亮的菜单项key数组
    */
-  const getSelectedKeysFromRoute = useCallback(() => {
+  const getSelectedKeysFromRoute = useMemo(() => {
     const path = location.pathname;
 
     // 根据路由路径确定选中的菜单项
@@ -971,6 +1030,36 @@ const FolderMenu = () => {
           return [];
         }
       }
+    } else if (path.startsWith('/folderListPage/')) {
+      // 文件夹页面，需要高亮显示对应的文件夹
+      const folderId = path.split('/folderListPage/')[1];
+      if (folderId) {
+        console.log('🔍 查找文件夹菜单项，folderId:', folderId);
+
+        // 尝试在菜单数据中找到对应的文件夹
+        const findFolderInMenu = items => {
+          if (!Array.isArray(items)) return null;
+          for (const item of items) {
+            if (item.key && item.key === folderId) {
+              return item.key;
+            }
+            if (item.children) {
+              const found = findFolderInMenu(item.children);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+
+        const foundFolderKey = findFolderInMenu(folderList);
+        if (foundFolderKey) {
+          return [foundFolderKey];
+        }
+
+        // 如果没找到对应的文件夹菜单项，返回folderId本身
+        console.log('⚠️ 未找到对应的文件夹菜单项，使用folderId:', folderId);
+        return [folderId];
+      }
     }
 
     // 默认返回首页选中
@@ -978,7 +1067,7 @@ const FolderMenu = () => {
   }, [location.pathname, location.search, folderList]);
 
   // 基于路由计算的选中状态
-  const selectedKeys = getSelectedKeysFromRoute();
+  const selectedKeys = getSelectedKeysFromRoute;
 
   /**
    * 数据验证函数：确保菜单数据结构正确
@@ -1350,7 +1439,7 @@ const FolderMenu = () => {
     }
     // 处理协同文档点击导航
     else if (selectedKey === 'collaboration') {
-      navigate('/collaboration');
+      // navigate('/collaboration');
     }
     // 处理普通文档点击导航
     else if (selectedKey && selectedKey.startsWith('doc_')) {
@@ -1392,13 +1481,67 @@ const FolderMenu = () => {
         console.warn('⚠️ 无效的documentId:', documentId, 'key:', selectedKey);
       }
     }
-    // 处理文件夹类型的选中（不需要导航，只需要更新选中状态用于新建操作）
-    else {
-      console.log('📁 文件夹选中，无需导航，key:', selectedKey);
+    // 处理文件夹类型的选中
+    else if (selectedKey && selectedKey !== 'empty-search-result') {
+      // 检查是否是特殊菜单项
+      const isSpecialKey = [
+        'home',
+        'recent-docs',
+        'collaboration',
+        'root',
+      ].includes(selectedKey);
+
+      // 区分协同空间的根节点和子文件夹
+      const isCollabRootSpace = selectedKey.match(/^collab_user_\d+$/); // 匹配协同空间根节点
+      const isCollabFolder =
+        selectedKey.includes('collab_user_') &&
+        selectedKey.includes('_folder_');
+
+      // 查找当前选中的项目，确认是否有子节点
+      const selectedItem = folderUtils.findNodeByKey(folderList, selectedKey);
+
+      // 对所有类型的文件夹都处理展开逻辑
+      if (
+        selectedItem &&
+        selectedItem.children &&
+        selectedItem.children.length > 0
+      ) {
+        // 如果有子节点且未展开，则自动展开
+        if (!openKeys.includes(selectedKey)) {
+          setOpenKeys(prev => [...prev, selectedKey]);
+        }
+      }
+
+      // 处理导航逻辑
+      if (!isSpecialKey) {
+        if (isCollabRootSpace) {
+          // 协同空间根节点导航到协同空间页面
+          // navigate('/collaboration');
+          console.log(
+            '📁 Menu选择事件 - 导航到协同空间页面，key:',
+            selectedKey,
+          );
+        } else {
+          // 普通文件夹和协同空间的文件夹都导航到文件夹页面
+          navigate(`/folderListPage/${selectedKey}`);
+          console.log(
+            '📁 Menu选择事件 - 导航到文件夹页面，key:',
+            selectedKey,
+            isCollabFolder ? '(协同空间文件夹)' : '(普通文件夹)',
+          );
+        }
+      } else {
+        console.log('📁 特殊文件夹选中，无需导航，key:', selectedKey);
+      }
+    } else {
+      console.log('📁 无效选择项，无需导航，key:', selectedKey);
     }
   };
 
   const handleMenuOpenChange = newOpenKeys => {
+    console.log('📁 菜单展开/折叠事件 - newOpenKeys:', newOpenKeys);
+
+    // 更新展开状态，但不影响选中状态和导航
     setOpenKeys(newOpenKeys);
 
     // 移除选中状态的更新逻辑，因为现在选中状态基于路由计算
@@ -2071,13 +2214,24 @@ const FolderMenu = () => {
     // 首页和协同文档不显示操作按钮
     if (item.key === 'home' || item.key === 'collaboration') {
       return (
-        <div className={styles.menuLabelContainer}>
-          <EllipsisLabel
-            text={text}
-            isEditing={editingKey === item.key}
-            onSave={newName => handleRenameSave(item.key, newName)}
-            onCancel={() => handleRenameCancel(item.key)}
-          />
+        <div
+          className={styles.menuLabelContainer}
+          onClick={() => {
+            if (item.key === 'collaboration') {
+              console.log('🚀 导航到协同空间页面');
+
+              navigate('/collaboration');
+            }
+          }}
+        >
+          <div className={styles.labelContent}>
+            <EllipsisLabel
+              text={text}
+              isEditing={editingKey === item.key}
+              onSave={newName => handleRenameSave(item.key, newName)}
+              onCancel={() => handleRenameCancel(item.key)}
+            />
+          </div>
         </div>
       );
     }
@@ -2148,8 +2302,7 @@ const FolderMenu = () => {
               size="small"
               className={styles.permissionButton}
               data-permission={item.permission || 'private'}
-              onClick={e => {
-                e.stopPropagation();
+              onClick={() => {
                 handlePermissionManage(
                   item.key,
                   text,
@@ -2240,7 +2393,7 @@ const FolderMenu = () => {
       <div className={styles.menuLabelContainer}>
         <div
           className={styles.labelContent}
-          onClick={e => {
+          onClick={() => {
             // 如果是文档项，点击文档名可以直接跳转
             if (isFile && !item.key.includes('collab_user_')) {
               // 新的key格式: doc_${documentId}_${index}
@@ -2248,17 +2401,58 @@ const FolderMenu = () => {
               const documentId = parts[1]; // 获取documentId部分
               if (documentId) {
                 // 阻止事件冒泡，因为我们要自己处理导航
-                e.stopPropagation();
                 navigate(`/doc-editor/${documentId}`);
               }
-            } else if (!isFile && !item.key.includes('collab_user_')) {
-              // 如果是文件夹，直接更新选中状态
+            } else if (
+              isFile &&
+              item.key.includes('collab_user_') &&
+              item.key.includes('_doc_')
+            ) {
+              // 处理协同空间的文档项
+              const parts = item.key.split('_');
+              const documentId = parts[parts.length - 2]; // 获取倒数第二个部分作为documentId
+              if (documentId) {
+                // 阻止事件冒泡，因为我们要自己处理导航
+                // 跳转到协同编辑器，添加协同标识
+                navigate(`/doc-editor/${documentId}?collaborative=true`);
+              }
+            } else if (!isFile && !item.key.includes('recent-docs')) {
+              // 区分协同空间的文件夹和普通文件夹
+              const isCollabRootSpace = item.key.match(/^collab_user_\d+$/); // 匹配协同空间根节点
+              const isCollabFolder =
+                item.key.includes('collab_user_') &&
+                item.key.includes('_folder_');
+
+              // 对于任何类型的文件夹，都处理展开/折叠逻辑
               console.log(
-                '📁 文件夹名称点击，直接更新选中状态，key:',
+                '📁 文件夹名称点击，key:',
                 item.key,
+                isCollabRootSpace
+                  ? '(协同空间根节点)'
+                  : isCollabFolder
+                    ? '(协同空间文件夹)'
+                    : '(普通文件夹)',
               );
+
+              // 阻止事件冒泡，我们自己处理导航
+              // e.stopPropagation();
+
+              // 手动处理展开/折叠逻辑（对所有文件夹通用）
+              if (item.children && item.children.length > 0) {
+                if (!openKeys.includes(item.key)) {
+                  setOpenKeys([...openKeys, item.key]);
+                }
+              }
+
+              // 更新选中状态（对所有文件夹通用）
               setUserSelectedKeys([item.key]);
-              // 不阻止冒泡，让Menu组件也能处理
+
+              // 执行导航（对普通文件夹和协同空间文件夹，但不包括协同空间根节点）
+              navigate(`/folderListPage/${item.key}`);
+              console.log(
+                '🚀 导航到文件夹页面：',
+                `/folderListPage/${item.key}`,
+              );
             }
           }}
           style={
@@ -2352,19 +2546,28 @@ const FolderMenu = () => {
           result.disabled = false;
         }
 
-        // 为协同文档的用户空间添加特殊样式（移除点击选中功能）
+        // 为协同文档的用户空间添加特殊样式
         if (item.key && item.key.startsWith('collab_user_')) {
           // 添加协同用户空间的CSS类名
           result.className = 'collaboration-user-space';
         }
 
-        // 为协同文档下的文件夹添加特殊样式（移除点击选中功能）
+        // 为协同文档下的文件夹添加特殊样式
         if (
           item.key &&
           item.key.includes('collab_user_') &&
           item.key.includes('folder')
         ) {
           result.className = 'collaboration-folder';
+          // 确保文件夹是可选中的（不禁用）
+          result.disabled = false;
+        }
+
+        // 为协同文档菜单项添加特殊处理
+        if (item.key === 'collaboration') {
+          result.className = 'collaboration-menu-item';
+          result.selectable = true;
+          result.disabled = false;
         }
 
         return result;
@@ -2525,11 +2728,10 @@ const FolderMenu = () => {
             // 更新用户选中状态
             setUserSelectedKeys([key]);
 
-            // 如果是文件夹类型，不进行导航操作
+            // 如果是文件夹类型，不在此处进行导航操作（由handleMenuSelect处理）
             const isFolderKey =
               key === 'root' ||
               (!key.startsWith('doc_') &&
-                !key.startsWith('doc') &&
                 !key.includes('collab_user_') &&
                 !['home', 'recent-docs', 'collaboration'].includes(key));
 

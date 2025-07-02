@@ -1,4 +1,7 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { Button, Space } from 'antd';
+import { FolderOutlined } from '@ant-design/icons';
 import styles from './index.module.less';
 
 /**
@@ -68,6 +71,21 @@ export default function Home() {
             导入文档
           </button>
         </div>
+      </div>
+
+      {/* 添加文件夹入口按钮 */}
+      <div className={styles.folderEntryContainer}>
+        <h2>文件夹管理</h2>
+        <Space>
+          <Link to="/folderListPage/root">
+            <Button type="primary" icon={<FolderOutlined />}>
+              打开我的文件夹
+            </Button>
+          </Link>
+          <Link to="/folderListPage/folder1">
+            <Button icon={<FolderOutlined />}>打开项目文档文件夹</Button>
+          </Link>
+        </Space>
       </div>
     </div>
   );

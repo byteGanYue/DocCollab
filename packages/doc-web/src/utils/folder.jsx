@@ -603,6 +603,93 @@ class folderUtils {
       Number(directParentId) === Number(folder.autoFolderId)
     );
   }
+
+  /**
+   * 获取指定文件夹下的文件夹和文档（一层）
+   * @param {string} folderId - MongoDB文件夹ID
+   * @param {Object} options - 可选参数
+   * @param {number} options.page - 文档列表的页码，默认为1
+   * @param {number} options.pageSize - 每页文档数量，默认为10
+   * @returns {Promise<Object>} 返回合并后的文件夹和文档数据
+   */
+  static async getFolderContentsById(folderId, options = {}) {
+    try {
+      // 设置默认值
+      const page = options.page || 1;
+      const pageSize = options.pageSize || 10;
+
+      // 首先获取文件夹详情以获取userId
+      const folderDetailResponse = await fetch(
+        `/api/folder/getFolderDetailById/${folderId}`,
+      ).then(res => res.json());
+
+      if (!folderDetailResponse.success) {
+        throw new Error('获取文件夹详情失败');
+      }
+
+      const userId = folderDetailResponse.data.userId;
+      const autoFolderId = folderDetailResponse.data.autoFolderId;
+
+      // 并行请求文件夹和文档数据
+      const [foldersResponse, documentsResponse] = await Promise.all([
+        // 获取子文件夹
+        fetch(`/api/folder/getFoldersTree?parentFolderId=${folderId}`).then(
+          res => res.json(),
+        ),
+        // 获取文档列表，使用从文件夹详情中获取的userId
+        fetch(
+          `/api/document/getDocumentsList?userId=${userId}&parentFolderId=${autoFolderId}&page=${page}&pageSize=${pageSize}`,
+        ).then(res => res.json()),
+      ]);
+
+      // 检查请求是否成功
+      if (!foldersResponse.success || !documentsResponse.success) {
+        throw new Error('获取文件夹内容失败');
+      }
+
+      // 提取并格式化文件夹数据
+      const folders = foldersResponse.data.map(folder => ({
+        ...folder,
+        children: [], // 清空children数组，因为我们只需要一层结构
+      }));
+
+      // 提取文档数据
+      const { documents, total, totalPages } = documentsResponse.data;
+
+      // 返回合并后的数据
+      return {
+        success: true,
+        data: {
+          folders,
+          documents,
+          folderDetail: folderDetailResponse.data, // 添加文件夹详情信息
+          pagination: {
+            total,
+            page,
+            pageSize,
+            totalPages,
+          },
+        },
+      };
+    } catch (error) {
+      console.error('获取文件夹内容失败:', error);
+      return {
+        success: false,
+        message: error.message || '获取文件夹内容失败',
+        data: {
+          folders: [],
+          documents: [],
+          folderDetail: null,
+          pagination: {
+            total: 0,
+            page: options.page || 1,
+            pageSize: options.pageSize || 10,
+            totalPages: 0,
+          },
+        },
+      };
+    }
+  }
 }
 
 /**
@@ -625,5 +712,6 @@ class folderUtils {
  * - buildFolderDocumentTree: 构建完整的文件夹和文档树形结构
  * - getDocumentsByFolderId: 根据文件夹ID查找文档列表
  * - isDocumentBelongToFolder: 验证文档是否应该属于指定文件夹
+ * - getFolderContentsById: 获取指定文件夹下的文件夹和文档（一层）
  */
 export default folderUtils;

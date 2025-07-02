@@ -1,7 +1,7 @@
 /* 文件夹页面样式 */
 .folderContainer {
   padding: 16px;
-  max-width: 1200px;
+  // max-width: 1200px;
   margin: 0 auto;
   
   .folderCard {
@@ -12,6 +12,23 @@
   .breadcrumb {
     margin-bottom: 16px;
     font-size: 14px;
+    
+    :global(.ant-breadcrumb-item) {
+      cursor: pointer;
+      
+      &:hover {
+        color: var(--color-primary);
+      }
+    }
+  }
+  
+  .breadcrumbItem {
+    transition: color 0.3s;
+    cursor: pointer;
+    
+    &:hover {
+      color: var(--color-primary);
+    }
   }
 
   .folderHeader {
@@ -23,25 +40,65 @@
     h2 {
       margin: 0;
       font-weight: 500;
+      color: var(--color-heading);
     }
 
     .folderStats {
       color: rgba(0, 0, 0, 0.45);
       font-size: 14px;
+      margin-top: 4px;
+    }
+  }
+  
+  .tableRow {
+    transition: all 0.3s;
+    
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.02);
     }
   }
 
   :global {
     .ant-table-thead > tr > th {
-      background-color: #fafafa;
+      background-color: var(--color-primary);
+      color: #fff;
+      font-weight: 500;
+      
+      .ant-table-column-sorter {
+        color: rgba(255, 255, 255, 0.85);
+      }
     }
 
     .ant-table-row:hover {
       cursor: pointer;
     }
+    
+    .ant-table-cell a {
+      color: var(--color-primary);
+      font-weight: 500;
+      
+      &:hover {
+        color: var(--color-hover);
+        text-decoration: underline;
+      }
+    }
 
     .ant-empty {
       margin: 40px 0;
+    }
+    
+    .ant-btn {
+      border-radius: 4px;
+    }
+    
+    .ant-btn-primary {
+      background-color: var(--color-primary);
+      border-color: var(--color-primary);
+      
+      &:hover, &:focus {
+        background-color: var(--color-hover);
+        border-color: var(--color-hover);
+      }
     }
   }
 }
@@ -57,6 +114,10 @@
       
       h2 {
         margin-bottom: 8px;
+      }
+      
+      .ant-space {
+        margin-top: 12px;
       }
     }
   }
