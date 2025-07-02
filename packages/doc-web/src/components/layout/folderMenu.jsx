@@ -324,8 +324,6 @@ const FolderMenu = () => {
     const convertFolderToMenuItem = folder => {
       // const folderKey = `collab_user_${userData.userId}_folder_${folder.autoFolderId}`;
       const folderKey = `${folder.folderId}`;
-      // const folderKey = `collab_user_${userData.userId}_folder_${folder.autoFolderId}`;
-      const folderKey = `${folder.folderId}`;
 
       // 获取该文件夹下的直接文档
       const folderDocuments = documentsByFolder.get(folder.autoFolderId) || [];
