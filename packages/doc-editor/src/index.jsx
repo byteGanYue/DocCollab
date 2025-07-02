@@ -313,56 +313,57 @@ const EditorSDKComponent = ({
     };
   }, []);
 
-  // 只读快照渲染分支
-  if (disableCollab) {
-    return (
-      <div
-        style={{
-          maxWidth: '100%',
-          margin: '0 auto',
-          padding: '20px',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-          position: 'relative',
-        }}
+  // 只读快照分支渲染内容
+  const readOnlyJSX = (
+    <div
+      style={{
+        maxWidth: '100%',
+        margin: '0 auto',
+        padding: '20px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        position: 'relative',
+      }}
+    >
+      <Slate
+        editor={useMemo(() => withReact(createEditor()), [])}
+        value={
+          Array.isArray(localValue) && localValue.length > 0
+            ? localValue
+            : defaultInitialValue
+        }
+        initialValue={
+          Array.isArray(localValue) && localValue.length > 0
+            ? localValue
+            : defaultInitialValue
+        }
+        onChange={() => {}}
       >
-        <Slate
-          editor={useMemo(() => withReact(createEditor()), [])}
-          value={
-            Array.isArray(localValue) && localValue.length > 0
-              ? localValue
-              : defaultInitialValue
-          }
-          initialValue={
-            Array.isArray(localValue) && localValue.length > 0
-              ? localValue
-              : defaultInitialValue
-          }
-          onChange={() => {}}
-        >
-          <Editable
-            readOnly={true}
-            renderElement={props => <ElementComponent {...props} />}
-            renderLeaf={props => <Leaf {...props} />}
-            placeholder="只读历史快照"
-            spellCheck
-            style={{
-              minHeight: '500px',
-              padding: '16px',
-              border: '1px solid #ced4da',
-              borderRadius: '0 0 8px 8px',
-              fontSize: '16px',
-              lineHeight: '1.5',
-              outline: 'none',
-              backgroundColor: '#fff',
-              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1)',
-            }}
-          />
-        </Slate>
-      </div>
-    );
-  }
+        <Editable
+          readOnly={true}
+          renderElement={props => <ElementComponent {...props} />}
+          renderLeaf={props => <Leaf {...props} />}
+          placeholder="只读历史快照"
+          spellCheck
+          style={{
+            minHeight: '500px',
+            padding: '16px',
+            border: '1px solid #ced4da',
+            borderRadius: '0 0 8px 8px',
+            fontSize: '16px',
+            lineHeight: '1.5',
+            outline: 'none',
+            backgroundColor: '#fff',
+            boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1)',
+          }}
+        />
+      </Slate>
+    </div>
+  );
 
-  return (
+  // 协同编辑分支渲染内容（原有协同渲染逻辑）
+  return disableCollab ? (
+    readOnlyJSX
+  ) : (
     <div
       style={{
         maxWidth: '100%',

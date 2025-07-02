@@ -80,6 +80,10 @@ const DocEditor = () => {
 
   // 编辑器内容状态
   const [editorValue, setEditorValue] = useState(undefined);
+  const editorValueRef = useRef();
+  useEffect(() => {
+    editorValueRef.current = editorValue;
+  }, [editorValue]);
   // 加载状态
   const [loading, setLoading] = useState(false);
   // 防抖保存定时器
@@ -187,6 +191,7 @@ const DocEditor = () => {
     value => {
       if (isSwitchingDocs.current) return;
       setEditorValue(value);
+      editorValueRef.current = value;
 
       // 只有内容非空且和 lastSavedValue 不一致时才标记 hasEdited
       const isEmpty = isEditorValueEmpty(value);
@@ -299,20 +304,31 @@ const DocEditor = () => {
         historyVersionTimer.current = null;
       }
 
-      // 在切换文档时或查看历史版本时不创建历史版本
-      if (isSwitchingDocs.current || currentVersionId) {
-        return;
-      }
-
-      if (hasEdited.current && !isTempDocument(documentId)) {
-        const content = JSON.stringify(editorValue);
+      // 只在“当前编辑文档”卸载时创建历史版本（不是只读快照/切换文档/历史版本预览）
+      const isEdit = hasEdited.current;
+      const isTemp = isTempDocument(documentId);
+      const isReadOnly = readOnly;
+      const isHistory = currentVersionId;
+      const value = editorValueRef.current;
+      if (
+        !isReadOnly &&
+        !isSwitchingDocs.current &&
+        !isHistory &&
+        isEdit &&
+        !isTemp
+      ) {
+        const content = JSON.stringify(value);
+        let yjsState = undefined;
+        if (window.ydoc && window.Y) {
+          yjsState = Array.from(window.Y.encodeStateAsUpdate(window.ydoc));
+        }
         if (
           content &&
           content !== '[]' &&
           content !== '[{"type":"paragraph","children":[{"text":""}]}]'
         ) {
           documentAPI
-            .createDocumentHistory(documentId, content)
+            .createDocumentHistory(documentId, content, yjsState)
             .then(() => {
               localStorage.removeItem('isEdit');
             })
@@ -324,7 +340,7 @@ const DocEditor = () => {
         }
       }
     };
-  }, [documentId, currentVersionId, editorValue]);
+  }, [documentId]);
 
   // 切换文档时初始化编辑器
   useEffect(() => {
