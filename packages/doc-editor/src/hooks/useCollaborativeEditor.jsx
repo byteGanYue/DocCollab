@@ -203,8 +203,10 @@ export function useCollaborativeEditor(documentId = 'default-document') {
     if (!mongoSyncRegistered.current && documentId) {
       try {
         yjsMongoSyncService.registerDocumentSync(documentId, docRef.current, {
-          userId: window.currentUserId || 1, // 从全局获取用户ID
-          username: window.currentUsername || 'Anonymous', // 从全局获取用户名
+          userId: JSON.parse(localStorage.getItem('userInfo'))?.userId || 1, // 从全局获取用户ID
+          username:
+            JSON.parse(localStorage.getItem('userInfo'))?.username ||
+            'Anonymous', // 从全局获取用户名
           debug: true, // 开启调试模式
         });
         mongoSyncRegistered.current = true;
