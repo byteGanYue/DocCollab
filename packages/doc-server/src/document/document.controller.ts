@@ -754,7 +754,7 @@ export class DocumentController {
 
       // 优先用前端传来的内容
       const content = body.content ?? document.content;
-      const yjsState = body.yjsState ?? document.yjsState;
+      const yjsState: number[] | undefined = body.yjsState ?? document.yjsState;
 
       // 创建历史版本记录
       const historyVersion =
@@ -768,20 +768,38 @@ export class DocumentController {
           yjsState,
         });
 
+      // 同时更新文档表中的内容
+      // 首先更新文档内容
+      await this.documentService.update(documentId, {
+        content,
+        update_username: document.update_username,
+      });
+
+      // 然后使用syncYjsState方法来专门更新yjsState
+      if (Array.isArray(yjsState) && yjsState.length > 0) {
+        await this.documentService.syncYjsState(
+          documentId,
+          yjsState,
+          content,
+          document.update_username || '',
+        );
+      }
+
       return {
         success: true,
-        message: '历史版本创建成功',
+        message: '历史版本创建成功并更新了文档内容',
         data: {
           versionId: historyVersion.versionId,
           documentId: historyVersion.documentId,
         },
       };
-    } catch (error) {
-      this.logger.error('创建历史版本失败:', error);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error('未知错误');
+      this.logger.error('创建历史版本失败:', err);
       return {
         success: false,
         message: '创建历史版本失败',
-        error: error instanceof Error ? error.message : '未知错误',
+        error: err.message,
       };
     }
   }

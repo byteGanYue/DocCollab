@@ -48,6 +48,16 @@ export class UpdateDocumentDto {
   @IsArray()
   @IsOptional()
   parentFolderIds?: number[];
+
+  @ApiPropertyOptional({
+    description: 'Yjs文档状态数据',
+    example: [1, 2, 3, 4, 5],
+    type: [Number],
+    isArray: true,
+  })
+  @IsArray()
+  @IsOptional()
+  yjsState?: number[];
 }
 
 export class UpdateDocumentResponseDto {
