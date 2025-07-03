@@ -1582,21 +1582,27 @@ const FolderMenu = () => {
       console.log('📁 新建文档 - 完整的userSelectedKeys:', userSelectedKeys);
       console.log('📁 新建文档 - 打开的菜单项:', openKeys);
 
-      // 使用工具函数获取有效的目标文件夹
-      // 如果userSelectedKeys不正确，使用openKeys的最后一个作为备选
-      const selectedKey = userSelectedKeys[0];
-      const fallbackKey =
-        openKeys.length > 0 ? openKeys[openKeys.length - 1] : 'root';
-      const actualSelectedKey =
-        selectedKey && selectedKey !== 'root' ? selectedKey : fallbackKey;
+      // 修改目标文件夹的判断逻辑
+      let targetKey = 'root'; // 默认在根目录创建
 
-      console.log('📁 新建文档 - 实际使用的选中键:', actualSelectedKey);
-
-      const targetKey = folderUtils.getValidTargetKey(
-        folderList,
-        actualSelectedKey,
-        openKeys,
-      );
+      // 如果用户选中了某个文件夹，则在该文件夹下创建
+      if (userSelectedKeys.length > 0 && userSelectedKeys[0] !== 'root') {
+        const selectedKey = userSelectedKeys[0];
+        // 检查选中的是否是文件夹
+        const selectedItem = folderUtils.findNodeByKey(folderList, selectedKey);
+        if (selectedItem && !selectedItem.key.startsWith('doc')) {
+          targetKey = selectedKey;
+        } else if (selectedItem && selectedItem.key.startsWith('doc')) {
+          // 如果选中的是文档，找到其父文件夹
+          const parentNode = folderUtils.findParentNodeByKey(
+            folderList,
+            selectedKey,
+          );
+          if (parentNode) {
+            targetKey = parentNode.key;
+          }
+        }
+      }
 
       console.log('📁 新建文档 - 计算出的目标文件夹:', targetKey);
 
@@ -1796,21 +1802,27 @@ const FolderMenu = () => {
       console.log('📁 新建文件夹 - 完整的userSelectedKeys:', userSelectedKeys);
       console.log('📁 新建文件夹 - 打开的菜单项:', openKeys);
 
-      // 使用工具函数获取有效的目标文件夹
-      // 如果userSelectedKeys不正确，使用openKeys的最后一个作为备选
-      const selectedKey = userSelectedKeys[0];
-      const fallbackKey =
-        openKeys.length > 0 ? openKeys[openKeys.length - 1] : 'root';
-      const actualSelectedKey =
-        selectedKey && selectedKey !== 'root' ? selectedKey : fallbackKey;
+      // 修改目标文件夹的判断逻辑
+      let targetKey = 'root'; // 默认在根目录创建
 
-      console.log('📁 新建文件夹 - 实际使用的选中键:', actualSelectedKey);
-
-      const targetKey = folderUtils.getValidTargetKey(
-        folderList,
-        actualSelectedKey,
-        openKeys,
-      );
+      // 如果用户选中了某个文件夹，则在该文件夹下创建
+      if (userSelectedKeys.length > 0 && userSelectedKeys[0] !== 'root') {
+        const selectedKey = userSelectedKeys[0];
+        // 检查选中的是否是文件夹
+        const selectedItem = folderUtils.findNodeByKey(folderList, selectedKey);
+        if (selectedItem && !selectedItem.key.startsWith('doc')) {
+          targetKey = selectedKey;
+        } else if (selectedItem && selectedItem.key.startsWith('doc')) {
+          // 如果选中的是文档，找到其父文件夹
+          const parentNode = folderUtils.findParentNodeByKey(
+            folderList,
+            selectedKey,
+          );
+          if (parentNode) {
+            targetKey = parentNode.key;
+          }
+        }
+      }
 
       console.log('📁 新建文件夹 - 计算出的目标文件夹:', targetKey);
 
