@@ -1,5 +1,7 @@
 import { defineConfig } from 'vitepress';
 import { generateSidebar } from './utils/gennerateSidebar';
+import llmstxt from 'vitepress-plugin-llms'
+
 
 export default defineConfig({
   title: 'DocCollab',
@@ -31,4 +33,18 @@ export default defineConfig({
   base: '/DocCollab/',
   // 自定义主题颜色
   appearance: true,
+  
+  vite : {
+    plugins: [
+      llmstxt({
+        generateLLMsFullTxt: false,
+        ignoreFiles: ['sponsors/*'],
+        customLLMsTxtTemplate: `# {title}\n\n{foo}`,
+        title: 'Awesome tool',
+        customTemplateVariables: {
+          foo: 'bar'
+        }
+      })
+    ]
+  }
 });
