@@ -866,12 +866,22 @@ const FolderMenu = () => {
    * 生成唯一的默认文件名/文件夹名，避免同级目录下的重复
    * @param {string} baseName - 基础名称，如"新建文档"或"新建文件夹"
    * @param {string} targetKey - 目标文件夹的key
+   * @param {Array} additionalNames - 额外需要检查的名称列表（如后端最新数据）
    * @returns {string} 唯一的名称
    */
-  const generateUniqueDefaultName = (baseName, targetKey) => {
+  const generateUniqueDefaultName = (
+    baseName,
+    targetKey,
+    additionalNames = [],
+  ) => {
     // 获取目标文件夹的现有子项
     const getExistingNames = () => {
       const existingNames = new Set();
+
+      // 添加额外的名称列表（来自后端的最新数据）
+      additionalNames.forEach(name => {
+        if (name) existingNames.add(name);
+      });
 
       // 递归查找目标文件夹及其子项
       const findTargetFolderItems = (nodes, key) => {
@@ -917,6 +927,8 @@ const FolderMenu = () => {
 
     const existingNames = getExistingNames();
 
+    console.log('现有名称集合:', [...existingNames]);
+
     // 从1开始尝试生成唯一名称
     let counter = 1;
     let candidateName = `${baseName}${counter}`;
@@ -926,8 +938,10 @@ const FolderMenu = () => {
       candidateName = `${baseName}${counter}`;
     }
 
+    console.log('生成的唯一名称:', candidateName);
     return candidateName;
   };
+
   // 新增：权限管理弹窗状态
   const [permissionModal, setPermissionModal] = useState({
     visible: false,
@@ -1599,9 +1613,6 @@ const FolderMenu = () => {
         message.info(`文档将在文件夹"${parentName}"中创建`);
       }
 
-      // 生成唯一的默认名称，避免同级目录下的重复
-      const defaultName = generateUniqueDefaultName('新建文档', targetKey);
-
       // 获取当前用户ID
       const numericUserId = getCurrentUserId();
 
@@ -1655,6 +1666,61 @@ const FolderMenu = () => {
         }
       }
 
+      // 在创建文档前，先获取目标文件夹中的最新文档列表
+      let existingDocumentNames = [];
+      try {
+        // 确定目标文件夹ID（如果有）
+        const targetFolderId =
+          parentFolderIds.length > 0
+            ? parentFolderIds[parentFolderIds.length - 1]
+            : null;
+
+        if (targetFolderId) {
+          // 如果有目标文件夹，获取该文件夹下的文档
+          const folderDocsResponse = await documentAPI.getFolderDocuments(
+            targetFolderId,
+            numericUserId,
+            { page: 1, pageSize: 100 },
+          );
+
+          if (
+            folderDocsResponse.success &&
+            folderDocsResponse.data?.documents
+          ) {
+            existingDocumentNames = folderDocsResponse.data.documents.map(
+              doc => doc.documentName,
+            );
+          }
+        } else {
+          // 如果是根目录，获取用户的根级文档
+          const rootDocsResponse = await documentAPI.getUserDocuments(
+            numericUserId,
+            { page: 1, pageSize: 100 },
+          );
+
+          if (rootDocsResponse.success && rootDocsResponse.data?.documents) {
+            // 过滤出根级文档（没有父文件夹ID的文档）
+            existingDocumentNames = rootDocsResponse.data.documents
+              .filter(
+                doc => !doc.parentFolderIds || doc.parentFolderIds.length === 0,
+              )
+              .map(doc => doc.documentName);
+          }
+        }
+
+        console.log('📁 获取到的现有文档名称:', existingDocumentNames);
+      } catch (error) {
+        console.warn('获取现有文档列表失败:', error);
+        // 如果获取失败，继续使用前端缓存的数据
+      }
+
+      // 生成唯一的默认名称，避免同级目录下的重复，使用后端最新数据
+      const defaultName = generateUniqueDefaultName(
+        '新建文档',
+        targetKey,
+        existingDocumentNames,
+      );
+
       // 准备创建文档的数据
       const createDocumentData = {
         documentName: defaultName,
@@ -1663,6 +1729,8 @@ const FolderMenu = () => {
         create_username: username,
         parentFolderIds: parentFolderIds,
       };
+
+      console.log('📁 准备创建的文档数据:', createDocumentData);
 
       // 调用后端 API 创建文档
       const response = await documentAPI.createDocument(createDocumentData);
@@ -1721,7 +1789,7 @@ const FolderMenu = () => {
     }
   };
 
-  // 修改：创建文件夹，调用后端 API
+  // 创建文件夹，调用后端 API
   const handleAddFolder = async () => {
     try {
       console.log('📁 新建文件夹 - 用户选中的菜单项:', userSelectedKeys[0]);
@@ -1758,9 +1826,6 @@ const FolderMenu = () => {
           : '我的文件夹';
         message.info(`文件夹将在文件夹"${parentName}"中创建`);
       }
-
-      // 生成唯一的默认名称，避免同级目录下的重复
-      const defaultName = generateUniqueDefaultName('新建文件夹', targetKey);
 
       // 获取当前用户ID
       const numericUserId = getCurrentUserId();
@@ -1812,6 +1877,72 @@ const FolderMenu = () => {
         }
       }
 
+      // 新增：在创建文件夹前，先获取目标位置中的最新文件夹列表
+      let existingFolderNames = [];
+      try {
+        // 获取用户的所有文件夹
+        const foldersResponse = await folderAPI.getFolders({
+          userId: numericUserId,
+        });
+
+        if (foldersResponse.success && foldersResponse.data) {
+          const allFolders = foldersResponse.data;
+
+          if (parentFolderIds.length > 0) {
+            // 如果有父文件夹，找出该父文件夹下的所有直接子文件夹
+            const parentId = parentFolderIds[parentFolderIds.length - 1];
+
+            // 递归查找指定ID的文件夹及其子文件夹
+            const findChildrenOfFolder = (folders, targetParentId) => {
+              for (const folder of folders) {
+                if (
+                  folder.autoFolderId === targetParentId ||
+                  folder.folderId === targetParentId
+                ) {
+                  // 找到目标父文件夹，收集其直接子文件夹名称
+                  return folder.children
+                    ? folder.children.map(child => child.folderName)
+                    : [];
+                }
+
+                // 递归查找
+                if (folder.children && folder.children.length > 0) {
+                  const result = findChildrenOfFolder(
+                    folder.children,
+                    targetParentId,
+                  );
+                  if (result.length > 0) return result;
+                }
+              }
+              return [];
+            };
+
+            existingFolderNames = findChildrenOfFolder(allFolders, parentId);
+          } else {
+            // 如果是根目录，获取所有根级文件夹
+            existingFolderNames = allFolders
+              .filter(
+                folder =>
+                  !folder.parentFolderIds ||
+                  folder.parentFolderIds.length === 0,
+              )
+              .map(folder => folder.folderName);
+          }
+
+          console.log('📁 获取到的现有文件夹名称:', existingFolderNames);
+        }
+      } catch (error) {
+        console.warn('获取现有文件夹列表失败:', error);
+        // 如果获取失败，继续使用前端缓存的数据
+      }
+
+      // 生成唯一的默认名称，避免同级目录下的重复，使用后端最新数据
+      const defaultName = generateUniqueDefaultName(
+        '新建文件夹',
+        targetKey,
+        existingFolderNames,
+      );
+
       // 准备创建文件夹的数据
       const createFolderData = {
         folderName: defaultName,
@@ -1819,6 +1950,8 @@ const FolderMenu = () => {
         create_username: username,
         parentFolderIds: parentFolderIds,
       };
+
+      console.log('📁 准备创建的文件夹数据:', createFolderData);
 
       // 调用后端 API 创建文件夹
       const response = await folderAPI.createFolder(createFolderData);
