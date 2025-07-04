@@ -44,24 +44,6 @@ const StatusIndicator = ({ isConnected, documentId }) => {
       >
         {isConnected ? `已连接 (${documentId})` : '未连接到协同服务'}
       </span>
-
-      {/* 调试信息 - 文档ID */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '20px',
-          right: '0',
-          background: 'rgba(0,0,0,0.8)',
-          color: 'white',
-          padding: '5px',
-          borderRadius: '4px',
-          fontSize: '10px',
-          whiteSpace: 'nowrap',
-          display: isConnected ? 'block' : 'none',
-        }}
-      >
-        ID: {documentId?.substring(0, 10)}...
-      </div>
     </div>
   );
 };
