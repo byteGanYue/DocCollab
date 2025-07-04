@@ -53,8 +53,9 @@
     "slate": "^0.117.0",
     "slate-history": "^0.113.1",
     "slate-react": "^0.117.1",
+    "turbo": "^2.4.2",
     "typescript-eslint": "^8.24.1",
     "vitepress": "^1.6.3",
-    "turbo": "^2.4.2"
+    "vitepress-plugin-llms": "^1.6.0"
   }
 }
