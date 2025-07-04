@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import {
   Table,
   Button,
@@ -17,13 +17,14 @@ import {
   ReloadOutlined,
   EyeOutlined,
   ArrowLeftOutlined,
+  RollbackOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { documentAPI } from '@/utils/api';
 import styles from './index.module.less';
 import { useUser } from '@/hooks/useAuth';
 import { formatTime } from '@/utils/dealTime';
-
+import { UserContext } from '@/contexts/UserContext';
 const { Text } = Typography;
 
 /**
@@ -39,6 +40,7 @@ const HistoryVersion = () => {
   const navigate = useNavigate();
   const { id: documentId } = useParams(); // 从路由参数获取文档ID
   const { userInfo } = useUser(); // 获取用户信息
+  const { userInfo: userContextInfo } = useContext(UserContext);
 
   // 版本历史数据状态
   const [versions, setVersions] = useState([]);
@@ -224,23 +226,44 @@ const HistoryVersion = () => {
     setRestoreModal(prev => ({ ...prev, loading: true }));
 
     try {
-      // 调用恢复版本API
-      const response = await documentAPI.restoreDocument(
+      const versionRes = await documentAPI.getDocumentVersion(
         documentId,
         version.versionId,
       );
+      if (versionRes.success && versionRes.data && versionRes.data.yjsState) {
+        const username = userContextInfo?.username || 'unknown';
+        const syncRes = await documentAPI.syncYjsState(
+          documentId,
+          versionRes.data.yjsState,
+          versionRes.data.content,
+          username,
+        );
+        if (!syncRes.success) throw new Error('同步yjsState到后端失败');
+        if (window.forceRestoreYjsState) {
+          window.forceRestoreYjsState(
+            versionRes.data.yjsState,
+            versionRes.data.content,
+          );
+        }
+        // 调用恢复版本API
+        const response = await documentAPI.restoreDocument(
+          documentId,
+          version.versionId,
+        );
+        if (response.success) {
+          message.success(`已恢复到版本 ${version.versionNumber}`);
+          setRestoreModal({ visible: false, version: null, loading: false });
 
-      if (response.success) {
-        message.success(`已恢复到版本 ${version.versionNumber}`);
-        setRestoreModal({ visible: false, version: null, loading: false });
+          // 刷新版本列表
+          fetchVersionHistory(pagination.current, pagination.pageSize);
 
-        // 刷新版本列表
-        fetchVersionHistory(pagination.current, pagination.pageSize);
-
-        // 刷新文档信息
-        fetchDocumentInfo();
-      } else {
-        throw new Error(response.message || '恢复版本失败');
+          // 刷新文档信息
+          fetchDocumentInfo();
+          message.success(`已恢复到版本 ${version.versionNumber}`);
+          setRestoreModal({ visible: false, version: null, loading: false });
+        } else {
+          throw new Error(response.message || '恢复版本失败');
+        }
       }
     } catch (error) {
       console.error('恢复版本失败:', error);
@@ -307,6 +330,24 @@ const HistoryVersion = () => {
         />
       </Dropdown>
     );
+  };
+
+  // 恢复归档历史版本
+  const handleRestoreArchivedHistory = async () => {
+    if (!documentId) return;
+    try {
+      const hide = message.loading('正在恢复归档历史版本...', 0);
+      const res = await documentAPI.restoreArchivedHistory(documentId);
+      hide();
+      if (res.success) {
+        message.success('归档历史版本恢复成功！');
+        fetchVersionHistory(1, pagination.pageSize);
+      } else {
+        message.error(res.message || '归档历史版本恢复失败');
+      }
+    } catch {
+      message.error('归档历史版本恢复失败');
+    }
   };
 
   // 表格列定义
@@ -436,6 +477,13 @@ const HistoryVersion = () => {
             loading={loading}
           >
             刷新
+          </Button>
+          <Button
+            icon={<RollbackOutlined />}
+            onClick={handleRestoreArchivedHistory}
+            style={{ marginLeft: 12 }}
+          >
+            恢复30天前历史版本
           </Button>
         </div>
       </div>

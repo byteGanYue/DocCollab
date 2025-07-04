@@ -48,6 +48,15 @@ export class UpdateDocumentDto {
   @IsArray()
   @IsOptional()
   parentFolderIds?: number[];
+  @ApiPropertyOptional({
+    description: 'Yjs 协同状态（用于协同编辑同步）',
+    example: [1, 2, 3, 4],
+    type: [Number],
+    isArray: true,
+  })
+  @IsArray()
+  @IsOptional()
+  yjsState?: number[];
 }
 
 export class UpdateDocumentResponseDto {

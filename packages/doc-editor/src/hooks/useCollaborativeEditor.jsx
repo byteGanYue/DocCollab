@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Y from 'yjs';
 import { HocuspocusProvider } from '@hocuspocus/provider';
-import { IndexeddbPersistence } from 'y-indexeddb';
 import { yjsMongoSyncService } from '../services/YjsMongoSyncService.js';
 import { createEditor, Editor, Transforms, Node, Text } from 'slate';
 import { withHistory } from 'slate-history';
@@ -32,13 +31,11 @@ export function useCollaborativeEditor(documentId) {
   const [remoteUsers, setRemoteUsers] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState(1);
   const valueInitialized = useRef(false);
-  const docRef = useRef(new Y.Doc());
+  const docRef = useRef(null);
   const isServerRunning = useRef(false);
   const editorRef = useRef(null);
-  const indexeddbProvider = useRef(null);
   // MongoDB 同步服务引用
   const mongoSyncRegistered = useRef(false);
-
   // 评论相关 Yjs 数据结构
   const yCommentsRef = useRef();
   const yTextRef = useRef();
@@ -49,6 +46,86 @@ export function useCollaborativeEditor(documentId) {
     yCommentsRef.current = docRef.current.getArray('comments');
     yTextRef.current = docRef.current.get('content', Y.XmlText);
   }, [docRef]);
+
+  // 只保留唯一初始化入口：用后端 yjsState 初始化 Y.Doc
+  useEffect(() => {
+    if (!documentId) return;
+    // 1. 清理全局变量
+    window.ydoc = null;
+    window.provider = null;
+    docRef.current = null;
+    // 2. 拉取后端 yjsState
+    (async () => {
+      let yjsState = null;
+      try {
+        const res = await fetch(`/api/document/${documentId}/yjs-state`);
+        if (res.ok) {
+          const data = await res.json();
+          yjsState = data?.data?.yjsState;
+        }
+      } catch (e) {
+        console.warn('拉取后端 yjsState 失败:', e);
+      }
+      // 3. 初始化 Y.Doc
+      let ydoc = new Y.Doc();
+      if (yjsState && yjsState.length > 0) {
+        Y.applyUpdate(ydoc, new Uint8Array(yjsState));
+      }
+      console.log('[Y.Doc Init] yjsState 来源:', yjsState);
+      console.log('[Y.Doc Init] 初始化内容:', ydoc.toJSON());
+      docRef.current = ydoc;
+      window.ydoc = ydoc;
+      // 4. 注册 MongoDB 同步服务
+      if (mongoSyncRegistered.current && documentId) {
+        try {
+          yjsMongoSyncService.unregisterDocumentSync(documentId);
+          mongoSyncRegistered.current = false;
+        } catch (error) {
+          // ignore
+        }
+      }
+      try {
+        yjsMongoSyncService.registerDocumentSync(documentId, ydoc, {
+          userId: JSON.parse(localStorage.getItem('userInfo'))?.userId || 1,
+          username:
+            JSON.parse(localStorage.getItem('userInfo'))?.username ||
+            'Anonymous',
+          debug: true,
+        });
+        mongoSyncRegistered.current = true;
+      } catch (error) {
+        console.error('[编辑器] MongoDB同步服务注册失败:', error);
+      }
+      // 5. 注册 provider
+      const provider = new HocuspocusProvider({
+        url: WS_URL,
+        name: documentId,
+        document: ydoc,
+        connect: false,
+        onConnect: () => setIsConnected(true),
+        onDisconnect: () => setIsConnected(false),
+        onSynced: () => {
+          console.log(`[WebSocket] 文档 ${documentId} 已同步`);
+        },
+      });
+      window.provider = provider;
+      setTimeout(() => {
+        provider.connect();
+        console.log('[Provider] 已connect:', provider, 'Y.Doc:', ydoc.toJSON());
+      }, 300);
+      // 6. 重新初始化 yComments/yText
+      yCommentsRef.current = ydoc.getArray('comments');
+      yTextRef.current = ydoc.get('content', Y.XmlText);
+      // 7. 强制刷新编辑器
+      setValue(v => {
+        console.log('[Editor Value] 当前 value:', v);
+        return [...v];
+      });
+      console.log(
+        '[useCollaborativeEditor] 只用后端 yjsState 初始化Y.Doc，彻底切断本地缓存影响',
+      );
+    })();
+  }, [documentId]);
 
   // 添加评论方法
   const addComment = useCallback((startIndex, endIndex, content, author) => {
@@ -181,60 +258,6 @@ export function useCollaborativeEditor(documentId) {
       return false;
     }
   }, []);
-
-  // 创建IndexedDB持久化Provider
-  useEffect(() => {
-    if (indexeddbProvider.current) {
-      indexeddbProvider.current.destroy();
-    }
-
-    // 创建IndexedDB持久化，确保本地数据持久化
-    indexeddbProvider.current = new IndexeddbPersistence(
-      documentId,
-      docRef.current,
-    );
-
-    // 监听IndexedDB同步完成事件
-    indexeddbProvider.current.on('synced', () => {
-      console.log(`[IndexedDB] 文档 ${documentId} 本地数据已同步`);
-    });
-
-    // 注册MongoDB同步服务
-    if (!mongoSyncRegistered.current && documentId) {
-      try {
-        yjsMongoSyncService.registerDocumentSync(documentId, docRef.current, {
-          userId: JSON.parse(localStorage.getItem('userInfo'))?.userId || 1, // 从全局获取用户ID
-          username:
-            JSON.parse(localStorage.getItem('userInfo'))?.username ||
-            'Anonymous', // 从全局获取用户名
-          debug: true, // 开启调试模式
-        });
-        mongoSyncRegistered.current = true;
-        console.log('[编辑器] MongoDB同步服务注册成功');
-      } catch (error) {
-        console.error('[编辑器] MongoDB同步服务注册失败:', error);
-      }
-    }
-
-    return () => {
-      if (indexeddbProvider.current) {
-        indexeddbProvider.current.destroy();
-        indexeddbProvider.current = null;
-        console.log('[编辑器] IndexedDB持久化已清理');
-      }
-
-      // 注销MongoDB同步服务
-      if (mongoSyncRegistered.current && documentId) {
-        try {
-          yjsMongoSyncService.unregisterDocumentSync(documentId);
-          mongoSyncRegistered.current = false;
-          console.log('[编辑器] MongoDB同步服务已注销');
-        } catch (error) {
-          console.error('[编辑器] MongoDB同步服务注销失败:', error);
-        }
-      }
-    };
-  }, [documentId]);
 
   // 创建Hocuspocus Provider
   const provider = useMemo(() => {
@@ -552,30 +575,27 @@ export function useCollaborativeEditor(documentId) {
     yjsStateArr => {
       // 1. 断开 provider
       if (window.provider) window.provider.disconnect();
-      // 2. 销毁 indexeddbProvider
-      if (indexeddbProvider.current) {
-        indexeddbProvider.current.destroy();
-        indexeddbProvider.current = null;
-      }
-      // 3. 注销 MongoDB 同步服务
+      // 2. 注销 MongoDB 同步服务
       if (mongoSyncRegistered.current && documentId) {
         try {
           yjsMongoSyncService.unregisterDocumentSync(documentId);
           mongoSyncRegistered.current = false;
         } catch (error) {
-          console.error('[编辑器] MongoDB同步服务注销失败:', error);
+          // ignore
         }
       }
-      // 4. 彻底重建 Y.Doc
+      // 3. 彻底重建 Y.Doc
       const newYDoc = new Y.Doc();
       const update = new Uint8Array(yjsStateArr);
+      console.log(
+        '[forceRestoreYjsState] 开始回滚，目标 yjsState:',
+        yjsStateArr,
+      );
       Y.applyUpdate(newYDoc, update);
+      console.log('[forceRestoreYjsState] 新建 Y.Doc，内容:', newYDoc.toJSON());
       docRef.current = newYDoc;
       window.ydoc = newYDoc;
-      // 5. 重新初始化 indexeddbProvider
-      indexeddbProvider.current = new IndexeddbPersistence(documentId, newYDoc);
-      window.indexeddbProvider = indexeddbProvider.current;
-      // 6. 重新注册 MongoDB 同步服务
+      // 4. 重新注册 MongoDB 同步服务
       try {
         yjsMongoSyncService.registerDocumentSync(documentId, newYDoc, {
           userId: JSON.parse(localStorage.getItem('userInfo'))?.userId || 1,
@@ -588,7 +608,7 @@ export function useCollaborativeEditor(documentId) {
       } catch (error) {
         console.error('[编辑器] MongoDB同步服务注册失败:', error);
       }
-      // 7. 重新创建 provider
+      // 5. 重新创建 provider
       const newProvider = new HocuspocusProvider({
         url: WS_URL,
         name: documentId,
@@ -601,17 +621,25 @@ export function useCollaborativeEditor(documentId) {
         },
       });
       window.provider = newProvider;
-      // 8. 重新连接 provider
       setTimeout(() => {
         newProvider.connect();
+        console.log(
+          '[forceRestoreYjsState] provider 注册完成',
+          newProvider,
+          'Y.Doc:',
+          newYDoc.toJSON(),
+        );
       }, 300);
-      // 9. 重新初始化 yComments/yText
+      // 6. 重新初始化 yComments/yText
       yCommentsRef.current = newYDoc.getArray('comments');
       yTextRef.current = newYDoc.get('content', Y.XmlText);
-      // 10. 强制刷新编辑器
-      setValue(v => [...v]);
+      // 7. 强制刷新编辑器
+      setValue(v => {
+        console.log('[forceRestoreYjsState] Editor Value 回滚后:', v);
+        return [...v];
+      });
       console.log(
-        '[useCollaborativeEditor] 已彻底重建Y.Doc和协同流并恢复历史状态',
+        '[useCollaborativeEditor] 已彻底重建Y.Doc和协同流并恢复历史状态（无本地缓存）',
       );
     },
     [documentId],

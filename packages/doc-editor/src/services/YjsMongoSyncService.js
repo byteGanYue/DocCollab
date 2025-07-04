@@ -38,7 +38,6 @@ class EventEmitter {
   }
 }
 import * as Y from 'yjs';
-import { IndexeddbPersistence } from 'y-indexeddb';
 
 /**
  * Yjs与MongoDB同步服务类
@@ -115,9 +114,6 @@ export class YjsMongoSyncService extends EventEmitter {
       // 设置Yjs文档变更监听
       this.setupYjsChangeListener(syncConfig);
 
-      // 设置IndexedDB持久化
-      await this.setupIndexedDBPersistence(syncConfig);
-
       // 执行初始同步
       await this.performInitialSync(syncConfig);
 
@@ -158,40 +154,6 @@ export class YjsMongoSyncService extends EventEmitter {
         this.scheduleSync(syncConfig, 'subdoc-change');
       }
     });
-  }
-
-  /**
-   * 设置IndexedDB持久化
-   * @param {Object} syncConfig - 同步配置
-   */
-  async setupIndexedDBPersistence(syncConfig) {
-    const { documentId, ydoc } = syncConfig;
-
-    try {
-      // 创建IndexedDB持久化实例
-      const indexeddbProvider = new IndexeddbPersistence(
-        `doc-${documentId}`,
-        ydoc,
-      );
-
-      // 等待IndexedDB同步完成
-      await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('IndexedDB同步超时'));
-        }, 10000);
-
-        indexeddbProvider.on('synced', () => {
-          clearTimeout(timeout);
-          this.log(`文档 ${documentId} IndexedDB同步完成`);
-          resolve();
-        });
-      });
-
-      syncConfig.indexeddbProvider = indexeddbProvider;
-    } catch (error) {
-      this.log(`文档 ${documentId} IndexedDB设置失败:`, error);
-      throw error;
-    }
   }
 
   /**
@@ -490,6 +452,11 @@ export class YjsMongoSyncService extends EventEmitter {
         contentLength: syncData.content?.length || 0,
         yjsStateLength: syncData.yjsState?.length || 0,
       });
+
+      console.log(
+        '[YjsMongoSyncService] 同步到后端，yjsState:',
+        syncData.yjsState,
+      );
     } catch (error) {
       this.log(`同步文档 ${syncData.documentId} 到MongoDB失败:`, error);
       throw error;

@@ -517,7 +517,8 @@ export class DocumentController {
     const updateResult = await this.documentService.update(documentId, {
       documentName: targetVersion.documentName,
       content: targetVersion.content,
-      update_username: targetVersion.create_username, // 使用当前用户或原创建者
+      yjsState: targetVersion.yjsState,
+      update_username: targetVersion.create_username,
       // 注意: update_time 会通过 MongoDB 的 timestamps 选项自动更新为当前时间
     });
 
@@ -782,6 +783,30 @@ export class DocumentController {
         success: false,
         message: '创建历史版本失败',
         error: error instanceof Error ? error.message : '未知错误',
+      };
+    }
+  }
+
+  /**
+   * 恢复30天前归档的历史版本到数据库
+   * @param documentId 文档ID
+   * @returns 恢复结果和最新历史版本列表
+   */
+  @Post(':id/history/restore')
+  async restoreArchivedHistory(@Param('id', ParseIntPipe) documentId: number) {
+    try {
+      const result =
+        await this.documentHistoryService.restoreArchivedHistory(documentId);
+      return {
+        success: true,
+        message: '历史版本恢复成功',
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || '历史版本恢复失败',
+        data: null,
       };
     }
   }

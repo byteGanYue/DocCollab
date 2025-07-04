@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, DeleteResult } from 'mongoose';
 import { DocumentHistoryEntity } from '../schemas/document-history.schema';
+import { Cron } from '@nestjs/schedule';
+import * as fs from 'fs';
 
 @Injectable()
 export class DocumentHistoryService {
@@ -285,5 +287,109 @@ export class DocumentHistoryService {
       const errorMessage = error instanceof Error ? error.message : '未知错误';
       throw new Error(`更新版本时间戳失败: ${errorMessage}`);
     }
+  }
+
+  /**
+   * 定期归档30天前的历史快照（每天凌晨3点）
+   * 每个文档单独一个归档文件
+   */
+  @Cron('0 3 * * *') // 每天凌晨3点
+  async archiveOldSnapshots() {
+    const THIRTY_DAYS_AGO = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    // 查询所有30天前的历史快照
+    const oldSnapshots = await this.documentHistoryModel.find({
+      create_time: { $lt: THIRTY_DAYS_AGO },
+    });
+    if (oldSnapshots.length > 0) {
+      // 按文档ID分组
+      const docMap = new Map<number, DocumentHistoryEntity[]>();
+      for (const snap of oldSnapshots) {
+        const docId = snap.documentId;
+        if (!docMap.has(docId)) docMap.set(docId, []);
+        (docMap.get(docId) as DocumentHistoryEntity[]).push(snap);
+      }
+      // 1. 导出到本地文件（每个文档一个文件）
+      const archiveDir = './archive';
+      if (!fs.existsSync(archiveDir)) fs.mkdirSync(archiveDir);
+      for (const [docId, versions] of docMap.entries()) {
+        const filePath = `${archiveDir}/document-history-${docId}.json`;
+        const fileData: {
+          versions: DocumentHistoryEntity[];
+        } = { versions };
+        // 如果已存在，合并历史
+        if (fs.existsSync(filePath)) {
+          try {
+            const old = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as {
+              versions: DocumentHistoryEntity[];
+            };
+            if (Array.isArray(old.versions)) {
+              fileData.versions = [...old.versions, ...versions];
+            }
+          } catch {
+            /* ignore parse error */
+          }
+        }
+        fs.writeFileSync(filePath, JSON.stringify(fileData, null, 2));
+      }
+      // 2. 删除主表中的老快照
+      const ids = oldSnapshots.map(({ _id }) => _id);
+      await this.documentHistoryModel.deleteMany({ _id: { $in: ids } });
+      this.logger.log(
+        `归档并删除了${ids.length}条历史快照，涉及文档数：${docMap.size}`,
+      );
+    }
+  }
+
+  /**
+   * 恢复归档的历史版本到数据库
+   * @param documentId 文档ID
+   * @returns 恢复后的历史版本列表
+   */
+  async restoreArchivedHistory(documentId: number) {
+    const archiveDir = './archive';
+    const filePath = `${archiveDir}/document-history-${documentId}.json`;
+    if (!fs.existsSync(filePath)) {
+      throw new Error('未找到归档文件');
+    }
+    // 读取归档内容
+    let versions: DocumentHistoryEntity[] = [];
+    try {
+      const fileData: { versions: DocumentHistoryEntity[] } = JSON.parse(
+        fs.readFileSync(filePath, 'utf-8'),
+      );
+      if (Array.isArray(fileData.versions)) {
+        versions = fileData.versions;
+      }
+    } catch {
+      throw new Error('归档文件解析失败');
+    }
+    if (!versions.length) {
+      throw new Error('归档文件无历史版本');
+    }
+    // 过滤已存在的_id，避免重复插入
+    const ids = versions.map((v) => v._id);
+    const exists = await this.documentHistoryModel
+      .find({ _id: { $in: ids } })
+      .select('_id')
+      .lean();
+    const existIds = new Set(
+      exists.map((v) =>
+        typeof v._id === 'object' &&
+        v._id &&
+        typeof v._id.toString === 'function'
+          ? v._id.toString()
+          : String(v._id),
+      ),
+    );
+    const toInsert = versions.filter((v) =>
+      typeof v._id === 'object' && v._id && typeof v._id.toString === 'function'
+        ? !existIds.has(v._id.toString())
+        : !existIds.has(String(v._id)),
+    );
+    if (toInsert.length > 0) {
+      await this.documentHistoryModel.insertMany(toInsert);
+    }
+    // 返回最新历史版本列表
+    return this.getDocumentHistory(documentId, 1, 20);
   }
 }

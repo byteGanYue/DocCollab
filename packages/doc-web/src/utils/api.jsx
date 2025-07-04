@@ -141,6 +141,10 @@ export const documentAPI = {
   restoreDocument: (documentId, versionId) =>
     post(`/document/${documentId}/restore`, { versionId }),
 
+  // 恢复归档历史版本
+  restoreArchivedHistory: documentId =>
+    post(`/document/${documentId}/history/restore`),
+
   // 导出文档（保留，后续可能实现）
   exportDocument: (documentId, format) =>
     download(`/document/${documentId}/export`, { format }),
@@ -157,6 +161,15 @@ export const documentAPI = {
     return post(`/document/${documentId}/create-history`, {
       content,
       yjsState,
+    });
+  },
+
+  // 同步 Yjs 协同状态到后端
+  syncYjsState: (documentId, yjsState, content, username) => {
+    return post(`/document/${documentId}/sync-yjs`, {
+      yjsState,
+      content,
+      username,
     });
   },
 

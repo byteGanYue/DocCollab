@@ -7,6 +7,7 @@ import { Server } from '@hocuspocus/server';
 import { Database } from '@hocuspocus/extension-database';
 import fs from 'fs';
 import path from 'path';
+import express from 'express';
 
 // 跟踪文档访问统计
 const documentStats = new Map();
@@ -128,7 +129,28 @@ const server = new Server({
   },
 });
 
-// 启动服务器
+// 新增：暴露HTTP接口用于删除本地yjs文件
+const app = express();
+app.delete('/internal/yjs-file/:documentId', (req, res) => {
+  const { documentId } = req.params;
+  const filePath = path.join(dataDir, `${documentId}.yjs`);
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+    res.status(200).send('deleted');
+    console.log(`[API] 已删除本地yjs文件: ${filePath}`);
+  } else {
+    res.status(404).send('not found');
+  }
+});
+
+// 保证Hocuspocus Server和Express都能监听
+const PORT = 1234;
 server.listen();
+app.listen(PORT + 1, () => {
+  console.log(
+    `Express API for yjs file ops running at http://localhost:${PORT + 1}`,
+  );
+});
+
 console.log('实时协同编辑服务器运行在端口 1234');
 console.log('提示: 服务器已支持文档隔离，每个文档ID将创建独立的房间');

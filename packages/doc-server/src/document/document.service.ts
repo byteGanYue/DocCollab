@@ -21,6 +21,7 @@ import { DocumentEntity } from './schemas/document.schema';
 import { CounterService } from './services/counter.service';
 import { DocumentHistoryService } from './services/document-history.service';
 import { RecentVisitsService } from '../recent-visits/recent-visits.service';
+import axios from 'axios';
 
 interface DocumentDocument {
   _id: Types.ObjectId;
@@ -625,6 +626,22 @@ export class DocumentService {
         this.logger.warn(
           `删除文档 ${documentId} 的历史版本记录时出现错误: ${(historyError as Error).message}`,
         );
+      }
+
+      // 新增：通知doc-editor服务删除本地yjs文件
+      try {
+        await axios.delete(
+          `http://localhost:1235/internal/yjs-file/${documentId}`,
+        );
+        this.logger.log(
+          `[自动同步] 已通知doc-editor删除yjs文件: ${documentId}`,
+        );
+      } catch (error: unknown) {
+        let msg = '';
+        if (error && typeof error === 'object' && 'message' in error) {
+          msg = (error as { message?: string }).message || '';
+        }
+        this.logger.warn(`[自动同步] 通知doc-editor删除yjs文件失败: ${msg}`);
       }
 
       const result = {

@@ -22,7 +22,7 @@ export const withLayout = editor => {
   const { normalizeNode } = editor;
 
   editor.normalizeNode = ([node, path]) => {
-    console.log('只处理根节点', path);
+    // console.log('只处理根节点', path);
     if (path.length === 0) {
       // 检查是否是从API加载的内容
       const isLoadedFromAPI =
