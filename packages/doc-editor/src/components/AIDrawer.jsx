@@ -1,25 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  Drawer,
-  Button,
-  Spin,
-  Alert,
-  Typography,
-  Space,
-  message,
-  Collapse,
-} from 'antd';
-import {
-  DownloadOutlined,
-  ReloadOutlined,
-  BulbOutlined,
-} from '@ant-design/icons';
+import { Drawer, Button, Spin, Alert, Typography, Space, message } from 'antd';
+import { DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
 import { computeContentHash, getTextFromContent } from '../utils/dealContent';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 const { Title, Paragraph } = Typography;
-const { Panel } = Collapse;
 
 // 纯文本样式
 const textStyles = `
@@ -63,63 +49,29 @@ const textStyles = `
     background-color: rgba(255,255,0,0.2);
     animation: highlight-fade 0.5s ease-out forwards;
   }
-
-  .reasoning-container {
-    white-space: pre-wrap;
-    font-family: 'Courier New', monospace;
-    line-height: 1.6;
-    font-size: 13px;
-    color: #555;
-    background-color: #f5f5f5;
-    padding: 16px;
-    border-radius: 4px;
-    border: 1px solid #d0d0d0;
-    border-left: 4px solid #1890ff;
-  }
-  
-  .reasoning-paragraph {
-    margin-bottom: 8px;
-  }
 `;
 
 /**
- * AI抽屉组件 - 用于展示文档摘要和AI深度思考过程
- * 直接从编辑器实例获取最新内容，确保内容一致性
+ * AI抽屉组件 - 用于展示文档摘要
+ * 接收文档内容，提取所有文本，发送给AI生成摘要
  * 使用Ant Design的Drawer组件实现
- * 支持纯文本显示、AI深度思考展示和PDF下载
+ * 支持纯文本显示和PDF下载
  */
-const AIDrawer = ({ isOpen, onClose, documentContent, editor }) => {
+const AIDrawer = ({ isOpen, onClose, documentContent }) => {
   const [summary, setSummary] = useState('');
-  const [reasoning, setReasoning] = useState(''); // AI深度思考内容
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false); // 正在生成中
   const [newContent, setNewContent] = useState(''); // 最新接收的内容
-  const [newReasoning, setNewReasoning] = useState(''); // 最新接收的思考内容
 
   // 记录上一次处理的内容哈希值
   const [lastContentHash, setLastContentHash] = useState('');
 
   // 用于自动滚动到底部
   const contentContainerRef = useRef(null);
-  const reasoningContainerRef = useRef(null);
 
   // 跟踪内容更新器
   const contentRef = useRef('');
-  const reasoningRef = useRef('');
-
-  /**
-   * 获取编辑器的最新内容
-   * 优先从编辑器实例获取，如果没有则使用传入的documentContent
-   */
-  const getLatestContent = useCallback(() => {
-    if (editor && editor.children) {
-      // 从编辑器实例获取最新内容
-      return editor.children;
-    }
-    // 备用方案：使用传入的documentContent
-    return documentContent;
-  }, [editor, documentContent]);
 
   /**
    * 实时添加新内容，确保立即渲染
@@ -138,26 +90,6 @@ const AIDrawer = ({ isOpen, onClose, documentContent, editor }) => {
     // 短暂高亮后清除
     setTimeout(() => {
       setNewContent('');
-    }, 150);
-  }, []);
-
-  /**
-   * 实时添加新的思考内容，确保立即渲染
-   * @param {string} reasoningContent - 新接收的思考内容片段
-   */
-  const appendReasoningImmediately = useCallback(reasoningContent => {
-    // 使用ref来跟踪实际内容，避免闭包问题
-    reasoningRef.current += reasoningContent;
-
-    // 更新React状态，触发重新渲染
-    setReasoning(reasoningRef.current);
-
-    // 设置新内容用于高亮显示
-    setNewReasoning(reasoningContent);
-
-    // 短暂高亮后清除
-    setTimeout(() => {
-      setNewReasoning('');
     }, 150);
   }, []);
 
@@ -181,58 +113,28 @@ const AIDrawer = ({ isOpen, onClose, documentContent, editor }) => {
     }
   }, []);
 
-  /**
-   * 自动滚动到思考内容底部
-   */
-  const scrollReasoningToBottom = useCallback(() => {
-    if (reasoningContainerRef.current) {
-      const container = reasoningContainerRef.current;
-      const isUserNearBottom =
-        container.scrollHeight - container.scrollTop - container.clientHeight <
-        100;
-
-      // 只有当用户已经接近底部或者刚开始生成时才自动滚动
-      if (isUserNearBottom || container.scrollTop === 0) {
-        // 使用requestAnimationFrame确保在下一帧渲染后滚动
-        requestAnimationFrame(() => {
-          container.scrollTop = container.scrollHeight;
-        });
-      }
-    }
-  }, []);
-
   // 监听内容变化，自动滚动
   useEffect(() => {
     scrollToBottom();
   }, [summary, scrollToBottom]);
 
-  // 监听思考内容变化，自动滚动
-  useEffect(() => {
-    scrollReasoningToBottom();
-  }, [reasoning, scrollReasoningToBottom]);
-
   /**
    * 生成文档摘要
    */
-  const generateSummary = useCallback(async () => {
-    // 获取最新内容
-    const latestContent = getLatestContent();
-    if (!latestContent) return;
+  const generateSummary = async () => {
+    if (!documentContent) return;
 
     try {
       // 重置状态
       setLoading(true);
       setError(null);
       setSummary('');
-      setReasoning(''); // 重置思考内容
       contentRef.current = ''; // 重要：重置ref中的内容
-      reasoningRef.current = ''; // 重置思考内容ref
       setIsGenerating(true);
       setNewContent('');
-      setNewReasoning('');
 
       // 提取文本
-      const extractedText = getTextFromContent(latestContent);
+      const extractedText = getTextFromContent(documentContent);
       if (!extractedText) {
         setError('无法从文档中提取文本内容');
         setLoading(false);
@@ -241,7 +143,7 @@ const AIDrawer = ({ isOpen, onClose, documentContent, editor }) => {
       }
 
       // 更新内容哈希值
-      const contentHash = computeContentHash(latestContent);
+      const contentHash = computeContentHash(documentContent);
       setLastContentHash(contentHash);
 
       // 构建请求体
@@ -291,15 +193,30 @@ const AIDrawer = ({ isOpen, onClose, documentContent, editor }) => {
       );
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('API错误详情:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorText,
+        });
+        throw new Error(
+          `API请求失败: ${response.status} - ${errorText || response.statusText}`,
+        );
       }
 
+      console.log('开始接收流式响应');
+
+      // 处理流式响应
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
 
+      // 逐块处理数据
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          console.log('流式响应接收完成');
+          break;
+        }
 
         const chunk = decoder.decode(value, { stream: true });
         console.log('收到数据块:', chunk);
@@ -321,7 +238,6 @@ const AIDrawer = ({ isOpen, onClose, documentContent, editor }) => {
                 const data = JSON.parse(jsonStr);
                 console.log('解析JSON数据:', data);
 
-                // 处理普通内容
                 if (
                   data.choices &&
                   data.choices[0].delta &&
@@ -332,20 +248,6 @@ const AIDrawer = ({ isOpen, onClose, documentContent, editor }) => {
 
                   // 立即更新内容，确保实时渲染
                   appendContentImmediately(content);
-                }
-
-                // 处理深度思考内容
-                if (
-                  data.choices &&
-                  data.choices[0].delta &&
-                  data.choices[0].delta.reasoning_content
-                ) {
-                  const reasoningContent =
-                    data.choices[0].delta.reasoning_content;
-                  console.log('添加新思考内容:', reasoningContent);
-
-                  // 立即更新思考内容，确保实时渲染
-                  appendReasoningImmediately(reasoningContent);
                 }
               } catch (jsonError) {
                 console.error('JSON解析错误:', jsonError, '原始数据:', jsonStr);
@@ -363,26 +265,20 @@ const AIDrawer = ({ isOpen, onClose, documentContent, editor }) => {
       setLoading(false);
       setIsGenerating(false);
     }
-  }, [getLatestContent, appendContentImmediately, appendReasoningImmediately]);
+  };
 
-  // 当抽屉打开时，判断是否需要生成摘要
+  // 当抽屉打开且有文档内容时，判断是否需要生成摘要
   useEffect(() => {
-    if (isOpen) {
-      // 获取最新内容
-      const latestContent = getLatestContent();
-      console.log('AI抽屉打开，当前内容:', latestContent);
+    if (isOpen && documentContent) {
+      // 计算当前内容的哈希值
+      const currentContentHash = computeContentHash(documentContent);
 
-      if (latestContent) {
-        // 计算当前内容的哈希值
-        const currentContentHash = computeContentHash(latestContent);
-
-        // 如果内容发生变化或者没有摘要，则生成新的摘要
-        if (currentContentHash !== lastContentHash || !summary) {
-          generateSummary();
-        }
+      // 如果内容发生变化或者没有摘要，则生成新的摘要
+      if (currentContentHash !== lastContentHash || !summary) {
+        generateSummary();
       }
     }
-  }, [isOpen, getLatestContent, lastContentHash, summary, generateSummary]);
+  }, [isOpen, documentContent]);
 
   /**
    * 下载摘要为PDF文件
@@ -522,78 +418,6 @@ const AIDrawer = ({ isOpen, onClose, documentContent, editor }) => {
       }
     >
       <Space direction="vertical" style={{ width: '100%' }}>
-        {/* AI深度思考内容展示区域 */}
-        {(reasoning || (loading && reasoning)) && (
-          <div style={{ marginTop: '16px' }}>
-            <Collapse
-              defaultActiveKey={['reasoning']}
-              ghost
-              style={{
-                backgroundColor: 'transparent',
-                border: 'none',
-              }}
-            >
-              <Panel
-                header={
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      fontSize: '16px',
-                      fontWeight: '500',
-                    }}
-                  >
-                    <BulbOutlined
-                      style={{ marginRight: '8px', color: '#1890ff' }}
-                    />
-                    AI深度思考过程
-                    {isGenerating && reasoning && (
-                      <Spin size="small" style={{ marginLeft: '10px' }} />
-                    )}
-                  </div>
-                }
-                key="reasoning"
-                style={{
-                  backgroundColor: '#fafafa',
-                  border: '1px solid #e8e8e8',
-                  borderRadius: '6px',
-                  marginBottom: '8px',
-                }}
-              >
-                <div
-                  style={{
-                    position: 'relative',
-                    maxHeight: '40vh',
-                    overflow: 'auto',
-                  }}
-                  ref={reasoningContainerRef}
-                >
-                  <style>{textStyles}</style>
-                  <div className="reasoning-container">
-                    {reasoning.split('\n').map((line, index) => (
-                      <div key={index} className="reasoning-paragraph">
-                        {line}
-                      </div>
-                    ))}
-                    {isGenerating && <span className="text-cursor"></span>}
-                  </div>
-                </div>
-                {isGenerating && reasoning && (
-                  <div
-                    style={{
-                      textAlign: 'center',
-                      marginTop: '8px',
-                      fontSize: '12px',
-                      color: '#888',
-                    }}
-                  >
-                    正在思考中... 已生成 {reasoning.length} 个字符
-                  </div>
-                )}
-              </Panel>
-            </Collapse>
-          </div>
-        )}
         {loading && !summary && (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
             <Spin size="large" />
@@ -643,9 +467,8 @@ const AIDrawer = ({ isOpen, onClose, documentContent, editor }) => {
                 borderRadius: '4px',
                 border: '1px solid #e0e0e0',
                 position: 'relative',
-                maxHeight: '60vh',
+                maxHeight: '80vh',
                 overflow: 'auto',
-                marginBottom: '16px',
               }}
               ref={contentContainerRef}
             >

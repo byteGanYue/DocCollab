@@ -609,7 +609,6 @@ const EditorSDKComponent = ({
         isOpen={showAIDrawer}
         onClose={handleCloseAIDrawer}
         documentContent={value}
-        editor={editor}
       />
 
       <CommentModal
