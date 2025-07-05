@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal } from 'antd';
+import { Modal, Button } from 'antd';
 const ActionButtons = ({ onBackHistoryProps, onAI, onHelp }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -36,46 +36,13 @@ const ActionButtons = ({ onBackHistoryProps, onAI, onHelp }) => {
       }}
     >
       {backHistoryProps.isShow && (
-        <button
-          style={{
-            padding: '8px 16px',
-            fontSize: '14px',
-            fontWeight: '500',
-            border: '1px solid #0d6efd',
-            borderRadius: '6px',
-            backgroundColor: '#0d6efd',
-            color: '#ffffff',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease-in-out',
-            outline: 'none',
-            minWidth: '80px',
-          }}
-          onClick={showModal}
-        >
+        <Button type="warning" onClick={showModal}>
           版本回退
-        </button>
+        </Button>
       )}
-      <button
-        onClick={onAI}
-        style={{
-          padding: '8px 16px',
-          fontSize: '14px',
-          fontWeight: '500',
-          border: '1px solid #6610f2',
-          borderRadius: '6px',
-          backgroundColor: '#6610f2',
-          color: '#ffffff',
-          cursor: 'pointer',
-          transition: 'all 0.2s ease-in-out',
-          outline: 'none',
-          minWidth: '80px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-        }}
-      >
+      <Button onClick={onAI} type="primary">
         AI摘要
-      </button>
+      </Button>
       <button
         onClick={onHelp}
         style={{
