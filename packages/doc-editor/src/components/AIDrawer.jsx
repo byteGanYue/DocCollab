@@ -151,7 +151,7 @@ const AIDrawer = ({ isOpen, onClose, documentContent }) => {
         model: 'Qwen/Qwen3-8B',
         stream: true,
         max_tokens: 512,
-        enable_thinking: true,
+        enable_thinking: false,
         thinking_budget: 4096,
         min_p: 0.05,
         temperature: 0.7,
