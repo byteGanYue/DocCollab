@@ -77,6 +77,7 @@ const DocEditor = () => {
 
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
   const userId = userInfo.userId;
+  const username = userInfo.username;
 
   // 编辑器内容状态
   const [editorValue, setEditorValue] = useState(undefined);
@@ -328,7 +329,7 @@ const DocEditor = () => {
           content !== '[{"type":"paragraph","children":[{"text":""}]}]'
         ) {
           documentAPI
-            .createDocumentHistory(documentId, content, yjsState)
+            .createDocumentHistory(documentId, content, yjsState, username)
             .then(() => {
               localStorage.removeItem('isEdit');
             })

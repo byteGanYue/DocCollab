@@ -704,15 +704,15 @@ export class DocumentController {
   }
 
   /**
-   * 创建文档历史版本记录
+   * 创建文档历史版本记录并更新文档内容
    * @param documentId 文档ID
    * @returns 创建结果
    */
   @Post(':id/create-history')
   @ApiOperation({
-    summary: '根据文档ID创建一条历史版本记录',
+    summary: '根据文档ID创建一条历史版本记录并更新文档内容',
     description:
-      '当用户离开编辑页面时，调用此接口将当前文档内容保存为一条历史版本记录',
+      '当用户离开编辑页面时，调用此接口将当前文档内容保存为一条历史版本记录，同时更新文档表的内容为最新版本',
   })
   @ApiParam({
     name: 'id',
@@ -720,23 +720,51 @@ export class DocumentController {
     type: 'number',
     example: 123,
   })
+  @ApiBody({
+    description: '历史版本创建数据',
+    schema: {
+      type: 'object',
+      properties: {
+        content: {
+          type: 'string',
+          description: '文档内容（可选，如果不提供则使用当前文档内容）',
+        },
+        yjsState: {
+          type: 'array',
+          items: { type: 'number' },
+          description: 'Yjs状态数据（可选，如果不提供则使用当前文档的Yjs状态）',
+        },
+        update_username: {
+          type: 'string',
+          description:
+            '更新用户名（可选，如果不提供则使用当前文档的更新用户名）',
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 201,
     description: '历史版本创建成功',
     schema: {
       example: {
         success: true,
-        message: '历史版本创建成功',
+        message: '历史版本创建成功，文档内容已更新',
         data: {
           versionId: 3,
           documentId: 123,
+          updatedContent: true,
         },
       },
     },
   })
   async createHistoryVersion(
     @Param('id', ParseIntPipe) documentId: number,
-    @Body() body: { content?: string; yjsState?: number[] },
+    @Body()
+    body: {
+      content?: string;
+      yjsState?: number[];
+      update_username?: string;
+    },
   ) {
     this.logger.log('接收到创建历史版本请求', { documentId });
 
@@ -753,9 +781,10 @@ export class DocumentController {
         };
       }
 
-      // 优先用前端传来的内容
+      // 优先用前端传来的内容，如果没有则使用当前文档内容
       const content = body.content ?? document.content;
       const yjsState = body.yjsState ?? document.yjsState;
+      const update_username = body.update_username ?? document.update_username;
 
       // 创建历史版本记录
       const historyVersion =
@@ -765,16 +794,42 @@ export class DocumentController {
           documentName: document.documentName,
           content,
           create_username: document.create_username,
-          update_username: document.update_username,
+          update_username,
           yjsState,
         });
 
+      // 同时更新文档表的内容为最新版本
+      const updateResult = await this.documentService.update(documentId, {
+        content,
+        yjsState,
+        update_username,
+        // 注意: update_time 会通过 MongoDB 的 timestamps 选项自动更新为当前时间
+      });
+
+      if (!updateResult.success) {
+        this.logger.warn('历史版本创建成功，但文档内容更新失败', {
+          documentId,
+          updateResult,
+        });
+        return {
+          success: true,
+          message: '历史版本创建成功，但文档内容更新失败',
+          data: {
+            versionId: historyVersion.versionId,
+            documentId: historyVersion.documentId,
+            updatedContent: false,
+            updateError: updateResult.message,
+          },
+        };
+      }
+
       return {
         success: true,
-        message: '历史版本创建成功',
+        message: '历史版本创建成功，文档内容已更新',
         data: {
           versionId: historyVersion.versionId,
           documentId: historyVersion.documentId,
+          updatedContent: true,
         },
       };
     } catch (error) {
@@ -805,7 +860,7 @@ export class DocumentController {
     } catch (error) {
       return {
         success: false,
-        message: error.message || '历史版本恢复失败',
+        message: error instanceof Error ? error.message : '历史版本恢复失败',
         data: null,
       };
     }

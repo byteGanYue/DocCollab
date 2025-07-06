@@ -157,10 +157,11 @@ export const documentAPI = {
   },
 
   // 创建文档历史版本记录
-  createDocumentHistory: async (documentId, content, yjsState) => {
+  createDocumentHistory: async (documentId, content, yjsState, username) => {
     return post(`/document/${documentId}/create-history`, {
       content,
       yjsState,
+      username,
     });
   },
 
