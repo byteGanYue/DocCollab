@@ -88,7 +88,7 @@ const EditorSDKComponent = ({
   const backHistoryProps = onBackHistoryProps || {
     versionId: null,
     isShow: false,
-    onClick: () => {},
+    onClick: () => { },
   };
   // 保存外部传入的值到全局变量，供useCollaborativeEditor检查
   if (externalValue !== undefined) {
@@ -102,7 +102,20 @@ const EditorSDKComponent = ({
       : defaultInitialValue;
   const [localValue, setLocalValue] = useState(safeValue);
   useEffect(() => {
+    // 如果正在进行快照恢复，跳过外部value更新
+    if (window.isRestoringSnapshot) {
+      console.log('[EditorSDK] 快照恢复中，跳过外部value更新');
+      return;
+    }
+
+    // 如果已经完成快照恢复，跳过外部value更新
+    if (window.hasRestoredSnapshot) {
+      console.log('[EditorSDK] 已完成快照恢复，跳过外部value更新');
+      return;
+    }
+
     if (Array.isArray(externalValue) && externalValue.length > 0) {
+      console.log('[EditorSDK] 更新localValue:', externalValue);
       setLocalValue(externalValue);
     } else {
       setLocalValue(defaultInitialValue);
@@ -129,7 +142,29 @@ const EditorSDKComponent = ({
   // value 就是当前文档内容（Slate节点数组）
   // 优先使用外部传入的 value
   const value = externalValue !== undefined ? externalValue : internalValue;
+
+  // 调试：检查快照恢复状态下的value选择
+  if (window.hasRestoredSnapshot || window.isRestoringSnapshot) {
+    console.log('[EditorSDK] 快照恢复状态下的value选择:', {
+      externalValue: externalValue,
+      internalValue: internalValue,
+      finalValue: value,
+      hasRestoredSnapshot: window.hasRestoredSnapshot,
+      isRestoringSnapshot: window.isRestoringSnapshot
+    });
+  }
   const setValue = externalOnChange || setInternalValue;
+
+  // 调试信息：监控value变化
+  useEffect(() => {
+    console.log('[EditorSDK] value变化:', {
+      externalValue: externalValue,
+      internalValue: internalValue,
+      finalValue: value,
+      hasRestoredSnapshot: window.hasRestoredSnapshot,
+      isRestoringSnapshot: window.isRestoringSnapshot
+    });
+  }, [externalValue, internalValue, value]);
 
   // 评论弹窗相关状态
   const [showCommentModal, setShowCommentModal] = useState(false);
@@ -267,10 +302,24 @@ const EditorSDKComponent = ({
   const handleSlateChange = useCallback(
     newValue => {
       try {
+        // 如果正在进行快照恢复，跳过变化处理
+        if (window.isRestoringSnapshot) {
+          console.log('[EditorSDK] 快照恢复中，跳过Slate变化处理');
+          return;
+        }
+
+        // 如果已经完成快照恢复，跳过变化处理
+        if (window.hasRestoredSnapshot) {
+          console.log('[EditorSDK] 已完成快照恢复，跳过Slate变化处理');
+          return;
+        }
+
         if (!newValue || !Array.isArray(newValue)) {
           console.warn('接收到无效的编辑器值:', newValue);
           return;
         }
+
+        console.log('[EditorSDK] Slate值变化:', newValue);
         setValue(newValue);
       } catch (error) {
         console.error('更新编辑器状态失败:', error);
@@ -336,7 +385,7 @@ const EditorSDKComponent = ({
             ? localValue
             : defaultInitialValue
         }
-        onChange={() => {}}
+        onChange={() => { }}
       >
         <Editable
           readOnly={true}
@@ -423,6 +472,7 @@ const EditorSDKComponent = ({
         initialValue={value}
         onChange={handleSlateChange}
         value={value}
+        key={JSON.stringify(value)} // 强制重新渲染当value变化时
       >
         {/* 悬浮工具栏 */}
         <HoveringToolbar

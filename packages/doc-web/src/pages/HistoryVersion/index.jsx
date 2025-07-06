@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Table,
   Button,
@@ -6,9 +6,11 @@ import {
   Space,
   Tag,
   Typography,
-  message,
   Modal,
   Breadcrumb,
+  Radio,
+  Divider,
+  message,
 } from 'antd';
 import {
   FileTextOutlined,
@@ -18,13 +20,15 @@ import {
   EyeOutlined,
   ArrowLeftOutlined,
   RollbackOutlined,
+  DiffOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { documentAPI } from '@/utils/api';
 import styles from './index.module.less';
 import { useUser } from '@/hooks/useAuth';
 import { formatTime } from '@/utils/dealTime';
-import { UserContext } from '@/contexts/UserContext';
+import VersionDiff from '@/components/VersionDiff/index';
+// import { UserContext } from '@/contexts/UserContext';
 const { Text } = Typography;
 
 /**
@@ -33,6 +37,7 @@ const { Text } = Typography;
  * 功能特性：
  * - 显示指定文档的所有历史版本
  * - 支持查看版本详情、恢复版本等操作
+ * - 支持版本对比功能
  * - 响应式设计：适配不同屏幕尺寸
  * - 交互操作：支持点击查看版本、恢复版本等
  */
@@ -40,7 +45,8 @@ const HistoryVersion = () => {
   const navigate = useNavigate();
   const { id: documentId } = useParams(); // 从路由参数获取文档ID
   const { userInfo } = useUser(); // 获取用户信息
-  const { userInfo: userContextInfo } = useContext(UserContext);
+  const [messageApi, contextHolder] = message.useMessage();
+  // const { userInfo: userContextInfo } = useContext(UserContext);
 
   // 版本历史数据状态
   const [versions, setVersions] = useState([]);
@@ -59,6 +65,21 @@ const HistoryVersion = () => {
     visible: false,
     version: null,
     loading: false,
+  });
+
+  // 版本对比弹窗状态
+  const [compareModal, setCompareModal] = useState({
+    visible: false,
+    loading: false,
+    oldVersion: null,
+    newVersion: null,
+    diffResult: null,
+  });
+
+  // 选中的对比版本
+  const [selectedVersions, setSelectedVersions] = useState({
+    oldVersion: null,
+    newVersion: null,
   });
 
   /**
@@ -222,52 +243,55 @@ const HistoryVersion = () => {
   const confirmRestoreVersion = async () => {
     const { version } = restoreModal;
     if (!version) return;
-
     setRestoreModal(prev => ({ ...prev, loading: true }));
 
     try {
-      const versionRes = await documentAPI.getDocumentVersion(
-        documentId,
-        version.versionId,
-      );
-      if (versionRes.success && versionRes.data && versionRes.data.yjsState) {
-        const username = userContextInfo?.username || 'unknown';
-        const syncRes = await documentAPI.syncYjsState(
-          documentId,
-          versionRes.data.yjsState,
-          versionRes.data.content,
-          username,
-        );
-        if (!syncRes.success) throw new Error('同步yjsState到后端失败');
-        if (window.forceRestoreYjsState) {
-          window.forceRestoreYjsState(
-            versionRes.data.yjsState,
-            versionRes.data.content,
-          );
-        }
-        // 调用恢复版本API
-        const response = await documentAPI.restoreDocument(
-          documentId,
-          version.versionId,
-        );
-        if (response.success) {
-          message.success(`已恢复到版本 ${version.versionNumber}`);
-          setRestoreModal({ visible: false, version: null, loading: false });
-
-          // 刷新版本列表
-          fetchVersionHistory(pagination.current, pagination.pageSize);
-
-          // 刷新文档信息
-          fetchDocumentInfo();
-          message.success(`已恢复到版本 ${version.versionNumber}`);
-          setRestoreModal({ visible: false, version: null, loading: false });
-        } else {
-          throw new Error(response.message || '恢复版本失败');
-        }
+      // 1. 获取历史版本的yjsState和content
+      const versionRes = await documentAPI.getDocumentVersion(documentId, version.versionId);
+      if (!versionRes.success || !versionRes.data) {
+        throw new Error('无法获取历史版本数据');
       }
+
+      const yjsStateArr = versionRes.data.yjsState || [];
+      const contentData = versionRes.data.content || '';
+
+      // 2. 将快照数据和content编码为 base64，通过 URL 参数传递
+      // 使用更安全的方法来处理包含数字和中文的字符串
+      const snapshotBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(yjsStateArr))));
+      const contentBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(contentData))));
+
+      console.log('[HistoryVersion] 快照数据长度:', yjsStateArr.length);
+      console.log('[HistoryVersion] 编码后的 base64 长度:', snapshotBase64.length);
+      console.log('[HistoryVersion] 历史版本content:', contentData);
+
+      // 3. 跳转到编辑器页面，并传递快照参数和content参数
+      const editorUrl = `/doc-editor/${documentId}?restoreSnapshot=${snapshotBase64}&restoreContent=${contentBase64}&versionId=${version.versionId}`;
+      console.log('[HistoryVersion] 跳转到编辑器页面:', editorUrl);
+      navigate(editorUrl);
+
+      // 4. 调用后端回滚接口（用于记录）
+      const response = await documentAPI.restoreDocument(documentId, version.versionId);
+      if (!response.success) {
+        console.warn('后端版本回退记录失败，但不影响前端回滚:', response.message);
+      }
+
+      message.success(`正在恢复到版本 ${version.versionNumber}...`);
+      setRestoreModal({ visible: false, version: null, loading: false });
+
+      // 5. 延迟刷新历史版本列表，确保数据库更新完成
+      setTimeout(() => {
+        console.log('[HistoryVersion] 回滚完成后刷新历史版本列表');
+        fetchVersionHistory(pagination.current, pagination.pageSize);
+      }, 2000);
+
+      // 6. 添加调试信息
+      console.log('[HistoryVersion] 回滚操作完成，等待数据刷新...');
+      console.log('[HistoryVersion] 目标版本ID:', version.versionId);
+      console.log('[HistoryVersion] 目标版本内容:', contentData);
+
     } catch (error) {
-      console.error('恢复版本失败:', error);
-      message.error('恢复版本功能正在开发中');
+      console.error('[HistoryVersion] 版本恢复失败:', error);
+      message.error('恢复版本失败，请重试');
       setRestoreModal(prev => ({ ...prev, loading: false }));
     }
   };
@@ -278,6 +302,77 @@ const HistoryVersion = () => {
   const cancelRestoreVersion = () => {
     setRestoreModal({ visible: false, version: null, loading: false });
   };
+
+  /**
+   * 处理版本对比
+   * @param {Object} oldVersion - 旧版本
+   * @param {Object} newVersion - 新版本
+   */
+  const handleCompareVersions = async (oldVersion, newVersion) => {
+    console.log('[HistoryVersion] 开始版本对比:', { oldVersion, newVersion });
+
+    if (!oldVersion || !newVersion) {
+      message.error('请选择两个版本进行对比');
+      return;
+    }
+
+    if (oldVersion.versionId === newVersion.versionId) {
+      message.warning('请选择不同的版本进行对比');
+      return;
+    }
+
+    console.log('[HistoryVersion] 设置对比弹窗状态');
+    setCompareModal({
+      visible: true,
+      loading: true,
+      oldVersion,
+      newVersion,
+      oldContent: null,
+      newContent: null,
+      diffResult: null,
+    });
+
+    try {
+      console.log('[HistoryVersion] 开始获取版本内容');
+      // 获取两个版本的详细内容
+      const [oldRes, newRes] = await Promise.all([
+        documentAPI.getDocumentVersion(documentId, oldVersion.versionId),
+        documentAPI.getDocumentVersion(documentId, newVersion.versionId),
+      ]);
+
+      console.log('[HistoryVersion] 版本内容获取结果:', { oldRes, newRes });
+
+      if (!oldRes.success || !newRes.success) {
+        throw new Error('获取版本内容失败');
+      }
+
+      const oldContent = oldRes.data.content || '';
+      const newContent = newRes.data.content || '';
+
+      console.log('[HistoryVersion] 版本内容长度:', {
+        oldContentLength: oldContent.length,
+        newContentLength: newContent.length
+      });
+
+      setCompareModal(prev => ({
+        ...prev,
+        loading: false,
+        oldContent,
+        newContent,
+      }));
+
+      console.log('[HistoryVersion] 版本对比弹窗已更新');
+    } catch (error) {
+      console.error('[HistoryVersion] 版本对比失败:', error);
+      message.error('版本对比失败，请重试');
+      setCompareModal(prev => ({
+        ...prev,
+        loading: false,
+      }));
+    }
+  };
+
+
 
   /**
    * 获取更多操作菜单
@@ -291,15 +386,20 @@ const HistoryVersion = () => {
         label: '查看版本详情',
         icon: <EyeOutlined />,
       },
+      {
+        key: 'compare',
+        label: '选择进行对比',
+        icon: <DiffOutlined />,
+      },
       ...(version.isCurrent
         ? []
         : [
-            {
-              key: 'restore',
-              label: '恢复到此版本',
-              icon: <ReloadOutlined />,
-            },
-          ]),
+          {
+            key: 'restore',
+            label: '恢复到此版本',
+            icon: <ReloadOutlined />,
+          },
+        ]),
     ];
 
     // 处理菜单点击事件
@@ -310,6 +410,30 @@ const HistoryVersion = () => {
         handleViewVersion(version);
       } else if (key === 'restore') {
         handleRestoreVersion(version);
+      } else if (key === 'compare') {
+        // 处理版本对比选择
+        if (!selectedVersions.oldVersion) {
+          setSelectedVersions({
+            oldVersion: version,
+            newVersion: null,
+          });
+          message.success(`已选择 ${version.versionNumber} 作为对比基准版本，请选择第二个版本`);
+        } else if (!selectedVersions.newVersion) {
+          // 如果已经选择了旧版本，则设置为新版本并开始对比
+          const newSelectedVersions = {
+            oldVersion: selectedVersions.oldVersion,
+            newVersion: version,
+          };
+          setSelectedVersions(newSelectedVersions);
+          handleCompareVersions(newSelectedVersions.oldVersion, version);
+        } else {
+          // 如果已经选择了两个版本，重置选择
+          setSelectedVersions({
+            oldVersion: version,
+            newVersion: null,
+          });
+          message.info(`重新选择对比版本，已选择 ${version.versionNumber} 作为基准版本`);
+        }
       }
     };
 
@@ -365,6 +489,11 @@ const HistoryVersion = () => {
             {record.isCurrent && (
               <Tag color="green" size="small">
                 当前版本
+              </Tag>
+            )}
+            {record.changeDescription && (
+              <Tag color="orange" size="small">
+                {record.changeDescription}
               </Tag>
             )}
           </Space>
@@ -430,8 +559,14 @@ const HistoryVersion = () => {
     }
   }, [userInfo, documentId, fetchDocumentInfo, fetchVersionHistory]);
 
+  // 显示快照恢复功能状态
+  useEffect(() => {
+    console.log('[HistoryVersion] 快照恢复功能已启用，使用 URL 参数传递方式');
+  }, []);
+
   return (
     <div className={styles.container}>
+      {contextHolder}
       {/* 面包屑导航 */}
       <div className={styles.breadcrumb}>
         <Breadcrumb
@@ -467,6 +602,34 @@ const HistoryVersion = () => {
             {documentInfo?.documentName || '文档'} - 历史版本
           </h1>
           <Text className={styles.subtitle}>查看和管理文档的历史版本记录</Text>
+          <div style={{ marginTop: 8 }}>
+            <Text type="success" style={{ fontSize: 12 }}>
+              ✅ 快照恢复功能已启用，版本回滚将使用新的高效恢复机制
+            </Text>
+          </div>
+          {/* 版本对比选择状态 */}
+          {(selectedVersions.oldVersion || selectedVersions.newVersion) && (
+            <div style={{ marginTop: 12, padding: 8, backgroundColor: '#f6ffed', borderRadius: 6, border: '1px solid #b7eb8f' }}>
+              <Text type="success" style={{ fontSize: 12 }}>
+                🔄 版本对比模式：
+                {selectedVersions.oldVersion && (
+                  <Tag color="blue" size="small" style={{ marginLeft: 8 }}>
+                    基准版本：{selectedVersions.oldVersion.versionNumber}
+                  </Tag>
+                )}
+                {selectedVersions.newVersion && (
+                  <Tag color="green" size="small" style={{ marginLeft: 8 }}>
+                    目标版本：{selectedVersions.newVersion.versionNumber}
+                  </Tag>
+                )}
+                {!selectedVersions.newVersion && selectedVersions.oldVersion && (
+                  <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                    请选择第二个版本进行对比
+                  </Text>
+                )}
+              </Text>
+            </div>
+          )}
         </div>
         <div className={styles.actions}>
           <Button
@@ -484,6 +647,57 @@ const HistoryVersion = () => {
             style={{ marginLeft: 12 }}
           >
             恢复30天前历史版本
+          </Button>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => {
+              message.info('快照恢复功能已启用，使用 URL 参数传递方式，可以正常使用版本回滚功能');
+            }}
+            style={{ marginLeft: 12 }}
+            type="dashed"
+          >
+            测试快照恢复
+          </Button>
+          <Button
+            icon={<DiffOutlined />}
+            onClick={() => navigate(`/version-compare/${documentId}`)}
+            style={{ marginLeft: 12 }}
+            type="primary"
+          >
+            版本对比
+          </Button>
+          {(selectedVersions.oldVersion || selectedVersions.newVersion) && (
+            <Button
+              onClick={() => {
+                setSelectedVersions({ oldVersion: null, newVersion: null });
+                message.info('已清除版本对比选择');
+              }}
+              style={{ marginLeft: 12 }}
+              type="default"
+              size="small"
+            >
+              清除选择
+            </Button>
+          )}
+          <Button
+            onClick={() => {
+              console.log('[HistoryVersion] 测试版本对比功能');
+              console.log('[HistoryVersion] 当前选择状态:', selectedVersions);
+              console.log('[HistoryVersion] 当前对比弹窗状态:', compareModal);
+              if (versions.length >= 2) {
+                const testOldVersion = versions[1];
+                const testNewVersion = versions[0];
+                console.log('[HistoryVersion] 测试版本:', { testOldVersion, testNewVersion });
+                handleCompareVersions(testOldVersion, testNewVersion);
+              } else {
+                message.warning('需要至少两个版本才能进行对比测试');
+              }
+            }}
+            style={{ marginLeft: 12 }}
+            type="dashed"
+            size="small"
+          >
+            测试对比
           </Button>
         </div>
       </div>
@@ -562,9 +776,56 @@ const HistoryVersion = () => {
               )}
             </div>
             <div style={{ marginTop: 16, color: '#ff4d4f', fontSize: 12 }}>
-              ⚠️
-              恢复操作将创建一个新的版本，原有的当前版本会被保留在历史记录中。
+              ⚠️ 恢复操作将创建一个新的版本，原有的当前版本会被保留在历史记录中。
             </div>
+            <div style={{ marginTop: 12, color: '#1890ff', fontSize: 12 }}>
+              🔄 使用新的快照恢复机制，无需重建实例，恢复速度更快更稳定。
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* 版本对比弹窗 */}
+      <Modal
+        title="版本对比"
+        open={compareModal.visible}
+        onCancel={() => {
+          setCompareModal({ visible: false, loading: false, oldVersion: null, newVersion: null, diffResult: null });
+          setSelectedVersions({ oldVersion: null, newVersion: null });
+        }}
+        footer={null}
+        width={1000}
+        style={{ top: 20 }}
+        bodyStyle={{ padding: 0, height: '80vh' }}
+      >
+        {compareModal.loading ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <Text>正在计算版本差异...</Text>
+          </div>
+        ) : compareModal.oldVersion && compareModal.newVersion ? (
+          <div style={{ padding: '20px' }}>
+            <div style={{ marginBottom: 16 }}>
+              <Text strong>对比版本：</Text>
+              <Tag color="blue">{compareModal.oldVersion.versionNumber}</Tag>
+              <Text>→</Text>
+              <Tag color="green">{compareModal.newVersion.versionNumber}</Tag>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <Text>旧版本内容长度：{compareModal.oldContent?.length || 0}</Text>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <Text>新版本内容长度：{compareModal.newContent?.length || 0}</Text>
+            </div>
+            <Button onClick={() => {
+              setCompareModal({ visible: false, loading: false, oldVersion: null, newVersion: null, diffResult: null });
+              setSelectedVersions({ oldVersion: null, newVersion: null });
+            }}>
+              关闭
+            </Button>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <Text>版本数据加载中...</Text>
           </div>
         )}
       </Modal>

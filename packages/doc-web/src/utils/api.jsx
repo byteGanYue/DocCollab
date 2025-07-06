@@ -157,11 +157,10 @@ export const documentAPI = {
   },
 
   // 创建文档历史版本记录
-  createDocumentHistory: async (documentId, content, yjsState, username) => {
+  createDocumentHistory: async (documentId, content, yjsState) => {
     return post(`/document/${documentId}/create-history`, {
       content,
       yjsState,
-      username,
     });
   },
 
@@ -298,6 +297,46 @@ export const authUtils = {
   // 检查是否已认证
   isAuth: () => {
     return isAuthenticated();
+  },
+};
+
+/**
+ * 文档归档相关 API
+ */
+export const documentArchiveAPI = {
+  // 创建文档归档
+  createDocumentArchive: (documentId, archiveData) => {
+    return post(`/document-archive/${documentId}/create`, archiveData);
+  },
+
+  // 获取文档归档列表
+  getDocumentArchives: (documentId, params = {}) => {
+    return get(`/document-archive/${documentId}/list`, params);
+  },
+
+  // 获取归档详情
+  getArchiveDetail: (archiveId) => {
+    return get(`/document-archive/${archiveId}/detail`);
+  },
+
+  // 从归档恢复文档
+  restoreFromArchive: (documentId, archiveId, restoreData) => {
+    return post(`/document-archive/${documentId}/restore/${archiveId}`, restoreData);
+  },
+
+  // 比较两个归档
+  compareArchives: (compareData) => {
+    return post('/document-archive/compare', compareData);
+  },
+
+  // 删除归档
+  deleteArchive: (archiveId, deleteData) => {
+    return del(`/document-archive/${archiveId}`, deleteData);
+  },
+
+  // 批量归档
+  batchArchive: (batchData) => {
+    return post('/document-archive/batch-archive', batchData);
   },
 };
 

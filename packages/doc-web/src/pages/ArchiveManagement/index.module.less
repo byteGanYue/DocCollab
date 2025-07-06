@@ -1,0 +1,265 @@
+/* 归档管理页面样式 */
+.archiveContainer {
+    padding: 24px;
+    background-color: #f5f5f5;
+    min-height: 100vh;
+
+    .pageHeader {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding: 16px 24px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+        h3 {
+            margin: 0;
+            color: #1890ff;
+        }
+    }
+
+    .statistics {
+        margin-bottom: 24px;
+
+        .ant-card {
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+
+            &:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+        }
+    }
+
+    .archiveList {
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+        .ant-card-head {
+            background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+            color: white;
+            border-radius: 8px 8px 0 0;
+
+            .ant-card-head-title {
+                color: white;
+                font-weight: 600;
+            }
+        }
+    }
+
+    .archiveTable {
+        .ant-table-thead>tr>th {
+            background-color: #fafafa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .ant-table-tbody>tr:hover>td {
+            background-color: #f0f8ff;
+        }
+
+        .ant-table-tbody>tr>td {
+            border-bottom: 1px solid #f0f0f0;
+        }
+    }
+}
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+    .archiveContainer {
+        padding: 16px;
+
+        .pageHeader {
+            flex-direction: column;
+            gap: 16px;
+            align-items: flex-start;
+
+            .ant-space {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+
+        .statistics {
+            .ant-col {
+                margin-bottom: 16px;
+            }
+        }
+    }
+}
+
+/* 归档类型标签样式 */
+.archive-type-tag {
+    &.daily {
+        background-color: #e6f7ff;
+        border-color: #91d5ff;
+        color: #1890ff;
+    }
+
+    &.manual {
+        background-color: #f6ffed;
+        border-color: #b7eb8f;
+        color: #52c41a;
+    }
+
+    &.milestone {
+        background-color: #fff7e6;
+        border-color: #ffd591;
+        color: #fa8c16;
+    }
+
+    &.compliance {
+        background-color: #fff1f0;
+        border-color: #ffa39e;
+        color: #f5222d;
+    }
+}
+
+/* 操作按钮样式 */
+.action-button {
+    &.view {
+        color: #1890ff;
+
+        &:hover {
+            color: #40a9ff;
+        }
+    }
+
+    &.restore {
+        color: #52c41a;
+
+        &:hover {
+            color: #73d13d;
+        }
+    }
+
+    &.delete {
+        color: #f5222d;
+
+        &:hover {
+            color: #ff4d4f;
+        }
+    }
+}
+
+/* 抽屉内容样式 */
+.archive-detail-drawer {
+    .ant-drawer-body {
+        padding: 24px;
+    }
+
+    .detail-section {
+        margin-bottom: 24px;
+
+        .section-title {
+            font-weight: 600;
+            color: #1890ff;
+            margin-bottom: 8px;
+        }
+
+        .section-content {
+            background-color: #fafafa;
+            padding: 12px;
+            border-radius: 4px;
+            border-left: 4px solid #1890ff;
+        }
+    }
+
+    .metadata-pre {
+        background-color: #f5f5f5;
+        padding: 12px;
+        border-radius: 4px;
+        border: 1px solid #d9d9d9;
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+}
+
+/* 模态框样式 */
+.archive-modal {
+    .ant-modal-header {
+        background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+        color: white;
+
+        .ant-modal-title {
+            color: white;
+            font-weight: 600;
+        }
+    }
+
+    .ant-form-item-label>label {
+        font-weight: 500;
+        color: #333;
+    }
+
+    .ant-input,
+    .ant-select-selector,
+    .ant-picker {
+        border-radius: 6px;
+        border: 1px solid #d9d9d9;
+        transition: all 0.3s ease;
+
+        &:hover {
+            border-color: #40a9ff;
+        }
+
+        &:focus,
+        &.ant-input-focused,
+        &.ant-select-focused .ant-select-selector {
+            border-color: #1890ff;
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+    }
+}
+
+/* 统计卡片动画 */
+.statistic-card {
+    transition: all 0.3s ease;
+
+    &:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .ant-statistic-title {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .ant-statistic-content {
+        color: #1890ff;
+        font-weight: 600;
+    }
+}
+
+/* 加载状态样式 */
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+}
+
+/* 空状态样式 */
+.empty-container {
+    text-align: center;
+    padding: 40px 0;
+
+    .empty-icon {
+        font-size: 64px;
+        color: #d9d9d9;
+        margin-bottom: 16px;
+    }
+
+    .empty-text {
+        color: #666;
+        font-size: 16px;
+    }
+}

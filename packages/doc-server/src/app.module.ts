@@ -7,6 +7,7 @@ import { FolderModule } from './folder/folder.module';
 import { RecentVisitsModule } from './recent-visits/recent-visits.module';
 import { DocumentModule } from './document/document.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ArchiveSchedulerService } from './tasks/archive-scheduler.service';
 
 @Module({
   imports: [
@@ -23,6 +24,6 @@ import { ScheduleModule } from '@nestjs/schedule';
   ],
 
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, ArchiveSchedulerService],
 })
-export class AppModule {}
+export class AppModule { }

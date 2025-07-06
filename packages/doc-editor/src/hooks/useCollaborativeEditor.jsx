@@ -23,6 +23,64 @@ const defaultInitialValue = [
   },
 ];
 
+/**
+ * 将Yjs Delta格式转换为Slate格式
+ * @param {Array} delta - Yjs Delta格式
+ * @returns {Array} Slate格式
+ */
+const deltaToSlate = (delta) => {
+  if (!Array.isArray(delta) || delta.length === 0) {
+    return defaultInitialValue;
+  }
+
+  try {
+    const result = [];
+    let currentParagraph = { type: 'paragraph', children: [] };
+
+    for (const op of delta) {
+      if (op.insert) {
+        if (typeof op.insert === 'string') {
+          // 文本内容
+          if (op.insert === '\n') {
+            // 换行符，开始新段落
+            if (currentParagraph.children.length > 0) {
+              result.push(currentParagraph);
+            }
+            currentParagraph = { type: 'paragraph', children: [] };
+          } else {
+            // 普通文本
+            currentParagraph.children.push({ text: op.insert });
+          }
+        } else if (op.insert && typeof op.insert === 'object') {
+          // 可能是块级元素
+          if (op.insert.type) {
+            // 如果已经是Slate格式，直接使用
+            result.push(op.insert);
+          } else {
+            // 转换为段落
+            currentParagraph.children.push({ text: JSON.stringify(op.insert) });
+          }
+        }
+      }
+    }
+
+    // 添加最后一个段落
+    if (currentParagraph.children.length > 0) {
+      result.push(currentParagraph);
+    }
+
+    // 如果没有内容，返回默认值
+    if (result.length === 0) {
+      return defaultInitialValue;
+    }
+
+    return result;
+  } catch (error) {
+    console.warn('[useCollaborativeEditor] Delta转Slate失败:', error);
+    return defaultInitialValue;
+  }
+};
+
 export function useCollaborativeEditor(documentId) {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showAIDrawer, setShowAIDrawer] = useState(false);
@@ -49,32 +107,80 @@ export function useCollaborativeEditor(documentId) {
 
   // 只保留唯一初始化入口：用后端 yjsState 初始化 Y.Doc
   useEffect(() => {
+    console.log('[useCollaborativeEditor] Y.Doc初始化useEffect触发', { documentId });
+
     if (!documentId) return;
+
+    // 检查是否正在进行快照恢复，如果是则跳过初始化
+    if (window.isRestoringSnapshot) {
+      console.log('[useCollaborativeEditor] 检测到快照恢复中，跳过Y.Doc初始化');
+      return;
+    }
+
+    // 检查是否已经完成快照恢复，如果是则跳过初始化
+    if (window.hasRestoredSnapshot) {
+      console.log('[useCollaborativeEditor] 检测到已完成快照恢复，跳过Y.Doc初始化');
+      return;
+    }
+
     // 1. 清理全局变量
     window.ydoc = null;
     window.provider = null;
     docRef.current = null;
-    // 2. 拉取后端 yjsState
+    // 2. 拉取历史版本列表中的最新版本 yjsState
     (async () => {
       let yjsState = null;
       try {
-        const res = await fetch(`/api/document/${documentId}/yjs-state`);
-        if (res.ok) {
-          const data = await res.json();
-          yjsState = data?.data?.yjsState;
+        // 获取历史版本列表
+        const historyRes = await fetch(`/api/document/${documentId}/history`);
+        if (historyRes.ok) {
+          const historyData = await historyRes.json();
+          const historyList = historyData?.data?.list || [];
+
+          // 获取最新版本的yjsState
+          if (historyList.length > 0) {
+            const latestVersion = historyList[0]; // 假设最新版本在第一个位置
+            yjsState = latestVersion?.yjsState;
+            console.log('[Y.Doc Init] 从历史版本获取yjsState:', {
+              versionId: latestVersion?.id,
+              yjsStateLength: yjsState?.length || 0
+            });
+          }
         }
       } catch (e) {
-        console.warn('拉取后端 yjsState 失败:', e);
+        console.warn('拉取历史版本 yjsState 失败:', e);
       }
       // 3. 初始化 Y.Doc
       let ydoc = new Y.Doc();
       if (yjsState && yjsState.length > 0) {
-        Y.applyUpdate(ydoc, new Uint8Array(yjsState));
+        try {
+          Y.applyUpdate(ydoc, new Uint8Array(yjsState));
+          console.log('[Y.Doc Init] 成功应用yjsState到Y.Doc');
+        } catch (error) {
+          console.error('[Y.Doc Init] 应用yjsState失败:', error);
+        }
+      } else {
+        console.warn('[Y.Doc Init] yjsState为空或无效');
       }
       console.log('[Y.Doc Init] yjsState 来源:', yjsState);
       console.log('[Y.Doc Init] 初始化内容:', ydoc.toJSON());
+
+      // 检查Y.Doc是否正确初始化
+      try {
+        const yText = ydoc.get('content', Y.XmlText);
+        if (yText) {
+          console.log('[Y.Doc Init] Y.Doc中的content长度:', yText.length);
+          console.log('[Y.Doc Init] Y.Doc中的content内容:', yText.toString());
+        } else {
+          console.warn('[Y.Doc Init] Y.Doc中没有找到content');
+        }
+      } catch (error) {
+        console.error('[Y.Doc Init] 检查Y.Doc内容失败:', error);
+      }
       docRef.current = ydoc;
       window.ydoc = ydoc;
+      // 将Y库暴露到全局，供其他组件使用
+      window.Y = Y;
       // 4. 注册 MongoDB 同步服务
       if (mongoSyncRegistered.current && documentId) {
         try {
@@ -93,6 +199,8 @@ export function useCollaborativeEditor(documentId) {
           debug: true,
         });
         mongoSyncRegistered.current = true;
+        // 将同步服务挂载到全局，供其他组件使用
+        window.yjsMongoSyncService = yjsMongoSyncService;
       } catch (error) {
         console.error('[编辑器] MongoDB同步服务注册失败:', error);
       }
@@ -110,6 +218,11 @@ export function useCollaborativeEditor(documentId) {
       });
       window.provider = provider;
       setTimeout(() => {
+        // 检查是否正在进行快照恢复，如果是则跳过Provider连接
+        if (window.isRestoringSnapshot || window.hasRestoredSnapshot) {
+          console.log('[useCollaborativeEditor] 检测到快照恢复状态，跳过Provider自动连接');
+          return;
+        }
         provider.connect();
         console.log('[Provider] 已connect:', provider, 'Y.Doc:', ydoc.toJSON());
       }, 300);
@@ -334,6 +447,18 @@ export function useCollaborativeEditor(documentId) {
   // 检查服务器并尝试连接
   useEffect(() => {
     const setupConnection = async () => {
+      // 检查是否正在进行快照恢复，如果是则跳过Provider连接
+      if (window.isRestoringSnapshot) {
+        console.log('[useCollaborativeEditor] 检测到快照恢复中，跳过setupConnection中的Provider连接');
+        return;
+      }
+
+      // 检查是否已经完成快照恢复，如果是则跳过Provider连接
+      if (window.hasRestoredSnapshot) {
+        console.log('[useCollaborativeEditor] 检测到已完成快照恢复，跳过setupConnection中的Provider连接');
+        return;
+      }
+
       const isOnline = await checkServerStatus();
       if (isOnline && provider) {
         provider.setAwarenessField('user', {
@@ -352,6 +477,19 @@ export function useCollaborativeEditor(documentId) {
   // 连接编辑器与协同服务
   useEffect(() => {
     if (!editor || !provider || !isConnected) return;
+
+    // 检查是否正在进行快照恢复，如果是则跳过连接
+    if (window.isRestoringSnapshot) {
+      console.log('[useCollaborativeEditor] 检测到快照恢复中，跳过YjsEditor连接');
+      return;
+    }
+
+    // 检查是否已经完成快照恢复，如果是则跳过连接
+    if (window.hasRestoredSnapshot) {
+      console.log('[useCollaborativeEditor] 检测到已完成快照恢复，跳过YjsEditor连接');
+      return;
+    }
+
     if (YjsEditor.isYjsEditor(editor)) {
       YjsEditor.connect(editor);
     }
@@ -366,6 +504,19 @@ export function useCollaborativeEditor(documentId) {
   useEffect(() => {
     const initializeContent = async () => {
       if (!editor || valueInitialized.current) return;
+
+      // 检查是否正在进行快照恢复，如果是则跳过初始化
+      if (window.isRestoringSnapshot) {
+        console.log('[useCollaborativeEditor] 检测到快照恢复中，跳过内容初始化');
+        return;
+      }
+
+      // 检查是否已经完成快照恢复，如果是则跳过初始化
+      if (window.hasRestoredSnapshot) {
+        console.log('[useCollaborativeEditor] 检测到已完成快照恢复，跳过内容初始化');
+        return;
+      }
+
       // 等待IndexedDB同步完成
       if (indexeddbProvider.current && !indexeddbProvider.current.synced) {
         await new Promise(resolve => {
@@ -568,81 +719,84 @@ export function useCollaborativeEditor(documentId) {
   );
 
   /**
+   * 基于快照恢复文档状态（不重建实例）
+   * @param {Uint8Array|Array} snapshot - 历史快照数据
+   */
+  const restoreFromSnapshot = useCallback(
+    snapshot => {
+      if (!docRef.current || !editor) {
+        console.error('Y.Doc 或编辑器未初始化');
+        return;
+      }
+
+      try {
+        console.log('[useCollaborativeEditor] 开始基于快照恢复文档状态');
+
+        // 1. 暂停协同更新，防止状态冲突
+        if (YjsEditor.isYjsEditor(editor)) {
+          YjsEditor.disconnect(editor);
+          console.log('[useCollaborativeEditor] 已断开编辑器协同连接');
+        }
+
+        // 2. 应用历史快照到现有Y.Doc
+        const update = new Uint8Array(snapshot);
+        Y.applyUpdate(docRef.current, update);
+        console.log('[useCollaborativeEditor] 已应用历史快照到Y.Doc');
+
+        // 3. 重新连接编辑器协同
+        if (YjsEditor.isYjsEditor(editor)) {
+          YjsEditor.connect(editor);
+          console.log('[useCollaborativeEditor] 已重新连接编辑器协同');
+        }
+
+        // 4. 重新初始化 yComments/yText 引用
+        yCommentsRef.current = docRef.current.getArray('comments');
+        yTextRef.current = docRef.current.get('content', Y.XmlText);
+
+        // 5. 强制刷新编辑器状态，确保与Yjs XmlText同步
+        try {
+          const yText = docRef.current.get('content', Y.XmlText);
+          if (yText) {
+            // 直接使用toString()获取内容，避免使用可能不存在的toDelta方法
+            const content = yText.toString();
+            console.log('[useCollaborativeEditor] 快照恢复后获取到内容:', content);
+
+            // 将内容转换为Slate格式
+            const slateValue = content ? [{
+              type: 'paragraph',
+              children: [{ text: content }],
+            }] : defaultInitialValue;
+            console.log('[useCollaborativeEditor] 转换后的Slate值:', slateValue);
+            setValue(slateValue);
+          } else {
+            console.warn('[useCollaborativeEditor] 无法获取Y.XmlText，使用默认值');
+            setValue(defaultInitialValue);
+          }
+        } catch (error) {
+          console.error('[useCollaborativeEditor] 快照恢复后刷新编辑器状态失败:', error);
+          setValue(defaultInitialValue);
+        }
+
+        console.log('[useCollaborativeEditor] 快照恢复完成');
+      } catch (error) {
+        console.error('[useCollaborativeEditor] 快照恢复失败:', error);
+        throw error;
+      }
+    },
+    [editor],
+  );
+
+  /**
    * 强制用历史yjsState重建Y.Doc和协同流
    * @param {Uint8Array|Array} yjsStateArr 历史版本的yjsState
+   * @deprecated 使用 restoreFromSnapshot 替代，避免重建实例
    */
   const forceRestoreYjsState = useCallback(
     yjsStateArr => {
-      // 1. 断开 provider
-      if (window.provider) window.provider.disconnect();
-      // 2. 注销 MongoDB 同步服务
-      if (mongoSyncRegistered.current && documentId) {
-        try {
-          yjsMongoSyncService.unregisterDocumentSync(documentId);
-          mongoSyncRegistered.current = false;
-        } catch (error) {
-          // ignore
-        }
-      }
-      // 3. 彻底重建 Y.Doc
-      const newYDoc = new Y.Doc();
-      const update = new Uint8Array(yjsStateArr);
-      console.log(
-        '[forceRestoreYjsState] 开始回滚，目标 yjsState:',
-        yjsStateArr,
-      );
-      Y.applyUpdate(newYDoc, update);
-      console.log('[forceRestoreYjsState] 新建 Y.Doc，内容:', newYDoc.toJSON());
-      docRef.current = newYDoc;
-      window.ydoc = newYDoc;
-      // 4. 重新注册 MongoDB 同步服务
-      try {
-        yjsMongoSyncService.registerDocumentSync(documentId, newYDoc, {
-          userId: JSON.parse(localStorage.getItem('userInfo'))?.userId || 1,
-          username:
-            JSON.parse(localStorage.getItem('userInfo'))?.username ||
-            'Anonymous',
-          debug: true,
-        });
-        mongoSyncRegistered.current = true;
-      } catch (error) {
-        console.error('[编辑器] MongoDB同步服务注册失败:', error);
-      }
-      // 5. 重新创建 provider
-      const newProvider = new HocuspocusProvider({
-        url: WS_URL,
-        name: documentId,
-        document: newYDoc,
-        connect: false,
-        onConnect: () => setIsConnected(true),
-        onDisconnect: () => setIsConnected(false),
-        onSynced: () => {
-          console.log(`[WebSocket] 文档 ${documentId} 已同步`);
-        },
-      });
-      window.provider = newProvider;
-      setTimeout(() => {
-        newProvider.connect();
-        console.log(
-          '[forceRestoreYjsState] provider 注册完成',
-          newProvider,
-          'Y.Doc:',
-          newYDoc.toJSON(),
-        );
-      }, 300);
-      // 6. 重新初始化 yComments/yText
-      yCommentsRef.current = newYDoc.getArray('comments');
-      yTextRef.current = newYDoc.get('content', Y.XmlText);
-      // 7. 强制刷新编辑器
-      setValue(v => {
-        console.log('[forceRestoreYjsState] Editor Value 回滚后:', v);
-        return [...v];
-      });
-      console.log(
-        '[useCollaborativeEditor] 已彻底重建Y.Doc和协同流并恢复历史状态（无本地缓存）',
-      );
+      console.warn('[useCollaborativeEditor] forceRestoreYjsState 已废弃，请使用 restoreFromSnapshot');
+      return restoreFromSnapshot(yjsStateArr);
     },
-    [documentId],
+    [restoreFromSnapshot],
   );
 
   if (!documentId) {
@@ -672,7 +826,9 @@ export function useCollaborativeEditor(documentId) {
     yComments: yCommentsRef,
     addComment,
     removeComment,
-    // 新增：彻底重建Y.Doc并恢复历史状态
+    // 新增：基于快照恢复文档状态
+    restoreFromSnapshot,
+    // 废弃：彻底重建Y.Doc并恢复历史状态（保持向后兼容）
     forceRestoreYjsState,
   };
 }

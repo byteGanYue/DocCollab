@@ -12,7 +12,7 @@ export class DocumentHistoryService {
   constructor(
     @InjectModel(DocumentHistoryEntity.name)
     private documentHistoryModel: Model<DocumentHistoryEntity>,
-  ) {}
+  ) { }
 
   /**
    * 添加文档历史版本记录
@@ -373,19 +373,9 @@ export class DocumentHistoryService {
       .select('_id')
       .lean();
     const existIds = new Set(
-      exists.map((v) =>
-        typeof v._id === 'object' &&
-        v._id &&
-        typeof v._id.toString === 'function'
-          ? v._id.toString()
-          : String(v._id),
-      ),
+      exists.map((v) => String(v._id as any)),
     );
-    const toInsert = versions.filter((v) =>
-      typeof v._id === 'object' && v._id && typeof v._id.toString === 'function'
-        ? !existIds.has(v._id.toString())
-        : !existIds.has(String(v._id)),
-    );
+    const toInsert = versions.filter((v) => !existIds.has(String(v._id as any)));
     if (toInsert.length > 0) {
       await this.documentHistoryModel.insertMany(toInsert);
     }

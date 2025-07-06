@@ -167,20 +167,42 @@ export class YjsMongoSyncService extends EventEmitter {
     try {
       this.log(`开始文档 ${documentId} 的初始同步`);
 
+      // 检查是否正在进行快照恢复，如果是则跳过初始同步
+      if (window.isRestoringSnapshot || window.hasRestoredSnapshot) {
+        this.log(`检测到快照恢复状态，跳过初始同步`);
+        return;
+      }
+
       // 从MongoDB获取最新文档数据
       const mongoDocument = await this.fetchDocumentFromMongo(
         documentId,
         userId,
       );
 
-      if (mongoDocument && mongoDocument.content) {
+      if (mongoDocument) {
         // 检查MongoDB内容是否比本地Yjs内容更新
         const mongoUpdateTime = new Date(mongoDocument.update_time).getTime();
         const localUpdateTime = this.lastSyncTimes.get(documentId) || 0;
 
         if (mongoUpdateTime > localUpdateTime) {
           this.log(`MongoDB内容更新，同步到Yjs文档 ${documentId}`);
-          await this.applyMongoContentToYjs(ydoc, mongoDocument.content);
+
+          // 优先使用yjsState进行同步
+          if (mongoDocument.yjsState && mongoDocument.yjsState.length > 0) {
+            this.log(`使用yjsState同步文档 ${documentId}`);
+            this.log(`yjsState长度: ${mongoDocument.yjsState.length}`);
+            this.log(`yjsState预览: ${mongoDocument.yjsState.slice(0, 10)}`);
+            const yjsState = new Uint8Array(mongoDocument.yjsState);
+            Y.applyUpdate(ydoc, yjsState);
+            this.log(`已应用yjsState到文档 ${documentId}`);
+            this.log(`应用后的Y.Doc内容: ${ydoc.toJSON()}`);
+          } else if (mongoDocument.content) {
+            // 如果没有yjsState，则使用content
+            this.log(`使用content同步文档 ${documentId}`);
+            this.log(`content内容: ${mongoDocument.content}`);
+            await this.applyMongoContentToYjs(ydoc, mongoDocument.content);
+          }
+
           this.lastSyncTimes.set(documentId, mongoUpdateTime);
         }
       }
@@ -285,6 +307,14 @@ export class YjsMongoSyncService extends EventEmitter {
     const yjsState = Y.encodeStateAsUpdate(ydoc);
     const yjsContent = this.extractContentFromYjs(ydoc);
 
+    // 添加调试信息
+    console.log(`[YjsMongoSyncService] 同步文档 ${documentId} 的yjsState:`, {
+      yjsStateLength: yjsState.length,
+      yjsStatePreview: Array.from(yjsState).slice(0, 10),
+      yjsContent: yjsContent,
+      reason: reason
+    });
+
     // 构建同步数据
     const syncData = {
       documentId,
@@ -311,21 +341,49 @@ export class YjsMongoSyncService extends EventEmitter {
    */
   extractContentFromYjs(ydoc) {
     try {
-      // 获取主要的文本内容
+      console.log('[YjsMongoSyncService] 开始提取Y.Doc内容');
+      console.log('[YjsMongoSyncService] Y.Doc状态:', ydoc.toJSON());
+
+      // 尝试获取XmlText类型的内容（Slate编辑器使用）
+      const yXmlText = ydoc.get('content', Y.XmlText);
+      console.log('[YjsMongoSyncService] XmlText对象:', yXmlText);
+      if (yXmlText) {
+        const content = yXmlText.toString();
+        console.log(`[YjsMongoSyncService] 从Y.Doc提取到XmlText内容: "${content}"`);
+        return content;
+      }
+
+      // 尝试获取Text类型的内容
       const yText = ydoc.getText('content');
+      console.log('[YjsMongoSyncService] Text对象:', yText);
       if (yText) {
-        return yText.toString();
+        const content = yText.toString();
+        console.log(`[YjsMongoSyncService] 从Y.Doc提取到Text内容: "${content}"`);
+        return content;
       }
 
-      // 如果没有文本内容，尝试获取其他类型的内容
+      // 尝试获取Array类型的内容
       const yArray = ydoc.getArray('content');
+      console.log('[YjsMongoSyncService] Array对象:', yArray);
       if (yArray && yArray.length > 0) {
-        return JSON.stringify(yArray.toArray());
+        const content = JSON.stringify(yArray.toArray());
+        console.log(`[YjsMongoSyncService] 从Y.Doc提取到Array内容: "${content}"`);
+        return content;
       }
 
+      // 尝试获取Map类型的内容
+      const yMap = ydoc.getMap('content');
+      console.log('[YjsMongoSyncService] Map对象:', yMap);
+      if (yMap) {
+        const content = JSON.stringify(yMap.toJSON());
+        console.log(`[YjsMongoSyncService] 从Y.Doc提取到Map内容: "${content}"`);
+        return content;
+      }
+
+      console.log('[YjsMongoSyncService] Y.Doc中没有找到任何content内容');
       return '';
     } catch (error) {
-      this.log('提取Yjs内容失败:', error);
+      console.error('[YjsMongoSyncService] 提取Yjs内容失败:', error);
       return '';
     }
   }
@@ -565,6 +623,85 @@ export class YjsMongoSyncService extends EventEmitter {
     this.retryCounters.clear();
 
     this.removeAllListeners();
+  }
+
+  /**
+   * 基于快照恢复文档状态（不重建实例）
+   * @param {number} documentId - 文档ID
+   * @param {Uint8Array|Array} snapshot - 历史快照数据
+   * @param {Object} options - 恢复选项
+   */
+  async restoreFromSnapshot(documentId, snapshot, options = {}) {
+    try {
+      this.log(`开始基于快照恢复文档 ${documentId} 状态`);
+
+      // 1. 暂停同步，防止状态冲突
+      await this.pauseDocumentSync(documentId);
+
+      // 2. 应用历史快照到Y.Doc
+      const ydoc = this.getDocumentYDoc(documentId);
+      if (!ydoc) {
+        throw new Error(`文档 ${documentId} 的Y.Doc未找到`);
+      }
+
+      const update = new Uint8Array(snapshot);
+      Y.applyUpdate(ydoc, update);
+      this.log(`已应用历史快照到文档 ${documentId} 的Y.Doc`);
+
+      // 3. 恢复同步
+      await this.resumeDocumentSync(documentId);
+
+      // 4. 强制同步到MongoDB
+      await this.forceSyncDocument(documentId);
+
+      this.log(`文档 ${documentId} 快照恢复完成`);
+      this.emit('snapshotRestored', { documentId, success: true });
+    } catch (error) {
+      this.log(`文档 ${documentId} 快照恢复失败:`, error);
+      this.emit('snapshotRestored', { documentId, success: false, error });
+      throw error;
+    }
+  }
+
+  /**
+   * 暂停文档同步
+   * @param {number} documentId - 文档ID
+   */
+  async pauseDocumentSync(documentId) {
+    const syncTask = this.syncQueue.get(documentId);
+    if (syncTask) {
+      clearTimeout(syncTask.timeoutId);
+      this.syncQueue.delete(documentId);
+    }
+    this.activeSyncs.add(documentId); // 标记为正在同步，防止新的同步任务
+    this.log(`已暂停文档 ${documentId} 的同步`);
+  }
+
+  /**
+   * 恢复文档同步
+   * @param {number} documentId - 文档ID
+   */
+  async resumeDocumentSync(documentId) {
+    this.activeSyncs.delete(documentId);
+    this.log(`已恢复文档 ${documentId} 的同步`);
+  }
+
+  /**
+   * 获取文档的Y.Doc实例
+   * @param {number} documentId - 文档ID
+   * @returns {Y.Doc|null} Y.Doc实例
+   */
+  getDocumentYDoc(documentId) {
+    // 这里需要根据实际的存储方式获取Y.Doc
+    // 如果Y.Doc存储在window对象中，可以这样获取：
+    if (window.ydoc) {
+      return window.ydoc;
+    }
+
+    // 如果Y.Doc存储在服务实例中，可以这样获取：
+    // return this.documentYdocs.get(documentId);
+
+    return null;
   }
 }
 

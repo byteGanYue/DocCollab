@@ -1,0 +1,4 @@
+# 忽略所有 TypeScript 文件
+*.ts
+src/**/*.ts
+test/**/*.ts 

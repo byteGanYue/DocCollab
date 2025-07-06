@@ -1,0 +1,309 @@
+/**
+ * 版本对比组件样式
+ * 提供现代化、美观的版本对比界面
+ */
+
+.versionDiff {
+    padding: 24px;
+    background-color: var(--color-background, #ffffff);
+    min-height: 100vh;
+    color: var(--color-text, #000000);
+}
+
+/* 头部样式 */
+.header {
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--color-border, #f0f0f0);
+}
+
+.header h4 {
+    margin: 0;
+    color: var(--color-text, #000000);
+}
+
+/* 统计卡片样式 */
+.summaryCard {
+    margin-bottom: 24px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.summaryCard :global(.ant-card-body) {
+    padding: 16px 24px;
+}
+
+/* 标签页样式 */
+.tabs {
+    margin-bottom: 24px;
+}
+
+.tabs :global(.ant-tabs-nav) {
+    margin-bottom: 16px;
+}
+
+.tabs :global(.ant-tabs-tab) {
+    font-weight: 500;
+}
+
+/* 差异容器样式 */
+.diffContainer {
+    max-height: 600px;
+    overflow-y: auto;
+    border: 1px solid var(--color-border, #f0f0f0);
+    border-radius: 8px;
+    background-color: var(--color-bg-container, #ffffff);
+}
+
+/* 无差异状态 */
+.noDiff {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--color-success, #52c41a);
+}
+
+/* 差异项样式 */
+.diffItem {
+    margin-bottom: 16px;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.diffItem:last-child {
+    margin-bottom: 0;
+}
+
+/* 新增差异样式 */
+.diffAdded {
+    background-color: #f6ffed;
+    border: 1px solid #b7eb8f;
+    border-left: 4px solid #52c41a;
+}
+
+.diffAdded .diffHeader {
+    padding: 8px 12px;
+    background-color: rgba(82, 196, 26, 0.1);
+    border-bottom: 1px solid #b7eb8f;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.diffAdded .diffContent {
+    padding: 12px;
+    color: #52c41a;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* 删除差异样式 */
+.diffDeleted {
+    background-color: #fff2f0;
+    border: 1px solid #ffccc7;
+    border-left: 4px solid #ff4d4f;
+}
+
+.diffDeleted .diffHeader {
+    padding: 8px 12px;
+    background-color: rgba(255, 77, 79, 0.1);
+    border-bottom: 1px solid #ffccc7;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.diffDeleted .diffContent {
+    padding: 12px;
+    color: #ff4d4f;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* 修改差异样式 */
+.diffModified {
+    background-color: #fff7e6;
+    border: 1px solid #ffd591;
+    border-left: 4px solid #fa8c16;
+}
+
+.diffModified .diffHeader {
+    padding: 8px 12px;
+    background-color: rgba(250, 140, 22, 0.1);
+    border-bottom: 1px solid #ffd591;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.diffModified .diffContent {
+    padding: 12px;
+}
+
+.diffModified .diffOld {
+    margin-bottom: 8px;
+    padding: 8px;
+    background-color: #fff2f0;
+    border: 1px solid #ffccc7;
+    border-radius: 4px;
+    color: #ff4d4f;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.diffModified .diffNew {
+    padding: 8px;
+    background-color: #f6ffed;
+    border: 1px solid #b7eb8f;
+    border-radius: 4px;
+    color: #52c41a;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* 内容查看样式 */
+.contentView {
+    border: 1px solid var(--color-border, #f0f0f0);
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: var(--color-bg-container, #ffffff);
+}
+
+.contentHeader {
+    padding: 12px 16px;
+    background-color: var(--color-bg-layout, #fafafa);
+    border-bottom: 1px solid var(--color-border, #f0f0f0);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.contentBody {
+    padding: 16px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.contentBody pre {
+    margin: 0;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--color-text, #000000);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* 操作按钮样式 */
+.actions {
+    text-align: center;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border, #f0f0f0);
+}
+
+.actions :global(.ant-btn) {
+    min-width: 100px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+/* 加载状态样式 */
+.loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--color-text-secondary, #666666);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .versionDiff {
+        padding: 16px;
+    }
+
+    .header {
+        margin-bottom: 16px;
+    }
+
+    .summaryCard {
+        margin-bottom: 16px;
+    }
+
+    .diffContainer {
+        max-height: 400px;
+    }
+
+    .contentBody {
+        max-height: 300px;
+    }
+}
+
+/* 深色模式适配 */
+@media (prefers-color-scheme: dark) {
+    .versionDiff {
+        background-color: var(--color-bg-container-dark, #1f1f1f);
+        color: var(--color-text-dark, #ffffff);
+    }
+
+    .diffContainer {
+        background-color: var(--color-bg-container-dark, #1f1f1f);
+        border-color: var(--color-border-dark, #434343);
+    }
+
+    .contentView {
+        background-color: var(--color-bg-container-dark, #1f1f1f);
+        border-color: var(--color-border-dark, #434343);
+    }
+
+    .contentHeader {
+        background-color: var(--color-bg-layout-dark, #141414);
+        border-color: var(--color-border-dark, #434343);
+    }
+
+    .contentBody pre {
+        color: var(--color-text-dark, #ffffff);
+    }
+}
+
+/* 动画效果 */
+.diffItem {
+    transition: all 0.3s ease;
+}
+
+.diffItem:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 滚动条样式 */
+.diffContainer::-webkit-scrollbar,
+.contentBody::-webkit-scrollbar {
+    width: 6px;
+}
+
+.diffContainer::-webkit-scrollbar-track,
+.contentBody::-webkit-scrollbar-track {
+    background: var(--color-bg-layout, #f5f5f5);
+    border-radius: 3px;
+}
+
+.diffContainer::-webkit-scrollbar-thumb,
+.contentBody::-webkit-scrollbar-thumb {
+    background: var(--color-border, #d9d9d9);
+    border-radius: 3px;
+}
+
+.diffContainer::-webkit-scrollbar-thumb:hover,
+.contentBody::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-secondary, #bfbfbf);
+}
