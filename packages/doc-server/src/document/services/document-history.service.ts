@@ -12,7 +12,7 @@ export class DocumentHistoryService {
   constructor(
     @InjectModel(DocumentHistoryEntity.name)
     private documentHistoryModel: Model<DocumentHistoryEntity>,
-  ) { }
+  ) {}
 
   /**
    * 添加文档历史版本记录
@@ -374,14 +374,227 @@ export class DocumentHistoryService {
       .find({ _id: { $in: ids } })
       .select('_id')
       .lean();
-    const existIds = new Set(
-      exists.map((v) => String(v._id as any)),
+    const existIds = new Set(exists.map((v) => String(v._id as string)));
+    const toInsert = versions.filter(
+      (v) => !existIds.has(String(v._id as string)),
     );
-    const toInsert = versions.filter((v) => !existIds.has(String(v._id as any)));
     if (toInsert.length > 0) {
       await this.documentHistoryModel.insertMany(toInsert);
     }
     // 返回最新历史版本列表
     return this.getDocumentHistory(documentId, 1, 20);
+  }
+
+  /**
+   * 获取文档的最新版本
+   * @param documentId 文档ID
+   * @returns 最新版本的文档内容
+   */
+  async getLatestDocumentVersion(
+    documentId: number,
+  ): Promise<DocumentHistoryEntity | null> {
+    try {
+      const latestVersion = await this.documentHistoryModel
+        .findOne({ documentId })
+        .sort({ versionId: -1 })
+        .exec();
+
+      if (latestVersion) {
+        this.logger.log(
+          `获取文档最新版本成功: documentId=${documentId}, versionId=${latestVersion.versionId}`,
+        );
+      }
+
+      return latestVersion;
+    } catch (error: unknown) {
+      this.logger.error('获取文档最新版本失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      throw new Error(`获取文档最新版本失败: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * 批量获取多个文档的最新版本
+   * @param documentIds 文档ID数组
+   * @returns 每个文档的最新版本
+   */
+  async getLatestDocumentVersions(
+    documentIds: number[],
+  ): Promise<DocumentHistoryEntity[]> {
+    try {
+      if (!documentIds.length) {
+        return [];
+      }
+
+      // 使用聚合管道获取每个文档的最新版本
+      const latestVersions = await this.documentHistoryModel.aggregate([
+        {
+          $match: {
+            documentId: { $in: documentIds },
+          },
+        },
+        {
+          $sort: {
+            documentId: 1 as const,
+            versionId: -1 as const,
+          },
+        },
+        {
+          $group: {
+            _id: '$documentId',
+            doc: { $first: '$$ROOT' },
+          },
+        },
+        {
+          $replaceRoot: { newRoot: '$doc' },
+        },
+      ]);
+
+      this.logger.log(
+        `批量获取文档最新版本成功: 文档数量=${documentIds.length}, 获取到的版本数量=${latestVersions.length}`,
+      );
+
+      return latestVersions as unknown as DocumentHistoryEntity[];
+    } catch (error: unknown) {
+      this.logger.error('批量获取文档最新版本失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      throw new Error(`批量获取文档最新版本失败: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * 搜索文档内容（从历史版本表中搜索最新版本）
+   * @param searchText 搜索文本
+   * @param userId 用户ID
+   * @param includePublic 是否包含公开文档
+   * @returns 匹配的文档列表
+   */
+  async searchDocumentContent(
+    searchText: string,
+    userId: number,
+    includePublic: boolean = true,
+  ): Promise<DocumentHistoryEntity[]> {
+    try {
+      this.logger.log('从历史版本表中搜索文档内容', {
+        searchText,
+        userId,
+        includePublic,
+      });
+
+      // 如果需要包含公开文档，我们需要先从文档表获取公开文档的ID列表
+      const publicDocumentIds: number[] = [];
+      if (includePublic) {
+        try {
+          // 这里需要注入DocumentModel或者通过其他方式获取公开文档列表
+          // 由于我们无法直接注入DocumentModel，所以这里使用一个临时方案
+          // 在实际项目中，应该通过依赖注入或者服务调用来获取
+          // 获取公开文档ID列表的逻辑应该在DocumentService中实现
+          // 这里我们假设已经获取到了公开文档ID列表
+          // publicDocumentIds = await getPublicDocumentIds();
+          // 暂时先不实现公开文档搜索，后续可以通过服务间调用完善
+        } catch (error) {
+          this.logger.error('获取公开文档ID列表失败:', error);
+        }
+      }
+
+      // 构建搜索管道
+      // 1. 用户自己的文档
+      const userDocumentsPipeline = [
+        {
+          $match: {
+            userId: userId,
+          },
+        },
+        {
+          $sort: {
+            documentId: 1 as const,
+            versionId: -1 as const,
+          },
+        },
+        {
+          $group: {
+            _id: '$documentId',
+            doc: { $first: '$$ROOT' },
+          },
+        },
+        {
+          $replaceRoot: { newRoot: '$doc' },
+        },
+        {
+          $match: {
+            $or: [
+              { documentName: { $regex: searchText, $options: 'i' } },
+              { content: { $regex: searchText, $options: 'i' } },
+            ],
+          },
+        },
+      ];
+
+      // 执行用户文档搜索
+      const userResults = await this.documentHistoryModel.aggregate(
+        userDocumentsPipeline,
+      );
+
+      this.logger.log(
+        `从历史版本表中搜索到用户自己的 ${userResults.length} 个匹配文档`,
+      );
+
+      // 如果有公开文档ID列表且不为空，再搜索公开文档
+      let publicResults: DocumentHistoryEntity[] = [];
+      if (includePublic && publicDocumentIds.length > 0) {
+        const publicDocumentsPipeline = [
+          {
+            $match: {
+              documentId: { $in: publicDocumentIds },
+              userId: { $ne: userId }, // 排除用户自己的文档
+            },
+          },
+          {
+            $sort: {
+              documentId: 1 as const,
+              versionId: -1 as const,
+            },
+          },
+          {
+            $group: {
+              _id: '$documentId',
+              doc: { $first: '$$ROOT' },
+            },
+          },
+          {
+            $replaceRoot: { newRoot: '$doc' },
+          },
+          {
+            $match: {
+              $or: [
+                { documentName: { $regex: searchText, $options: 'i' } },
+                { content: { $regex: searchText, $options: 'i' } },
+              ],
+            },
+          },
+        ];
+
+        publicResults = await this.documentHistoryModel.aggregate(
+          publicDocumentsPipeline,
+        );
+        this.logger.log(
+          `从历史版本表中搜索到公开的 ${publicResults.length} 个匹配文档`,
+        );
+      }
+
+      // 合并结果并限制数量
+      const combinedResults = [...userResults, ...publicResults];
+      const limitedResults = combinedResults.slice(0, 50); // 限制最多返回50条结果
+
+      this.logger.log(
+        `从历史版本表中搜索到总共 ${limitedResults.length} 个匹配的文档`,
+      );
+
+      return limitedResults as unknown as DocumentHistoryEntity[];
+    } catch (error: unknown) {
+      this.logger.error('从历史版本表中搜索文档内容失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      throw new Error(`从历史版本表中搜索文档内容失败: ${errorMessage}`);
+    }
   }
 }

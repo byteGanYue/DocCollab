@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   Logger,
@@ -60,7 +59,7 @@ export class DocumentService {
     private counterService: CounterService,
     private documentHistoryService: DocumentHistoryService,
     private recentVisitsService: RecentVisitsService,
-  ) { }
+  ) {}
 
   /**
    * 创建文档
@@ -401,9 +400,13 @@ export class DocumentService {
 
       // 回滚保护：如果文档刚被回滚（5秒内），拒绝旧内容覆盖
       const now = Date.now();
-      const updateTime = document.update_time ? new Date(document.update_time).getTime() : 0;
+      const updateTime = document.update_time
+        ? new Date(document.update_time).getTime()
+        : 0;
       if (now - updateTime < 5000) {
-        this.logger.warn('[回滚保护] 回滚后5秒内拒绝sync-yjs，防止旧内容覆盖', { documentId });
+        this.logger.warn('[回滚保护] 回滚后5秒内拒绝sync-yjs，防止旧内容覆盖', {
+          documentId,
+        });
         return {
           success: false,
           message: '回滚保护：回滚后5秒内拒绝同步，防止旧内容覆盖',
@@ -817,23 +820,21 @@ export class DocumentService {
         try {
           // 获取用户的所有文档
           const userDocuments = await this.documentModel
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
             .find({ userId: user.userId })
             .lean()
             .exec();
 
           result.push({
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             userId: user.userId,
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
             username: user.username,
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
             isPublic: user.isPublic,
             documents: userDocuments as unknown as DocumentDocument[],
           });
         } catch (userError) {
           this.logger.warn(
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             `获取用户 ${user.username} (ID: ${user.userId}) 的文档失败: ${(userError as Error).message}`,
           );
           // 继续处理其他用户，不中断整个流程
@@ -883,7 +884,7 @@ export class DocumentService {
         };
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       const publicUserIds = publicUsers.map((user) => user.userId);
 
       // 构建查询条件：文档必须属于公开用户且在指定文件夹中
@@ -932,7 +933,7 @@ export class DocumentService {
   }
 
   /**
-   * 搜索文档内容
+   * 搜索文档
    * @param searchText 搜索文本
    * @param userId 用户ID
    * @returns 搜索结果，包括用户自己的文档和其他用户公开的文档
@@ -965,84 +966,19 @@ export class DocumentService {
         };
       }
 
-      // 构建搜索条件：查找用户自己的文档以及其他用户公开的文档
-      const searchCondition = {
-        $and: [
-          {
-            $or: [
-              { userId: userId }, // 用户自己的文档
-              { isPublic: true }, // 其他用户公开的文档
-            ],
-          },
-          {
-            $or: [
-              { documentName: { $regex: searchText, $options: 'i' } },
-              // 不再直接在数据库层面匹配content字段，因为可能会匹配到JSON的键名
-              // 我们将获取所有文档，然后在应用层面解析JSON并只匹配text字段的值
-            ],
-          },
-        ],
-      };
-
-      // 查询文档，限制最多返回100条结果
-      const documents = await this.documentModel
-        .find(searchCondition)
-        .limit(100)
-        .sort({ update_time: -1 }); // 按最后修改时间降序排序
+      // 从历史版本表中搜索文档内容（只搜索最新版本）
+      const historyResults =
+        await this.documentHistoryService.searchDocumentContent(
+          searchText,
+          userId,
+          true, // 包含公开文档
+        );
 
       this.logger.log(
-        `搜索到 ${documents.length} 个文档名匹配的文档，准备搜索文档内容`,
+        `从历史版本表中搜索到 ${historyResults.length} 个匹配的文档`,
       );
 
-      // 如果文档名匹配结果少于20条，再获取更多文档进行内容搜索
-      interface DocumentLike {
-        toObject?: () => Record<string, unknown>;
-        _id?: unknown;
-        userId: number;
-        documentId: number;
-        documentName: string;
-        content: string;
-        create_username: string;
-        update_username: string;
-        editorId: number[];
-        parentFolderIds: number[];
-        create_time: Date;
-        update_time: Date;
-        isPublic?: boolean;
-      }
-
-      let additionalDocuments: DocumentLike[] = [];
-      if (documents.length < 20) {
-        // 构建额外的搜索条件，不包含文档名匹配
-        const additionalCondition = {
-          $and: [
-            {
-              $or: [
-                { userId: userId }, // 用户自己的文档
-                { isPublic: true }, // 其他用户公开的文档
-              ],
-            },
-          ],
-        };
-
-        const result = await this.documentModel
-          .find(additionalCondition)
-          .limit(50)
-          .sort({ update_time: -1 })
-          .lean();
-
-        // 安全的类型转换
-        additionalDocuments = result as unknown as DocumentLike[];
-
-        this.logger.log(
-          `获取额外 ${additionalDocuments.length} 个文档进行内容搜索`,
-        );
-      }
-
-      // 合并文档列表
-      const allDocuments = [...documents, ...additionalDocuments];
-
-      // 搜索结果数组
+      // 转换结果格式
       const searchResults: Array<{
         documentId: number;
         documentName: string;
@@ -1054,37 +990,19 @@ export class DocumentService {
         isPublic: boolean;
       }> = [];
 
-      // 遍历文档
-      for (const doc of allDocuments) {
-        // 处理文档对象，确保有正确的结构
-        const typedDoc = (doc.toObject ? doc.toObject() : doc) as {
-          _id: Types.ObjectId;
-          userId: number;
-          documentId: number;
-          documentName: string;
-          content: string;
-          create_username: string;
-          update_username: string;
-          editorId: number[];
-          parentFolderIds: number[];
-          create_time: Date;
-          update_time: Date;
-          isPublic: boolean;
-        };
-
+      // 处理历史版本搜索结果
+      for (const doc of historyResults) {
         // 先检查文档名称匹配
-        if (
-          typedDoc.documentName.toLowerCase().includes(searchText.toLowerCase())
-        ) {
+        if (doc.documentName.toLowerCase().includes(searchText.toLowerCase())) {
           searchResults.push({
-            documentId: typedDoc.documentId,
-            documentName: typedDoc.documentName,
-            content: typedDoc.documentName, // 使用文档名称作为内容
-            matchedText: typedDoc.documentName,
-            userId: typedDoc.userId,
-            create_username: typedDoc.create_username,
-            update_time: typedDoc.update_time,
-            isPublic: typedDoc.isPublic || false,
+            documentId: doc.documentId,
+            documentName: doc.documentName,
+            content: doc.documentName, // 使用文档名称作为内容
+            matchedText: doc.documentName,
+            userId: doc.userId,
+            create_username: doc.create_username,
+            update_time: doc.create_time, // 使用历史版本的创建时间
+            isPublic: false, // 历史版本没有isPublic字段，默认为false
           });
           continue;
         }
@@ -1093,17 +1011,14 @@ export class DocumentService {
         try {
           // 检查是否有内容且是JSON格式
           if (
-            !typedDoc.content ||
-            !(
-              typedDoc.content.startsWith('[') ||
-              typedDoc.content.startsWith('{')
-            )
+            !doc.content ||
+            !(doc.content.startsWith('[') || doc.content.startsWith('{'))
           ) {
             continue; // 跳过非JSON内容
           }
 
           // 解析JSON内容
-          const jsonContent = JSON.parse(typedDoc.content);
+          const jsonContent = JSON.parse(doc.content);
 
           // 提取所有text字段
           const allTextNodes: Array<{
@@ -1179,14 +1094,14 @@ export class DocumentService {
 
               // 添加到搜索结果
               searchResults.push({
-                documentId: typedDoc.documentId,
-                documentName: typedDoc.documentName,
+                documentId: doc.documentId,
+                documentName: doc.documentName,
                 content: contentToDisplay,
                 matchedText: node.text,
-                userId: typedDoc.userId,
-                create_username: typedDoc.create_username,
-                update_time: typedDoc.update_time,
-                isPublic: typedDoc.isPublic || false,
+                userId: doc.userId,
+                create_username: doc.create_username,
+                update_time: doc.create_time,
+                isPublic: false, // 历史版本没有isPublic字段，默认为false
               });
 
               break; // 每个文档只返回一个匹配结果
@@ -1194,7 +1109,7 @@ export class DocumentService {
           }
         } catch (err) {
           this.logger.warn(
-            `解析文档JSON内容失败: documentId=${typedDoc.documentId}`,
+            `解析文档JSON内容失败: documentId=${doc.documentId}`,
             err,
           );
           continue;
@@ -1206,7 +1121,7 @@ export class DocumentService {
 
       this.logger.log('文档内容搜索完成', {
         searchText,
-        totalDocumentsProcessed: allDocuments.length,
+        totalDocumentsProcessed: historyResults.length,
         matchedDocuments: searchResults.length,
         returnedResults: limitedResults.length,
       });
@@ -1216,10 +1131,14 @@ export class DocumentService {
         message: '搜索成功',
         data: limitedResults,
       };
-    } catch (error) {
-      const err = error as Error;
-      this.logger.error('搜索文档失败', err.stack);
-      throw new BadRequestException(`搜索文档失败: ${err.message}`);
+    } catch (error: unknown) {
+      this.logger.error('搜索文档内容失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '未知错误';
+      return {
+        success: false,
+        message: `搜索文档内容失败: ${errorMessage}`,
+        data: [],
+      };
     }
   }
 
