@@ -287,6 +287,45 @@ export function useCollaborativeEditor(documentId) {
     }
   }, [documentId]);
 
+  // 获取用户信息
+  const getUserInfo = () => {
+    try {
+      // 优先从localStorage获取userInfo
+      const userInfoStr = localStorage.getItem('userInfo');
+      let userInfo = null;
+
+      if (userInfoStr) {
+        userInfo = JSON.parse(userInfoStr);
+      }
+
+      // 如果userInfo中没有用户名，尝试从其他可能的字段获取
+      const username = userInfo?.username || '匿名用户';
+
+      // 生成基于用户名的固定颜色，确保同一用户总是使用相同颜色
+      const generateColorFromUsername = name => {
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+          hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const hue = Math.abs(hash) % 360;
+        return `hsl(${hue}, 70%, 60%)`;
+      };
+
+      return {
+        name: username,
+        color: userInfo?.color || generateColorFromUsername(username),
+        userId: userInfo?.userId || 'unknown',
+      };
+    } catch (error) {
+      console.warn('获取用户信息失败:', error);
+      return {
+        name: '匿名用户',
+        color: 'hsl(0, 70%, 60%)',
+        userId: 'unknown',
+      };
+    }
+  };
+
   // 创建编辑器实例
   const editor = useMemo(() => {
     if (!provider) {
@@ -296,6 +335,7 @@ export function useCollaborativeEditor(documentId) {
       return e;
     }
     const sharedType = provider.document.get('content', Y.XmlText);
+    const userInfo = getUserInfo();
     const e = withLayout(
       withYHistory(
         withCursors(
@@ -303,8 +343,9 @@ export function useCollaborativeEditor(documentId) {
           provider.awareness,
           {
             data: {
-              name: `用户${Math.floor(Math.random() * 1000)}`,
-              color: '#' + Math.floor(Math.random() * 16777215).toString(16),
+              name: userInfo.name,
+              color: userInfo.color,
+              userId: userInfo.userId,
             },
           },
         ),
@@ -336,9 +377,11 @@ export function useCollaborativeEditor(documentId) {
     const setupConnection = async () => {
       const isOnline = await checkServerStatus();
       if (isOnline && provider) {
+        const userInfo = getUserInfo();
         provider.setAwarenessField('user', {
-          name: `用户${Math.floor(Math.random() * 1000)}`,
-          color: '#' + Math.floor(Math.random() * 16777215).toString(16),
+          name: userInfo.name,
+          color: userInfo.color,
+          userId: userInfo.userId,
         });
         provider.connect();
       }
