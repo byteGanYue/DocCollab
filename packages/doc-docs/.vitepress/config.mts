@@ -46,7 +46,6 @@ export default defineConfig({
           foo: 'bar'
         }
       })
-    ],
-    assetsInclude: ['**/*.PNG', '**/*.png', '**/*.jpg', '**/*.JPG', '**/*.jpeg', '**/*.JPEG', '**/*.gif', '**/*.GIF', '**/*.svg', '**/*.SVG']
+    ]
   }
 });
