@@ -25,6 +25,10 @@ const EXCLUDE_FILES = [
   'assets',
 ];
 
+/**
+ * 生成侧边栏配置
+ * @returns 侧边栏配置对象
+ */
 export function generateSidebar(): SidebarConfig {
   const docsPath = path.resolve(__dirname, '../../');
   const sidebarConfig: SidebarConfig = {};
@@ -38,7 +42,7 @@ export function generateSidebar(): SidebarConfig {
   // 为每个一级目录生成侧边栏配置
   directories.forEach(dir => {
     const dirPath = path.join(docsPath, dir);
-    sidebarConfig[`/${dir}/`] = walkDir(dirPath);
+    sidebarConfig[`/${dir}/`] = walkDir(dirPath, docsPath);
   });
 
   // 根目录的侧边栏配置
@@ -47,6 +51,11 @@ export function generateSidebar(): SidebarConfig {
   return sidebarConfig;
 }
 
+/**
+ * 生成根目录侧边栏配置
+ * @param docsPath 文档根目录路径
+ * @returns 根目录侧边栏项数组
+ */
 function generateRootSidebar(docsPath: string): SidebarItem[] {
   const items: SidebarItem[] = [];
   const files = fs
@@ -69,7 +78,13 @@ function generateRootSidebar(docsPath: string): SidebarItem[] {
   return items;
 }
 
-function walkDir(dir: string): SidebarItem[] {
+/**
+ * 递归遍历目录生成侧边栏项
+ * @param dir 当前目录路径
+ * @param docsPath 文档根目录路径
+ * @returns 侧边栏项数组
+ */
+function walkDir(dir: string, docsPath: string): SidebarItem[] {
   const items: SidebarItem[] = [];
   const files = fs
     .readdirSync(dir)
@@ -86,12 +101,12 @@ function walkDir(dir: string): SidebarItem[] {
     const filePath = path.join(dir, file);
     const stat = fs.statSync(filePath);
     const relativePath = path
-      .relative(path.resolve(__dirname, '../../'), filePath)
+      .relative(docsPath, filePath)
       .split(path.sep)
       .join('/');
 
     if (stat.isDirectory()) {
-      const children = walkDir(filePath);
+      const children = walkDir(filePath, docsPath);
       if (children.length > 0) {
         items.push({
           text: formatText(file),
@@ -111,6 +126,11 @@ function walkDir(dir: string): SidebarItem[] {
   return items;
 }
 
+/**
+ * 格式化文本，将连字符替换为空格并首字母大写
+ * @param text 原始文本
+ * @returns 格式化后的文本
+ */
 function formatText(text: string): string {
   return text
     .replace(/-/g, ' ')
