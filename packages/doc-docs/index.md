@@ -13,6 +13,9 @@ hero:
     - theme: sponsor
       text: ⭐⭐⭐ 项目亮点
       link: /项目亮点/index
+    - theme: sponsor
+      text: 📚📚📚 关于训练营
+      link: /关于训练营/index
     - theme: alt
       text: 😋😋😋 使用文档
       link: /使用文档/快速开始
