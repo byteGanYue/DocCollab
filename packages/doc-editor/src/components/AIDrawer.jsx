@@ -63,6 +63,7 @@ const AIDrawer = ({ isOpen, onClose, documentContent }) => {
   const [error, setError] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false); // 正在生成中
   const [newContent, setNewContent] = useState(''); // 最新接收的内容
+  const [isTruncated, setIsTruncated] = useState(false); // 文档是否被截断
 
   // 记录上一次处理的内容哈希值
   const [lastContentHash, setLastContentHash] = useState('');
@@ -142,6 +143,26 @@ const AIDrawer = ({ isOpen, onClose, documentContent }) => {
         return;
       }
 
+      // 安全限制：如果字数超过10万，截取前10万字
+      const MAX_TEXT_LENGTH = 100000; // 最大字符数限制
+      let processedText = extractedText;
+      let truncated = false;
+
+      if (extractedText.length > MAX_TEXT_LENGTH) {
+        processedText = extractedText.substring(0, MAX_TEXT_LENGTH);
+        truncated = true;
+        setIsTruncated(true); // 更新状态
+        console.log(`文档内容过长，已截取前${MAX_TEXT_LENGTH}个字符`);
+      } else {
+        setIsTruncated(false); // 重置状态
+      }
+
+      console.log(`原始文本长度: ${extractedText.length} 字符`);
+      console.log(`处理后文本长度: ${processedText.length} 字符`);
+      if (truncated) {
+        console.log('⚠️ 文本已被截断，可能影响摘要的完整性');
+      }
+
       // 更新内容哈希值
       const contentHash = computeContentHash(documentContent);
       setLastContentHash(contentHash);
@@ -169,7 +190,7 @@ const AIDrawer = ({ isOpen, onClose, documentContent }) => {
           },
           {
             role: 'user',
-            content: `请为以下文档内容生成一个清晰、结构化的摘要：\n\n${extractedText}`,
+            content: `请为以下文档内容生成一个清晰、结构化的摘要：\n\n${processedText}${truncated ? '\n\n[注意：由于文档内容过长，以上仅为文档前10万字符的内容，摘要可能不够完整]' : ''}`,
           },
         ],
       };
@@ -459,6 +480,17 @@ const AIDrawer = ({ isOpen, onClose, documentContent }) => {
                 重新生成摘要
               </Button>
             </div>
+
+            {/* 文档截断提示 */}
+            {isTruncated && (
+              <Alert
+                message="文档内容过长"
+                description="由于文档内容超过10万字符，系统已自动截取前10万字符生成摘要，可能影响摘要的完整性。"
+                type="warning"
+                showIcon
+                style={{ marginBottom: '12px' }}
+              />
+            )}
 
             <div
               style={{
