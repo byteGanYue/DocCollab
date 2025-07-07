@@ -1,5 +1,6 @@
 # DocCollab
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/byteGanYue/DocCollab)
 一个协同富文本知识库系统。
 
 ## ✨ 特性
