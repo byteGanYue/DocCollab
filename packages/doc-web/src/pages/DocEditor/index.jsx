@@ -15,7 +15,7 @@ import { FileTextOutlined, HistoryOutlined } from '@ant-design/icons';
  * 文档编辑器页面组件
  * 使用唯一的documentId作为key，确保切换文档时完全重新创建编辑器实例
  * 实现文档间完全隔离
- * 
+ *
  * 回滚功能使用说明：
  * 1. 新的回滚实现基于状态快照恢复，不重建Y.Doc和Provider实例
  * 2. 使用 restoreFromSnapshot() 方法进行回滚
@@ -67,10 +67,8 @@ const getVersionIdFromUrl = search => {
   return searchParams.get('version');
 };
 
-
-
 // 将历史版本content转换为Slate格式
-const contentToSlate = (content) => {
+const contentToSlate = content => {
   if (!content) {
     return DEFAULT_EDITOR_VALUE;
   }
@@ -91,38 +89,40 @@ const contentToSlate = (content) => {
 
     // 如果是纯文本，转换为段落格式
     if (typeof content === 'string') {
-      return [{
-        type: 'paragraph',
-        children: [{ text: content }],
-      }];
+      return [
+        {
+          type: 'paragraph',
+          children: [{ text: content }],
+        },
+      ];
     }
 
     return DEFAULT_EDITOR_VALUE;
   } catch (error) {
     console.warn('[DocEditor] 解析历史版本content失败:', error);
     // 如果解析失败，作为纯文本处理
-    return [{
-      type: 'paragraph',
-      children: [{ text: String(content) }],
-    }];
+    return [
+      {
+        type: 'paragraph',
+        children: [{ text: String(content) }],
+      },
+    ];
   }
 };
 
 // 将Slate格式转换为Delta格式
-const slateToDelta = (slateValue) => {
+const slateToDelta = slateValue => {
   if (!slateValue || !Array.isArray(slateValue)) {
     return [];
   }
 
   const delta = [];
 
-  slateValue.forEach((block) => {
+  slateValue.forEach(block => {
     if (block.type === 'paragraph') {
       // 处理段落
       if (block.children && block.children.length > 0) {
-        const text = block.children
-          .map(child => child.text || '')
-          .join('');
+        const text = block.children.map(child => child.text || '').join('');
 
         if (text) {
           delta.push({ insert: text });
@@ -130,7 +130,9 @@ const slateToDelta = (slateValue) => {
       }
     } else {
       // 处理其他块级元素
-      delta.push({ insert: { type: block.type, children: block.children || [] } });
+      delta.push({
+        insert: { type: block.type, children: block.children || [] },
+      });
     }
 
     // 添加换行
@@ -138,6 +140,61 @@ const slateToDelta = (slateValue) => {
   });
 
   return delta;
+};
+
+/**
+ * 从 Y.Doc 强制同步内容到编辑器
+ * 确保编辑器UI与Y.Doc内容完全一致
+ */
+const forceSyncEditorValueFromYDoc = (ydoc, Y) => {
+  if (!ydoc || !Y) {
+    console.warn('[DocEditor] Y.Doc或Y库未初始化，无法同步编辑器内容');
+    return null;
+  }
+
+  try {
+    const yText = ydoc.get('content', Y.XmlText);
+    if (yText) {
+      const content = yText.toString();
+      console.log('[DocEditor] 从Y.Doc获取到内容:', content);
+
+      // 尝试解析为Slate格式
+      let slateValue;
+      try {
+        // 首先尝试解析为JSON（如果是Slate格式存储的）
+        slateValue = JSON.parse(content);
+        if (!Array.isArray(slateValue)) {
+          throw new Error('解析结果不是数组');
+        }
+        console.log('[DocEditor] 成功解析为Slate格式:', slateValue);
+      } catch (parseError) {
+        // 如果解析失败，作为纯文本处理
+        console.log(
+          '[DocEditor] 解析失败，作为纯文本处理:',
+          parseError.message,
+        );
+        if (content.trim()) {
+          slateValue = [
+            {
+              type: 'paragraph',
+              children: [{ text: content }],
+            },
+          ];
+        } else {
+          slateValue = DEFAULT_EDITOR_VALUE;
+        }
+      }
+
+      console.log('[DocEditor] 最终同步到编辑器的Slate值:', slateValue);
+      return slateValue;
+    } else {
+      console.warn('[DocEditor] Y.Doc中没有找到content字段');
+      return DEFAULT_EDITOR_VALUE;
+    }
+  } catch (error) {
+    console.error('[DocEditor] 从Y.Doc同步内容失败:', error);
+    return DEFAULT_EDITOR_VALUE;
+  }
 };
 
 const DocEditor = () => {
@@ -167,6 +224,19 @@ const DocEditor = () => {
     editorValueRef.current = editorValue;
     console.log('[DocEditor] editorValue变化:', editorValue);
   }, [editorValue]);
+
+  // 从 Y.Doc 强制同步内容到编辑器的回调函数
+  const syncEditorValueFromYDoc = useCallback(() => {
+    if (window.ydoc && window.Y) {
+      const slateValue = forceSyncEditorValueFromYDoc(window.ydoc, window.Y);
+      if (slateValue) {
+        setEditorValue(slateValue);
+        editorValueRef.current = slateValue;
+        console.log('[DocEditor] 已强制用Y.Doc内容刷新编辑器');
+      }
+    }
+  }, []);
+
   // 加载状态
   const [loading, setLoading] = useState(false);
   // 防抖保存定时器
@@ -179,7 +249,7 @@ const DocEditor = () => {
   const [onBackHistoryProps, setOnBackHistoryProps] = useState({
     versionId: null,
     isShow: false,
-    onClick: () => { },
+    onClick: () => {},
   });
 
   // 历史版本自动创建计时器
@@ -203,7 +273,9 @@ const DocEditor = () => {
     if (snapshotBase64 && versionId) {
       try {
         // 使用 decodeURIComponent 和 atob 的组合来解码包含中文字符的字符串
-        const snapshotData = JSON.parse(decodeURIComponent(atob(snapshotBase64)));
+        const snapshotData = JSON.parse(
+          decodeURIComponent(atob(snapshotBase64)),
+        );
         let contentData = null;
 
         // 解析历史版本内容（如果有）
@@ -261,6 +333,7 @@ const DocEditor = () => {
       if (window.ydoc && window.Y) {
         // 获取Yjs文档的二进制状态
         yjsState = Array.from(window.Y.encodeStateAsUpdate(window.ydoc));
+        console.log('[快照保存] ydoc.toJSON():', window.ydoc.toJSON());
       }
       if (
         !content ||
@@ -354,7 +427,11 @@ const DocEditor = () => {
           versionId,
         );
 
-        if (!versionRes.success || !versionRes.data || !versionRes.data.yjsState) {
+        if (
+          !versionRes.success ||
+          !versionRes.data ||
+          !versionRes.data.yjsState
+        ) {
           throw new Error('无法获取历史版本的yjsState');
         }
 
@@ -366,7 +443,10 @@ const DocEditor = () => {
         // 调用版本回退API（用于后端记录）
         const result = await documentAPI.restoreDocument(documentId, versionId);
         if (!result.success) {
-          console.warn('后端版本回退记录失败，但不影响前端回滚:', result.message);
+          console.warn(
+            '后端版本回退记录失败，但不影响前端回滚:',
+            result.message,
+          );
         }
 
         // 清除URL中的version参数
@@ -376,7 +456,7 @@ const DocEditor = () => {
         setOnBackHistoryProps({
           versionId: null,
           isShow: false,
-          onClick: () => { },
+          onClick: () => {},
         });
 
         // 显示成功消息
@@ -397,557 +477,610 @@ const DocEditor = () => {
    * 基于快照恢复文档状态（不重建实例）
    * @param {Array} snapshot - 历史快照数据
    */
-  const restoreFromSnapshot = useCallback(async (snapshot) => {
-    // 设置快照恢复标志，防止Y.Doc重新初始化和自动同步
-    window.isRestoringSnapshot = true;
-    window.hasRestoredSnapshot = false;
-    console.log('[DocEditor] 设置快照恢复标志，防止Y.Doc重新初始化和自动同步');
-
-    try {
-      // 更完善的检查机制
-      if (!window.ydoc) {
-        throw new Error('Yjs文档未初始化');
-      }
-
-      // 检查Y库是否可用，如果window.Y不存在，尝试从其他地方获取
-      let Y = window.Y;
-      if (!Y) {
-        // 尝试从其他可能的位置获取Y库
-        Y = window.Yjs || window.yjs || globalThis.Y;
-        console.log('[DocEditor] 尝试获取Y库:', !!Y);
-      }
-
-      if (!Y) {
-        throw new Error('Yjs库未加载');
-      }
-
-      // 检查Yjs文档是否已完全初始化
-      let docState;
-      try {
-        docState = window.ydoc.toJSON();
-        console.log('[DocEditor] 当前Y.Doc状态:', docState);
-
-        if (!docState || Object.keys(docState).length === 0) {
-          console.warn('[DocEditor] Y.Doc状态为空，等待初始化...');
-          // 等待一段时间后重试
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      } catch (error) {
-        console.warn('[DocEditor] 检查Y.Doc状态失败:', error);
-      }
+  const restoreFromSnapshot = useCallback(
+    async snapshot => {
+      // 设置快照恢复标志，防止Y.Doc重新初始化和自动同步
+      window.isRestoringSnapshot = true;
+      window.hasRestoredSnapshot = false;
+      console.log(
+        '[DocEditor] 设置快照恢复标志，防止Y.Doc重新初始化和自动同步',
+      );
 
       try {
-        console.log('[DocEditor] 开始基于快照恢复文档状态');
-
-        // 1. 暂停协同更新，防止状态冲突
-        if (window.provider) {
-          window.provider.disconnect();
-          console.log('[DocEditor] 已断开Provider连接');
+        // 更完善的检查机制
+        if (!window.ydoc) {
+          throw new Error('Yjs文档未初始化');
         }
 
-        // 2. 暂停MongoDB同步服务
-        if (window.yjsMongoSyncService) {
-          await window.yjsMongoSyncService.pauseDocumentSync(documentId);
-          console.log('[DocEditor] 已暂停MongoDB同步');
+        // 检查Y库是否可用，如果window.Y不存在，尝试从其他地方获取
+        let Y = window.Y;
+        if (!Y) {
+          // 尝试从其他可能的位置获取Y库
+          Y = window.Yjs || window.yjs || globalThis.Y;
+          console.log('[DocEditor] 尝试获取Y库:', !!Y);
         }
 
-        // 3. 应用历史快照到现有Y.Doc
-        console.log('[DocEditor] 快照数据详情:', {
-          length: snapshot.length,
-          preview: snapshot.slice(0, 10),
-          isArray: Array.isArray(snapshot),
-          isUint8Array: snapshot instanceof Uint8Array,
-          fullData: snapshot // 输出完整数据用于调试
-        });
-
-        // 验证快照数据格式
-        if (!Array.isArray(snapshot) || snapshot.length === 0) {
-          throw new Error('快照数据格式无效');
+        if (!Y) {
+          throw new Error('Yjs库未加载');
         }
 
-        // 检查快照数据是否看起来像有效的Yjs状态
-        if (snapshot.length < 50) {
-          console.warn('[DocEditor] 快照数据长度过短，可能不完整:', snapshot.length);
-          console.warn('[DocEditor] 这可能表示历史版本没有保存有效的Yjs状态');
-          // 如果快照数据太短，直接跳过快照恢复，使用content回退
-          console.log('[DocEditor] 快照数据过短，跳过快照恢复，直接使用content回退');
-          throw new Error('快照数据长度不足，无法进行快照恢复');
-        }
-
-        // 检查快照数据是否全为0或无效
-        const hasValidData = snapshot.some(byte => byte !== 0);
-        if (!hasValidData) {
-          console.warn('[DocEditor] 快照数据全为0，可能无效');
-        }
-
-        console.log('[DocEditor] 快照数据有效性检查:', {
-          length: snapshot.length,
-          hasValidData,
-          firstBytes: snapshot.slice(0, 5),
-          lastBytes: snapshot.slice(-5)
-        });
-
-        const update = new Uint8Array(snapshot);
-        console.log('[DocEditor] 转换后的Uint8Array:', {
-          length: update.length,
-          preview: Array.from(update.slice(0, 10)),
-          fullData: Array.from(update) // 输出完整数据用于调试
-        });
-
-        // 验证Uint8Array格式
-        if (update.length === 0) {
-          throw new Error('快照数据转换失败');
-        }
-
-        // 应用快照前记录当前状态
-        const beforeState = window.ydoc.toJSON();
-        console.log('[DocEditor] 应用快照前的Y.Doc状态:', beforeState);
-
-        // 尝试应用快照
+        // 检查Yjs文档是否已完全初始化
+        let docState;
         try {
-          Y.applyUpdate(window.ydoc, update);
-          console.log('[DocEditor] 已应用历史快照到Y.Doc');
+          docState = window.ydoc.toJSON();
+          console.log('[DocEditor] 当前Y.Doc状态:', docState);
+
+          if (!docState || Object.keys(docState).length === 0) {
+            console.warn('[DocEditor] Y.Doc状态为空，等待初始化...');
+            // 等待一段时间后重试
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
         } catch (error) {
-          console.error('[DocEditor] 应用快照失败:', error);
-          throw new Error(`应用快照失败: ${error.message}`);
+          console.warn('[DocEditor] 检查Y.Doc状态失败:', error);
         }
 
-        // 强制刷新Y.Doc状态
-        window.ydoc.emit('afterTransaction', []);
+        try {
+          console.log('[DocEditor] 开始基于快照恢复文档状态');
 
-        // 验证快照是否应用成功
-        const newDocState = window.ydoc.toJSON();
-        console.log('[DocEditor] 快照应用后的Y.Doc状态:', newDocState);
-
-        // 检查快照是否成功应用 - 修复逻辑：检查内容是否真的发生了变化
-        const isSnapshotApplied = newDocState.content !== '' && newDocState.content !== beforeState.content;
-        console.log('[DocEditor] 快照应用检查:', {
-          beforeContent: beforeState.content,
-          afterContent: newDocState.content,
-          isApplied: isSnapshotApplied,
-          contentChanged: newDocState.content !== beforeState.content
-        });
-
-        // 如果状态没有变化或内容为空，尝试重新应用快照
-        if (!isSnapshotApplied) {
-          console.log('[DocEditor] 快照应用后状态未变化，尝试重新应用...');
-
-          // 清空当前Y.Doc内容
-          const yText = window.ydoc.get('content', Y.XmlText);
-          if (yText) {
-            yText.delete(0, yText.length);
-            console.log('[DocEditor] 已清空Y.Doc内容');
+          // 1. 暂停协同更新，防止状态冲突
+          if (window.provider) {
+            window.provider.disconnect();
+            console.log('[DocEditor] 已断开Provider连接');
           }
 
-          // 重新应用快照
-          Y.applyUpdate(window.ydoc, update);
-          window.ydoc.emit('afterTransaction', []);
+          // 2. 暂停MongoDB同步服务
+          if (window.yjsMongoSyncService) {
+            await window.yjsMongoSyncService.pauseDocumentSync(documentId);
+            console.log('[DocEditor] 已暂停MongoDB同步');
+          }
 
-          const retryDocState = window.ydoc.toJSON();
-          console.log('[DocEditor] 重新应用快照后的Y.Doc状态:', retryDocState);
-
-          // 最终检查 - 修复逻辑：检查内容是否真的发生了变化
-          const isRetrySuccessful = retryDocState.content !== '' && retryDocState.content !== beforeState.content;
-          console.log('[DocEditor] 重试结果:', {
-            isSuccessful: isRetrySuccessful,
-            finalContent: retryDocState.content,
-            originalContent: beforeState.content,
-            contentChanged: retryDocState.content !== beforeState.content
+          // 3. 应用历史快照到现有Y.Doc
+          console.log('[DocEditor] 快照数据详情:', {
+            length: snapshot.length,
+            preview: snapshot.slice(0, 10),
+            isArray: Array.isArray(snapshot),
+            isUint8Array: snapshot instanceof Uint8Array,
+            fullData: snapshot, // 输出完整数据用于调试
           });
 
-          // 如果快照恢复仍然失败（内容为空或没有变化），尝试使用历史版本的content字段
-          if (!isRetrySuccessful) {
-            console.warn('[DocEditor] 快照恢复失败，尝试使用历史版本的content字段恢复');
+          // 验证快照数据格式
+          if (!Array.isArray(snapshot) || snapshot.length === 0) {
+            throw new Error('快照数据格式无效');
+          }
 
-            // 尝试使用历史版本的content字段恢复
-            if (restoreSnapshotFromUrl?.contentData) {
-              try {
-                console.log('[DocEditor] 使用历史版本content恢复:', restoreSnapshotFromUrl.contentData);
+          // 检查快照数据是否看起来像有效的Yjs状态
+          if (snapshot.length < 50) {
+            console.warn(
+              '[DocEditor] 快照数据长度过短，可能不完整:',
+              snapshot.length,
+            );
+            console.warn('[DocEditor] 这可能表示历史版本没有保存有效的Yjs状态');
+            // 如果快照数据太短，直接跳过快照恢复，使用content回退
+            console.log(
+              '[DocEditor] 快照数据过短，跳过快照恢复，直接使用content回退',
+            );
+            throw new Error('快照数据长度不足，无法进行快照恢复');
+          }
 
-                // 将历史版本content转换为Slate格式
-                const historySlateValue = contentToSlate(restoreSnapshotFromUrl.contentData);
-                console.log('[DocEditor] 转换后的历史版本Slate值:', historySlateValue);
+          // 检查快照数据是否全为0或无效
+          const hasValidData = snapshot.some(byte => byte !== 0);
+          if (!hasValidData) {
+            console.warn('[DocEditor] 快照数据全为0，可能无效');
+          }
 
-                // 设置编辑器内容
-                setEditorValue(historySlateValue);
+          console.log('[DocEditor] 快照数据有效性检查:', {
+            length: snapshot.length,
+            hasValidData,
+            firstBytes: snapshot.slice(0, 5),
+            lastBytes: snapshot.slice(-5),
+          });
 
-                // 强制同步到Y.Doc
-                if (window.ydoc && Y) {
-                  const yText = window.ydoc.get('content', Y.XmlText);
-                  if (yText) {
-                    // 记录恢复前的内容
-                    const beforeContent = yText.toString();
-                    console.log('[DocEditor] 恢复前Y.Doc内容:', beforeContent);
+          const update = new Uint8Array(snapshot);
+          console.log('[DocEditor] 转换后的Uint8Array:', {
+            length: update.length,
+            preview: Array.from(update.slice(0, 10)),
+            fullData: Array.from(update), // 输出完整数据用于调试
+          });
 
-                    // 清空现有内容
-                    yText.delete(0, yText.length);
+          // 验证Uint8Array格式
+          if (update.length === 0) {
+            throw new Error('快照数据转换失败');
+          }
 
-                    // 插入历史版本内容
-                    const historyDelta = slateToDelta(historySlateValue);
-                    console.log('[DocEditor] 历史版本Delta:', historyDelta);
-                    yText.applyDelta(historyDelta);
+          // 应用快照前记录当前状态
+          const beforeState = window.ydoc.toJSON();
+          console.log('[DocEditor] 应用快照前的Y.Doc状态:', beforeState);
 
-                    // 记录恢复后的内容
-                    const afterContent = yText.toString();
-                    console.log('[DocEditor] 恢复后Y.Doc内容:', afterContent);
-                    console.log('[DocEditor] 已使用历史版本content恢复Y.Doc');
-                  }
-                }
+          // 尝试应用快照
+          try {
+            Y.applyUpdate(window.ydoc, update);
+            console.log(
+              '[回滚] applyUpdate后ydoc.toJSON():',
+              window.ydoc.toJSON(),
+            );
+            // 如果内容未变，强制清空content再applyUpdate一次
+            const yText = window.ydoc.get('content', Y.XmlText);
+            if (
+              yText &&
+              (!yText.toString() || yText.toString() === beforeState.content)
+            ) {
+              yText.delete(0, yText.length);
+              Y.applyUpdate(window.ydoc, update);
+              console.log(
+                '[回滚] 强制清空后再applyUpdate，ydoc.toJSON():',
+                window.ydoc.toJSON(),
+              );
+            }
+            // === 强制同步本地Y.Doc到服务器/断开重连provider/清空本地缓存 ===
+            if (
+              window.provider &&
+              typeof window.provider.flush === 'function'
+            ) {
+              await window.provider.flush();
+              console.log(
+                '[回滚] provider.flush() 完成，已推送本地Y.Doc到服务器',
+              );
+            } else if (
+              window.provider &&
+              typeof window.provider.sync === 'function'
+            ) {
+              await window.provider.sync();
+              console.log(
+                '[回滚] provider.sync() 完成，已推送本地Y.Doc到服务器',
+              );
+            } else {
+              if (window.provider) {
+                window.provider.disconnect();
+                console.log('[回滚] 已断开provider');
+              }
+              // 清空IndexedDB缓存（如有）
+              if (
+                window.indexeddbProvider &&
+                typeof window.indexeddbProvider.clearData === 'function'
+              ) {
+                await window.indexeddbProvider.clearData();
+                console.log('[回滚] 已清空本地indexeddbProvider缓存');
+              }
+              // 重连provider
+              if (window.provider) {
+                window.provider.connect();
+                console.log('[回滚] 已重连provider');
+              }
+            }
+            // === END ===
+            console.log('[DocEditor] 已应用历史快照到Y.Doc');
+          } catch (error) {
+            console.error('[DocEditor] 应用快照失败:', error);
+            throw new Error(`应用快照失败: ${error.message}`);
+          }
 
-                console.log('[DocEditor] 历史版本content恢复完成');
+          // 强制刷新Y.Doc状态
+          window.ydoc.emit('afterTransaction', []);
 
-                // 标记已使用回退机制，跳过后续的同步逻辑
-                console.log('[DocEditor] 已使用回退机制，跳过后续同步逻辑');
+          // 验证快照是否应用成功
+          const newDocState = window.ydoc.toJSON();
+          console.log('[DocEditor] 快照应用后的Y.Doc状态:', newDocState);
 
-                // 延迟同步到MongoDB，确保内容正确保存
-                // 注意：这里不使用 YjsMongoSyncService，因为它会重新获取 Y.Doc 状态并覆盖我们刚刚同步的 yjsState
-                setTimeout(async () => {
-                  try {
-                    // 直接使用 API 调用，确保使用我们刚刚更新的 yjsState
-                    const response = await fetch(`/api/document/${documentId}/sync-yjs`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        yjsState: Array.from(window.Y.encodeStateAsUpdate(window.ydoc)),
-                        content: window.ydoc.get('content', Y.XmlText)?.toString() || '',
-                        username: JSON.parse(localStorage.getItem('userInfo'))?.username || 'Anonymous'
-                      })
-                    });
+          // 检查快照是否成功应用 - 修复逻辑：检查内容是否真的发生了变化
+          const isSnapshotApplied =
+            newDocState.content !== '' &&
+            newDocState.content !== beforeState.content;
+          console.log('[DocEditor] 快照应用检查:', {
+            beforeContent: beforeState.content,
+            afterContent: newDocState.content,
+            isApplied: isSnapshotApplied,
+            contentChanged: newDocState.content !== beforeState.content,
+          });
 
-                    if (response.ok) {
-                      console.log('[DocEditor] 回退机制：已直接同步到MongoDB');
-                    } else {
-                      console.warn('[DocEditor] 回退机制：直接同步到MongoDB失败');
-                    }
-                  } catch (error) {
-                    console.warn('[DocEditor] 回退机制：直接同步到MongoDB失败:', error);
-                  }
-                }, 500);
+          // 如果状态没有变化或内容为空，尝试重新应用快照
+          if (!isSnapshotApplied) {
+            console.log('[DocEditor] 快照应用后状态未变化，尝试重新应用...');
 
-                // 延迟重新连接Provider，确保协同编辑正常工作
-                // 注意：在快照恢复完成后，Provider的重新连接可能会覆盖恢复的内容
-                // 因此我们暂时跳过Provider的重新连接，直到用户开始编辑
-                setTimeout(() => {
-                  if (window.provider && !window.hasRestoredSnapshot) {
-                    window.provider.connect();
-                    console.log('[DocEditor] 回退机制：已重新连接Provider');
-                  } else {
-                    console.log('[DocEditor] 回退机制：跳过Provider重新连接，等待用户编辑');
-                  }
-                }, 600);
+            // 清空当前Y.Doc内容
+            const yText = window.ydoc.get('content', Y.XmlText);
+            if (yText) {
+              yText.delete(0, yText.length);
+              console.log('[DocEditor] 已清空Y.Doc内容');
+            }
 
-                // 验证Y.Doc内容是否被正确恢复
-                setTimeout(() => {
+            // 重新应用快照
+            Y.applyUpdate(window.ydoc, update);
+            window.ydoc.emit('afterTransaction', []);
+
+            const retryDocState = window.ydoc.toJSON();
+            console.log(
+              '[DocEditor] 重新应用快照后的Y.Doc状态:',
+              retryDocState,
+            );
+
+            // 最终检查 - 修复逻辑：检查内容是否真的发生了变化
+            const isRetrySuccessful =
+              retryDocState.content !== '' &&
+              retryDocState.content !== beforeState.content;
+            console.log('[DocEditor] 重试结果:', {
+              isSuccessful: isRetrySuccessful,
+              finalContent: retryDocState.content,
+              originalContent: beforeState.content,
+              contentChanged: retryDocState.content !== beforeState.content,
+            });
+
+            // 如果快照恢复仍然失败（内容为空或没有变化），尝试使用历史版本的content字段
+            if (!isRetrySuccessful) {
+              console.warn(
+                '[DocEditor] 快照恢复失败，尝试使用历史版本的content字段恢复',
+              );
+
+              // 尝试使用历史版本的content字段恢复
+              if (restoreSnapshotFromUrl?.contentData) {
+                try {
+                  console.log(
+                    '[DocEditor] 使用历史版本content恢复:',
+                    restoreSnapshotFromUrl.contentData,
+                  );
+
+                  // 将历史版本content转换为Slate格式
+                  const historySlateValue = contentToSlate(
+                    restoreSnapshotFromUrl.contentData,
+                  );
+                  console.log(
+                    '[DocEditor] 转换后的历史版本Slate值:',
+                    historySlateValue,
+                  );
+
+                  // 设置编辑器内容
+                  setEditorValue(historySlateValue);
+
+                  // 强制同步到Y.Doc
                   if (window.ydoc && Y) {
                     const yText = window.ydoc.get('content', Y.XmlText);
                     if (yText) {
-                      const finalContent = yText.toString();
-                      console.log('[DocEditor] 最终验证Y.Doc内容:', finalContent);
-                      console.log('[DocEditor] 期望内容: 1234567');
-                      console.log('[DocEditor] 内容匹配:', finalContent.includes('1234567'));
+                      // 记录恢复前的内容
+                      const beforeContent = yText.toString();
+                      console.log(
+                        '[DocEditor] 恢复前Y.Doc内容:',
+                        beforeContent,
+                      );
+
+                      // 清空现有内容
+                      yText.delete(0, yText.length);
+
+                      // 插入历史版本内容
+                      const historyDelta = slateToDelta(historySlateValue);
+                      console.log('[DocEditor] 历史版本Delta:', historyDelta);
+                      yText.applyDelta(historyDelta);
+
+                      // 记录恢复后的内容
+                      const afterContent = yText.toString();
+                      console.log('[DocEditor] 恢复后Y.Doc内容:', afterContent);
+                      console.log('[DocEditor] 已使用历史版本content恢复Y.Doc');
                     }
                   }
-                }, 1000);
 
-                // 直接返回，跳过所有后续的同步逻辑（第4-8步）
-                // 这样可以避免MongoDB同步或其他机制覆盖已恢复的内容
-                return;
-              } catch (error) {
-                console.error('[DocEditor] 历史版本content恢复失败:', error);
-              }
-            } else {
-              console.warn('[DocEditor] 没有可用的历史版本content数据');
-            }
-          }
-        }
+                  console.log('[DocEditor] 历史版本content恢复完成');
 
-        // 4. 强制同步到MongoDB（在恢复同步服务之前）
-        setTimeout(async () => {
-          try {
-            // 直接使用API调用，确保使用回滚后的yjsState
-            const response = await fetch(`/api/document/${documentId}/sync-yjs`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                yjsState: Array.from(window.Y.encodeStateAsUpdate(window.ydoc)),
-                content: window.ydoc.get('content', Y.XmlText)?.toString() || '',
-                username: JSON.parse(localStorage.getItem('userInfo'))?.username || 'Anonymous'
-              })
-            });
+                  // 标记已使用回退机制，跳过后续的同步逻辑
+                  console.log('[DocEditor] 已使用回退机制，跳过后续同步逻辑');
 
-            if (response.ok) {
-              console.log('[DocEditor] 已强制同步回滚后的状态到MongoDB');
-            } else {
-              console.warn('[DocEditor] 强制同步到MongoDB失败');
-            }
-          } catch (error) {
-            console.warn('[DocEditor] 强制同步到MongoDB失败:', error);
-          }
-        }, 100);
+                  // 延迟同步到MongoDB，确保内容正确保存
+                  // 注意：这里不使用 YjsMongoSyncService，因为它会重新获取 Y.Doc 状态并覆盖我们刚刚同步的 yjsState
+                  setTimeout(async () => {
+                    try {
+                      // 直接使用 API 调用，确保使用我们刚刚更新的 yjsState
+                      const response = await fetch(
+                        `/api/document/${documentId}/sync-yjs`,
+                        {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            yjsState: Array.from(
+                              window.Y.encodeStateAsUpdate(window.ydoc),
+                            ),
+                            content:
+                              window.ydoc
+                                .get('content', Y.XmlText)
+                                ?.toString() || '',
+                            username:
+                              JSON.parse(localStorage.getItem('userInfo'))
+                                ?.username || 'Anonymous',
+                          }),
+                        },
+                      );
 
-        // 5. 恢复MongoDB同步服务（延迟恢复，确保回滚内容已保存）
-        if (window.yjsMongoSyncService) {
-          setTimeout(async () => {
-            await window.yjsMongoSyncService.resumeDocumentSync(documentId);
-            console.log('[DocEditor] 已恢复MongoDB同步');
-          }, 300);
-        }
-
-        // 6. 重新连接Provider，恢复协同（延迟连接，确保内容已保存）
-        if (window.provider) {
-          setTimeout(() => {
-            window.provider.connect();
-            console.log('[DocEditor] 已重新连接Provider');
-          }, 400);
-        }
-
-        // 7. 强制刷新编辑器状态
-        setContentReady(false);
-
-        // 8. 同步编辑器内容与Yjs XmlText（仅在快照恢复成功时执行）
-        // 注意：如果快照恢复成功，Y.Doc应该已经包含了正确的内容，不需要重新同步
-        console.log('[DocEditor] 快照恢复成功，跳过编辑器内容同步，避免覆盖恢复的内容');
-
-        setTimeout(() => {
-          setContentReady(true);
-        }, 500);
-
-        // 9. 清除快照恢复标志
-        setTimeout(() => {
-          window.isRestoringSnapshot = false;
-          window.hasRestoredSnapshot = true;
-          console.log('[DocEditor] 已清除快照恢复标志，标记为已完成');
-        }, 600);
-
-        console.log('[DocEditor] 快照恢复完成');
-      } catch (error) {
-        console.error('[DocEditor] 快照恢复失败:', error);
-
-        // 如果快照恢复失败，尝试使用历史版本的content字段恢复
-        if (restoreSnapshotFromUrl?.contentData) {
-          try {
-            console.log('[DocEditor] 快照恢复失败，尝试使用历史版本的content字段恢复');
-            console.log('[DocEditor] 使用历史版本content恢复:', restoreSnapshotFromUrl.contentData);
-
-            // 将历史版本content转换为Slate格式
-            const historySlateValue = contentToSlate(restoreSnapshotFromUrl.contentData);
-            console.log('[DocEditor] 转换后的历史版本Slate值:', historySlateValue);
-
-            // 设置编辑器内容
-            console.log('[DocEditor] 设置编辑器内容:', historySlateValue);
-            setEditorValue(historySlateValue);
-
-            // 强制刷新编辑器，确保内容更新
-            setTimeout(() => {
-              console.log('[DocEditor] 强制刷新编辑器，当前editorValue:', editorValue);
-              setEditorValue([...historySlateValue]);
-            }, 100);
-
-            // 强制重新渲染编辑器组件
-            setTimeout(() => {
-              console.log('[DocEditor] 强制重新渲染编辑器组件');
-              setContentReady(false);
-              setTimeout(() => {
-                setContentReady(true);
-              }, 50);
-            }, 200);
-
-            // 确保contentReady状态为true，让编辑器能够渲染
-            setContentReady(true);
-            console.log('[DocEditor] 设置contentReady为true，确保编辑器能够渲染');
-
-            // 强制同步到Y.Doc
-            if (window.ydoc && Y) {
-              const yText = window.ydoc.get('content', Y.XmlText);
-              if (yText) {
-                // 清空现有内容
-                yText.delete(0, yText.length);
-
-                // 插入历史版本内容
-                const historyDelta = slateToDelta(historySlateValue);
-                yText.applyDelta(historyDelta);
-
-                console.log('[DocEditor] 已使用历史版本content恢复Y.Doc');
-
-                // 强制重新生成yjsState并同步到数据库
-                setTimeout(async () => {
-                  try {
-                    // 重新生成yjsState
-                    const newYjsState = Array.from(window.Y.encodeStateAsUpdate(window.ydoc));
-                    console.log('[DocEditor] 重新生成的yjsState长度:', newYjsState.length);
-                    console.log('[DocEditor] 重新生成的yjsState预览:', newYjsState.slice(0, 10));
-
-                    // 直接同步到数据库
-                    const response = await fetch(`/api/document/${documentId}/sync-yjs`, {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({
-                        yjsState: newYjsState,
-                        content: window.ydoc.get('content', Y.XmlText)?.toString() || '',
-                        username: JSON.parse(localStorage.getItem('userInfo'))?.username || 'Anonymous'
-                      })
-                    });
-
-                    if (response.ok) {
-                      console.log('[DocEditor] 已强制同步新的yjsState到数据库');
-
-                      // 等待同步完成，确保数据库已更新
-                      await new Promise(resolve => setTimeout(resolve, 500));
-
-                      // 验证数据库中的yjsState是否已更新
-                      try {
-                        const verifyResponse = await fetch(`/api/document/${documentId}/yjs-state`);
-                        if (verifyResponse.ok) {
-                          const verifyData = await verifyResponse.json();
-                          if (verifyData.success && verifyData.data.yjsState) {
-                            const dbYjsState = verifyData.data.yjsState;
-                            console.log('[DocEditor] 验证数据库中的yjsState长度:', dbYjsState.length);
-                            console.log('[DocEditor] 验证数据库中的yjsState预览:', dbYjsState.slice(0, 10));
-
-                            // 检查数据库中的yjsState是否与重新生成的匹配
-                            const isMatch = dbYjsState.length === newYjsState.length &&
-                              dbYjsState.slice(0, 10).every((val, idx) => val === newYjsState[idx]);
-                            console.log('[DocEditor] 数据库yjsState匹配:', isMatch);
-                          }
-                        }
-                      } catch (verifyError) {
-                        console.warn('[DocEditor] 验证数据库yjsState失败:', verifyError);
+                      if (response.ok) {
+                        console.log(
+                          '[DocEditor] 回退机制：已直接同步到MongoDB',
+                        );
+                      } else {
+                        console.warn(
+                          '[DocEditor] 回退机制：直接同步到MongoDB失败',
+                        );
                       }
-
-                      // 验证同步后的Y.Doc内容
-                      setTimeout(() => {
-                        if (window.ydoc && Y) {
-                          const yText = window.ydoc.get('content', Y.XmlText);
-                          if (yText) {
-                            const finalContent = yText.toString();
-                            console.log('[DocEditor] 同步后的Y.Doc内容:', finalContent);
-                            console.log('[DocEditor] 期望内容: 1234567');
-                            console.log('[DocEditor] 内容匹配:', finalContent.includes('1234567'));
-                          }
-                        }
-                      }, 500);
-                    } else {
-                      console.warn('[DocEditor] 同步新的yjsState到数据库失败');
+                    } catch (error) {
+                      console.warn(
+                        '[DocEditor] 回退机制：直接同步到MongoDB失败:',
+                        error,
+                      );
                     }
-                  } catch (error) {
-                    console.error('[DocEditor] 同步新的yjsState失败:', error);
-                  }
-                }, 100);
-              }
-            }
+                  }, 500);
 
-            console.log('[DocEditor] 历史版本content恢复完成');
-
-            // 延迟同步到MongoDB，确保内容正确保存
-            setTimeout(async () => {
-              try {
-                if (window.yjsMongoSyncService) {
-                  await window.yjsMongoSyncService.forceSyncDocument(documentId);
-                  console.log('[DocEditor] 回退机制：已强制同步到MongoDB');
-                }
-              } catch (syncError) {
-                console.warn('[DocEditor] 回退机制：强制同步到MongoDB失败:', syncError);
-              }
-            }, 500);
-
-            // 延迟重新连接Provider
-            setTimeout(() => {
-              if (window.provider) {
-                window.provider.connect();
-                console.log('[DocEditor] 回退机制：已重新连接Provider');
-              }
-            }, 600);
-
-            return; // 成功使用content恢复，直接返回
-          } catch (contentError) {
-            console.error('[DocEditor] 历史版本content恢复也失败:', contentError);
-          }
-        }
-
-        throw error;
-      }
-    } finally {
-      // 清除快照恢复标志
-      window.isRestoringSnapshot = false;
-      console.log('[DocEditor] 清除快照恢复标志');
-
-      // 设置快照恢复完成标志，防止Y.Doc重新初始化覆盖恢复的内容
-      window.hasRestoredSnapshot = true;
-      console.log('[DocEditor] 设置快照恢复完成标志');
-
-      // 延迟重新连接Yjs编辑器，确保恢复的内容不会被覆盖
-      setTimeout(() => {
-        console.log('[DocEditor] 延迟重新连接Yjs编辑器');
-        window.hasRestoredSnapshot = false; // 清除标志，允许重新连接
-
-        // 强制刷新Y.Doc的yjsState，确保与MongoDB同步
-        if (window.ydoc && window.Y) {
-          console.log('[DocEditor] 强制刷新Y.Doc的yjsState');
-          // 重新获取最新的yjsState
-          fetch(`/api/document/${documentId}/yjs-state`)
-            .then(res => res.json())
-            .then(data => {
-              console.log('[DocEditor] 获取到的yjsState数据:', data);
-              if (data.success && data.data.yjsState) {
-                const newYjsState = new Uint8Array(data.data.yjsState);
-                console.log('[DocEditor] 应用新的yjsState到Y.Doc');
-                window.Y.applyUpdate(window.ydoc, newYjsState);
-                console.log('[DocEditor] 已强制刷新Y.Doc的yjsState');
-                console.log('[DocEditor] 刷新后的Y.Doc内容:', window.ydoc.toJSON());
-
-                // 强制触发一次MongoDB同步，确保数据一致性
-                if (window.yjsMongoSyncService) {
+                  // 延迟重新连接Provider，确保协同编辑正常工作
+                  // 注意：在快照恢复完成后，Provider的重新连接可能会覆盖恢复的内容
+                  // 因此我们暂时跳过Provider的重新连接，直到用户开始编辑
                   setTimeout(() => {
-                    console.log('[DocEditor] 强制触发MongoDB同步');
-                    window.yjsMongoSyncService.forceSyncDocument(documentId);
+                    if (window.provider && !window.hasRestoredSnapshot) {
+                      window.provider.connect();
+                      console.log('[DocEditor] 回退机制：已重新连接Provider');
+                    } else {
+                      console.log(
+                        '[DocEditor] 回退机制：跳过Provider重新连接，等待用户编辑',
+                      );
+                    }
+
+                    // 强制同步编辑器内容与Y.Doc
+                    setTimeout(() => {
+                      console.log(
+                        '[DocEditor] 回退机制：强制同步编辑器内容与Y.Doc',
+                      );
+                      syncEditorValueFromYDoc();
+                    }, 100);
+                  }, 600);
+
+                  // 验证Y.Doc内容是否被正确恢复
+                  setTimeout(() => {
+                    if (window.ydoc && Y) {
+                      const yText = window.ydoc.get('content', Y.XmlText);
+                      if (yText) {
+                        const finalContent = yText.toString();
+                        console.log(
+                          '[DocEditor] 最终验证Y.Doc内容:',
+                          finalContent,
+                        );
+                        console.log('[DocEditor] 期望内容: 1234567');
+                        console.log(
+                          '[DocEditor] 内容匹配:',
+                          finalContent.includes('1234567'),
+                        );
+                      }
+                    }
                   }, 1000);
+
+                  // 直接返回，跳过所有后续的同步逻辑（第4-8步）
+                  // 这样可以避免MongoDB同步或其他机制覆盖已恢复的内容
+                  return;
+                } catch (error) {
+                  console.error('[DocEditor] 历史版本content恢复失败:', error);
                 }
               } else {
-                console.warn('[DocEditor] 获取到的yjsState数据无效:', data);
+                console.warn('[DocEditor] 没有可用的历史版本content数据');
               }
-            })
-            .catch(error => {
-              console.warn('[DocEditor] 强制刷新Y.Doc的yjsState失败:', error);
-            });
-        }
+            }
+          }
 
-        // 延迟强制更新Y.Doc状态，确保与数据库一致
+          // 4. 强制同步到MongoDB（在恢复同步服务之前）
+          setTimeout(async () => {
+            try {
+              // 直接使用API调用，确保使用回滚后的yjsState
+              const response = await fetch(
+                `/api/document/${documentId}/sync-yjs`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    yjsState: Array.from(
+                      window.Y.encodeStateAsUpdate(window.ydoc),
+                    ),
+                    content:
+                      window.ydoc.get('content', Y.XmlText)?.toString() || '',
+                    username:
+                      JSON.parse(localStorage.getItem('userInfo'))?.username ||
+                      'Anonymous',
+                  }),
+                },
+              );
+
+              if (response.ok) {
+                console.log('[DocEditor] 已强制同步回滚后的状态到MongoDB');
+              } else {
+                console.warn('[DocEditor] 强制同步到MongoDB失败');
+              }
+            } catch (error) {
+              console.warn('[DocEditor] 强制同步到MongoDB失败:', error);
+            }
+          }, 100);
+
+          // 5. 恢复MongoDB同步服务（延迟恢复，确保回滚内容已保存）
+          if (window.yjsMongoSyncService) {
+            setTimeout(async () => {
+              await window.yjsMongoSyncService.resumeDocumentSync(documentId);
+              console.log('[DocEditor] 已恢复MongoDB同步');
+            }, 300);
+          }
+
+          // 6. 重新连接Provider，恢复协同（延迟连接，确保内容已保存）
+          if (window.provider) {
+            setTimeout(() => {
+              window.provider.connect();
+              console.log('[DocEditor] 已重新连接Provider');
+            }, 400);
+          }
+
+          // 7. 强制刷新编辑器状态
+          setContentReady(false);
+
+          // 8. 强制同步编辑器内容与Y.Doc（关键步骤：确保UI显示正确内容）
+          setTimeout(() => {
+            console.log('[DocEditor] 强制同步编辑器内容与Y.Doc');
+            syncEditorValueFromYDoc();
+          }, 500);
+
+          setTimeout(() => {
+            setContentReady(true);
+          }, 600);
+
+          // 9. 清除快照恢复标志
+          setTimeout(() => {
+            window.isRestoringSnapshot = false;
+            window.hasRestoredSnapshot = true;
+            console.log('[DocEditor] 已清除快照恢复标志，标记为已完成');
+            // --- 强制刷新页面，彻底解决协同流覆盖问题 ---
+            setTimeout(() => {
+              window.location.reload();
+            }, 200);
+          }, 600);
+
+          console.log('[DocEditor] 快照恢复完成');
+        } catch (error) {
+          console.error('[DocEditor] 快照恢复失败:', error);
+
+          // 如果快照恢复失败，尝试使用历史版本的content字段恢复
+          if (restoreSnapshotFromUrl?.contentData) {
+            try {
+              console.log(
+                '[DocEditor] 快照恢复失败，尝试使用历史版本的content字段恢复',
+              );
+              console.log(
+                '[DocEditor] 使用历史版本content恢复:',
+                restoreSnapshotFromUrl.contentData,
+              );
+
+              // 只读/历史对比页面可用content字段渲染
+              const historySlateValue = contentToSlate(
+                restoreSnapshotFromUrl.contentData,
+              );
+              setEditorValue(historySlateValue);
+              setTimeout(() => {
+                setEditorValue([...historySlateValue]);
+              }, 100);
+              setTimeout(() => {
+                setContentReady(false);
+                setTimeout(() => {
+                  setContentReady(true);
+                }, 50);
+              }, 200);
+              setContentReady(true);
+              console.log(
+                '[DocEditor] 设置contentReady为true，确保编辑器能够渲染',
+              );
+              console.log('[DocEditor] 已使用回退机制，跳过后续同步逻辑');
+              console.log('[DocEditor] 历史版本content恢复完成');
+              return;
+            } catch (contentError) {
+              console.error(
+                '[DocEditor] 历史版本content恢复也失败:',
+                contentError,
+              );
+            }
+          }
+
+          throw error;
+        }
+      } finally {
+        // 清除快照恢复标志
+        window.isRestoringSnapshot = false;
+        console.log('[DocEditor] 清除快照恢复标志');
+
+        // 设置快照恢复完成标志，防止Y.Doc重新初始化覆盖恢复的内容
+        window.hasRestoredSnapshot = true;
+        console.log('[DocEditor] 设置快照恢复完成标志');
+
+        // 延迟重新连接Yjs编辑器，确保恢复的内容不会被覆盖
         setTimeout(() => {
+          console.log('[DocEditor] 延迟重新连接Yjs编辑器');
+          window.hasRestoredSnapshot = false; // 清除标志，允许重新连接
+
+          // 强制刷新Y.Doc的yjsState，确保与MongoDB同步
           if (window.ydoc && window.Y) {
-            console.log('[DocEditor] 延迟强制更新Y.Doc状态');
+            console.log('[DocEditor] 强制刷新Y.Doc的yjsState');
             // 重新获取最新的yjsState
             fetch(`/api/document/${documentId}/yjs-state`)
               .then(res => res.json())
               .then(data => {
-                console.log('[DocEditor] 延迟获取到的yjsState数据:', data);
+                console.log('[DocEditor] 获取到的yjsState数据:', data);
                 if (data.success && data.data.yjsState) {
                   const newYjsState = new Uint8Array(data.data.yjsState);
-                  console.log('[DocEditor] 延迟应用新的yjsState到Y.Doc');
+                  console.log('[DocEditor] 应用新的yjsState到Y.Doc');
                   window.Y.applyUpdate(window.ydoc, newYjsState);
-                  console.log('[DocEditor] 延迟刷新后的Y.Doc内容:', window.ydoc.toJSON());
+                  console.log('[DocEditor] 已强制刷新Y.Doc的yjsState');
+                  console.log(
+                    '[DocEditor] 刷新后的Y.Doc内容:',
+                    window.ydoc.toJSON(),
+                  );
+
+                  // 强制触发一次MongoDB同步，确保数据一致性
+                  if (window.yjsMongoSyncService) {
+                    setTimeout(() => {
+                      console.log('[DocEditor] 强制触发MongoDB同步');
+                      window.yjsMongoSyncService.forceSyncDocument(documentId);
+                    }, 1000);
+                  }
+
+                  // 强制同步编辑器内容与Y.Doc
+                  setTimeout(() => {
+                    console.log(
+                      '[DocEditor] 延迟刷新后强制同步编辑器内容与Y.Doc',
+                    );
+                    syncEditorValueFromYDoc();
+                  }, 1200);
+                } else {
+                  console.warn('[DocEditor] 获取到的yjsState数据无效:', data);
                 }
               })
               .catch(error => {
-                console.warn('[DocEditor] 延迟强制刷新Y.Doc的yjsState失败:', error);
+                console.warn('[DocEditor] 强制刷新Y.Doc的yjsState失败:', error);
               });
           }
-        }, 3000);
 
-        // 延迟清除快照恢复标志，确保所有同步操作完成
-        setTimeout(() => {
-          console.log('[DocEditor] 延迟清除快照恢复标志');
-          window.isRestoringSnapshot = false;
-          window.hasRestoredSnapshot = false;
-        }, 3000);
-      }, 2000); // 延迟2秒，确保恢复的内容完全稳定
-    }
-  }, [documentId]);
+          // 延迟强制更新Y.Doc状态，确保与数据库一致
+          setTimeout(() => {
+            if (window.ydoc && window.Y) {
+              console.log('[DocEditor] 延迟强制更新Y.Doc状态');
+              // 重新获取最新的yjsState
+              fetch(`/api/document/${documentId}/yjs-state`)
+                .then(res => res.json())
+                .then(data => {
+                  console.log('[DocEditor] 延迟获取到的yjsState数据:', data);
+                  if (data.success && data.data.yjsState) {
+                    const newYjsState = new Uint8Array(data.data.yjsState);
+                    console.log('[DocEditor] 延迟应用新的yjsState到Y.Doc');
+                    window.Y.applyUpdate(window.ydoc, newYjsState);
+                    console.log(
+                      '[DocEditor] 延迟刷新后的Y.Doc内容:',
+                      window.ydoc.toJSON(),
+                    );
+
+                    // 强制同步编辑器内容与Y.Doc
+                    setTimeout(() => {
+                      console.log(
+                        '[DocEditor] 延迟强制更新后强制同步编辑器内容与Y.Doc',
+                      );
+                      syncEditorValueFromYDoc();
+                    }, 100);
+                  }
+                })
+                .catch(error => {
+                  console.warn(
+                    '[DocEditor] 延迟强制刷新Y.Doc的yjsState失败:',
+                    error,
+                  );
+                });
+            }
+          }, 3000);
+
+          // 延迟清除快照恢复标志，确保所有同步操作完成
+          setTimeout(() => {
+            console.log('[DocEditor] 延迟清除快照恢复标志');
+            window.isRestoringSnapshot = false;
+            window.hasRestoredSnapshot = false;
+          }, 3000);
+        }, 2000); // 延迟2秒，确保恢复的内容完全稳定
+      }
+    },
+    [documentId],
+  );
 
   // 将 restoreFromSnapshot 方法挂载到全局，供历史版本页面使用
   useEffect(() => {
@@ -977,6 +1110,12 @@ const DocEditor = () => {
           if (window.provider) {
             window.provider.connect();
             console.log('[DocEditor] 用户编辑后重新连接Provider');
+
+            // 强制同步编辑器内容与Y.Doc
+            setTimeout(() => {
+              console.log('[DocEditor] 用户编辑后强制同步编辑器内容与Y.Doc');
+              syncEditorValueFromYDoc();
+            }, 200);
           }
         }, 100);
       }
@@ -1005,7 +1144,10 @@ const DocEditor = () => {
       console.log('[DocEditor] 检测到快照恢复参数，开始自动恢复');
       console.log('[DocEditor] 快照数据长度:', snapshotData.length);
       console.log('[DocEditor] 快照数据预览:', snapshotData.slice(0, 10));
-      console.log('[DocEditor] 历史版本content数据:', restoreSnapshotFromUrl.contentData);
+      console.log(
+        '[DocEditor] 历史版本content数据:',
+        restoreSnapshotFromUrl.contentData,
+      );
 
       // 等待编辑器完全初始化后再执行恢复
       const checkAndRestore = () => {
@@ -1013,7 +1155,10 @@ const DocEditor = () => {
         console.log('- window.ydoc:', !!window.ydoc);
         console.log('- window.Y:', !!window.Y);
         console.log('- window.provider:', !!window.provider);
-        console.log('- window.provider.isConnected:', window.provider?.isConnected);
+        console.log(
+          '- window.provider.isConnected:',
+          window.provider?.isConnected,
+        );
 
         // 检查编辑器是否完全初始化
         if (!window.ydoc) {
@@ -1037,7 +1182,8 @@ const DocEditor = () => {
         // 检查Provider是否已连接
         if (window.provider) {
           // 检查多种可能的连接状态属性
-          const isConnected = window.provider.isConnected ||
+          const isConnected =
+            window.provider.isConnected ||
             window.provider.isSynced ||
             window.provider.connected ||
             window.provider.synced;
@@ -1084,7 +1230,9 @@ const DocEditor = () => {
 
         const poll = () => {
           attempts++;
-          console.log(`[DocEditor] 检查编辑器状态 (${attempts}/${maxAttempts})`);
+          console.log(
+            `[DocEditor] 检查编辑器状态 (${attempts}/${maxAttempts})`,
+          );
 
           if (checkAndRestore()) {
             // 编辑器已准备好，执行恢复
@@ -1130,9 +1278,10 @@ const DocEditor = () => {
 
       // 开始轮询
       pollForReady();
-
     } else if (restoreSnapshotFromUrl) {
-      console.warn('[DocEditor] 检测到快照参数但 restoreFromSnapshot 方法不可用');
+      console.warn(
+        '[DocEditor] 检测到快照参数但 restoreFromSnapshot 方法不可用',
+      );
     }
   }, [restoreSnapshotFromUrl, restoreFromSnapshot, documentId]);
 
@@ -1150,7 +1299,7 @@ const DocEditor = () => {
       setOnBackHistoryProps({
         versionId: null,
         isShow: false,
-        onClick: () => { },
+        onClick: () => {},
       });
     }
   }, [currentVersionId, handleBackHistory]);
@@ -1269,14 +1418,16 @@ const DocEditor = () => {
     <div className="doc-editor-page">
       {/* 文档操作工具栏 */}
       {!isTempDocument(documentId) && !readOnly && (
-        <div style={{
-          padding: '12px 20px',
-          borderBottom: '1px solid #f0f0f0',
-          backgroundColor: '#fafafa',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
+        <div
+          style={{
+            padding: '12px 20px',
+            borderBottom: '1px solid #f0f0f0',
+            backgroundColor: '#fafafa',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <Space>
             <Button
               type="primary"
@@ -1317,40 +1468,66 @@ const DocEditor = () => {
           value={editorValue}
           onChange={handleEditorChange}
           onBackHistoryProps={onBackHistoryProps}
-        // 快照恢复后仍然使用协同编辑模式，但确保显示正确的内容
+          // 快照恢复后仍然使用协同编辑模式，但确保显示正确的内容
         />
       )}
 
       {/* 调试信息 */}
       {window.location.hostname === 'localhost' && (
-        <div style={{ position: 'fixed', bottom: 10, right: 10, background: '#f0f0f0', padding: 10, fontSize: 12 }}>
-          <div>editorValue: {editorValue ? JSON.stringify(editorValue).substring(0, 100) + '...' : 'undefined'}</div>
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 10,
+            right: 10,
+            background: '#f0f0f0',
+            padding: 10,
+            fontSize: 12,
+          }}
+        >
+          <div>
+            editorValue:{' '}
+            {editorValue
+              ? JSON.stringify(editorValue).substring(0, 100) + '...'
+              : 'undefined'}
+          </div>
           <div>contentReady: {contentReady.toString()}</div>
           <div>loading: {loading.toString()}</div>
-          <div>isRestoringSnapshot: {window.isRestoringSnapshot?.toString() || 'undefined'}</div>
-          <div>hasRestoredSnapshot: {window.hasRestoredSnapshot?.toString() || 'undefined'}</div>
+          <div>
+            isRestoringSnapshot:{' '}
+            {window.isRestoringSnapshot?.toString() || 'undefined'}
+          </div>
+          <div>
+            hasRestoredSnapshot:{' '}
+            {window.hasRestoredSnapshot?.toString() || 'undefined'}
+          </div>
           <div>documentId: {documentId}</div>
         </div>
       )}
 
       {/* 调试信息 */}
       {window.location.hostname === 'localhost' && (
-        <div style={{
-          position: 'fixed',
-          top: 10,
-          right: 10,
-          background: '#f0f0f0',
-          padding: 10,
-          fontSize: 12,
-          zIndex: 9999,
-          maxWidth: 300
-        }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 10,
+            right: 10,
+            background: '#f0f0f0',
+            padding: 10,
+            fontSize: 12,
+            zIndex: 9999,
+            maxWidth: 300,
+          }}
+        >
           <div>loading: {loading.toString()}</div>
           <div>readOnly: {readOnly.toString()}</div>
           <div>contentReady: {contentReady.toString()}</div>
           <div>editorValue: {editorValue ? '有值' : '无值'}</div>
-          <div>isRestoringSnapshot: {window.isRestoringSnapshot?.toString()}</div>
-          <div>hasRestoredSnapshot: {window.hasRestoredSnapshot?.toString()}</div>
+          <div>
+            isRestoringSnapshot: {window.isRestoringSnapshot?.toString()}
+          </div>
+          <div>
+            hasRestoredSnapshot: {window.hasRestoredSnapshot?.toString()}
+          </div>
         </div>
       )}
       {!loading && !contentReady && !readOnly && (

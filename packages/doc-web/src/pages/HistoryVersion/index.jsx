@@ -31,6 +31,15 @@ import VersionDiff from '@/components/VersionDiff/index';
 // import { UserContext } from '@/contexts/UserContext';
 const { Text } = Typography;
 
+// 工具函数：Uint8Array转base64
+function uint8ToBase64(u8arr) {
+  let binary = '';
+  for (let i = 0; i < u8arr.length; i++) {
+    binary += String.fromCharCode(u8arr[i]);
+  }
+  return btoa(binary);
+}
+
 /**
  * 文档历史版本页面组件
  *
@@ -247,7 +256,10 @@ const HistoryVersion = () => {
 
     try {
       // 1. 获取历史版本的yjsState和content
-      const versionRes = await documentAPI.getDocumentVersion(documentId, version.versionId);
+      const versionRes = await documentAPI.getDocumentVersion(
+        documentId,
+        version.versionId,
+      );
       if (!versionRes.success || !versionRes.data) {
         throw new Error('无法获取历史版本数据');
       }
@@ -255,24 +267,24 @@ const HistoryVersion = () => {
       const yjsStateArr = versionRes.data.yjsState || [];
       const contentData = versionRes.data.content || '';
 
-      // 2. 将快照数据和content编码为 base64，通过 URL 参数传递
-      // 使用更安全的方法来处理包含数字和中文的字符串
-      const snapshotBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(yjsStateArr))));
-      const contentBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(contentData))));
-
-      console.log('[HistoryVersion] 快照数据长度:', yjsStateArr.length);
-      console.log('[HistoryVersion] 编码后的 base64 长度:', snapshotBase64.length);
-      console.log('[HistoryVersion] 历史版本content:', contentData);
-
-      // 3. 跳转到编辑器页面，并传递快照参数和content参数
-      const editorUrl = `/doc-editor/${documentId}?restoreSnapshot=${snapshotBase64}&restoreContent=${contentBase64}&versionId=${version.versionId}`;
+      // 2. 将快照数据编码为 base64，通过 URL 参数传递
+      // 只传递Yjs快照，content字段只用于只读/历史对比
+      const snapshotBase64 = uint8ToBase64(new Uint8Array(yjsStateArr));
+      // 不再传递contentBase64给协同流
+      const editorUrl = `/doc-editor/${documentId}?restoreSnapshot=${snapshotBase64}&versionId=${version.versionId}`;
       console.log('[HistoryVersion] 跳转到编辑器页面:', editorUrl);
       navigate(editorUrl);
 
       // 4. 调用后端回滚接口（用于记录）
-      const response = await documentAPI.restoreDocument(documentId, version.versionId);
+      const response = await documentAPI.restoreDocument(
+        documentId,
+        version.versionId,
+      );
       if (!response.success) {
-        console.warn('后端版本回退记录失败，但不影响前端回滚:', response.message);
+        console.warn(
+          '后端版本回退记录失败，但不影响前端回滚:',
+          response.message,
+        );
       }
 
       message.success(`正在恢复到版本 ${version.versionNumber}...`);
@@ -288,7 +300,8 @@ const HistoryVersion = () => {
       console.log('[HistoryVersion] 回滚操作完成，等待数据刷新...');
       console.log('[HistoryVersion] 目标版本ID:', version.versionId);
       console.log('[HistoryVersion] 目标版本内容:', contentData);
-
+      console.log('[HistoryVersion] 回滚快照内容预览:', yjsStateArr);
+      console.log('[HistoryVersion] 回滚contentData预览:', contentData);
     } catch (error) {
       console.error('[HistoryVersion] 版本恢复失败:', error);
       message.error('恢复版本失败，请重试');
@@ -351,7 +364,7 @@ const HistoryVersion = () => {
 
       console.log('[HistoryVersion] 版本内容长度:', {
         oldContentLength: oldContent.length,
-        newContentLength: newContent.length
+        newContentLength: newContent.length,
       });
 
       setCompareModal(prev => ({
@@ -371,8 +384,6 @@ const HistoryVersion = () => {
       }));
     }
   };
-
-
 
   /**
    * 获取更多操作菜单
@@ -394,12 +405,12 @@ const HistoryVersion = () => {
       ...(version.isCurrent
         ? []
         : [
-          {
-            key: 'restore',
-            label: '恢复到此版本',
-            icon: <ReloadOutlined />,
-          },
-        ]),
+            {
+              key: 'restore',
+              label: '恢复到此版本',
+              icon: <ReloadOutlined />,
+            },
+          ]),
     ];
 
     // 处理菜单点击事件
@@ -417,7 +428,9 @@ const HistoryVersion = () => {
             oldVersion: version,
             newVersion: null,
           });
-          message.success(`已选择 ${version.versionNumber} 作为对比基准版本，请选择第二个版本`);
+          message.success(
+            `已选择 ${version.versionNumber} 作为对比基准版本，请选择第二个版本`,
+          );
         } else if (!selectedVersions.newVersion) {
           // 如果已经选择了旧版本，则设置为新版本并开始对比
           const newSelectedVersions = {
@@ -432,7 +445,9 @@ const HistoryVersion = () => {
             oldVersion: version,
             newVersion: null,
           });
-          message.info(`重新选择对比版本，已选择 ${version.versionNumber} 作为基准版本`);
+          message.info(
+            `重新选择对比版本，已选择 ${version.versionNumber} 作为基准版本`,
+          );
         }
       }
     };
@@ -609,7 +624,15 @@ const HistoryVersion = () => {
           </div>
           {/* 版本对比选择状态 */}
           {(selectedVersions.oldVersion || selectedVersions.newVersion) && (
-            <div style={{ marginTop: 12, padding: 8, backgroundColor: '#f6ffed', borderRadius: 6, border: '1px solid #b7eb8f' }}>
+            <div
+              style={{
+                marginTop: 12,
+                padding: 8,
+                backgroundColor: '#f6ffed',
+                borderRadius: 6,
+                border: '1px solid #b7eb8f',
+              }}
+            >
               <Text type="success" style={{ fontSize: 12 }}>
                 🔄 版本对比模式：
                 {selectedVersions.oldVersion && (
@@ -622,11 +645,15 @@ const HistoryVersion = () => {
                     目标版本：{selectedVersions.newVersion.versionNumber}
                   </Tag>
                 )}
-                {!selectedVersions.newVersion && selectedVersions.oldVersion && (
-                  <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
-                    请选择第二个版本进行对比
-                  </Text>
-                )}
+                {!selectedVersions.newVersion &&
+                  selectedVersions.oldVersion && (
+                    <Text
+                      type="secondary"
+                      style={{ marginLeft: 8, fontSize: 12 }}
+                    >
+                      请选择第二个版本进行对比
+                    </Text>
+                  )}
               </Text>
             </div>
           )}
@@ -651,7 +678,9 @@ const HistoryVersion = () => {
           <Button
             icon={<ReloadOutlined />}
             onClick={() => {
-              message.info('快照恢复功能已启用，使用 URL 参数传递方式，可以正常使用版本回滚功能');
+              message.info(
+                '快照恢复功能已启用，使用 URL 参数传递方式，可以正常使用版本回滚功能',
+              );
             }}
             style={{ marginLeft: 12 }}
             type="dashed"
@@ -687,7 +716,10 @@ const HistoryVersion = () => {
               if (versions.length >= 2) {
                 const testOldVersion = versions[1];
                 const testNewVersion = versions[0];
-                console.log('[HistoryVersion] 测试版本:', { testOldVersion, testNewVersion });
+                console.log('[HistoryVersion] 测试版本:', {
+                  testOldVersion,
+                  testNewVersion,
+                });
                 handleCompareVersions(testOldVersion, testNewVersion);
               } else {
                 message.warning('需要至少两个版本才能进行对比测试');
@@ -776,7 +808,8 @@ const HistoryVersion = () => {
               )}
             </div>
             <div style={{ marginTop: 16, color: '#ff4d4f', fontSize: 12 }}>
-              ⚠️ 恢复操作将创建一个新的版本，原有的当前版本会被保留在历史记录中。
+              ⚠️
+              恢复操作将创建一个新的版本，原有的当前版本会被保留在历史记录中。
             </div>
             <div style={{ marginTop: 12, color: '#1890ff', fontSize: 12 }}>
               🔄 使用新的快照恢复机制，无需重建实例，恢复速度更快更稳定。
@@ -790,7 +823,13 @@ const HistoryVersion = () => {
         title="版本对比"
         open={compareModal.visible}
         onCancel={() => {
-          setCompareModal({ visible: false, loading: false, oldVersion: null, newVersion: null, diffResult: null });
+          setCompareModal({
+            visible: false,
+            loading: false,
+            oldVersion: null,
+            newVersion: null,
+            diffResult: null,
+          });
           setSelectedVersions({ oldVersion: null, newVersion: null });
         }}
         footer={null}
@@ -811,15 +850,27 @@ const HistoryVersion = () => {
               <Tag color="green">{compareModal.newVersion.versionNumber}</Tag>
             </div>
             <div style={{ marginBottom: 16 }}>
-              <Text>旧版本内容长度：{compareModal.oldContent?.length || 0}</Text>
+              <Text>
+                旧版本内容长度：{compareModal.oldContent?.length || 0}
+              </Text>
             </div>
             <div style={{ marginBottom: 16 }}>
-              <Text>新版本内容长度：{compareModal.newContent?.length || 0}</Text>
+              <Text>
+                新版本内容长度：{compareModal.newContent?.length || 0}
+              </Text>
             </div>
-            <Button onClick={() => {
-              setCompareModal({ visible: false, loading: false, oldVersion: null, newVersion: null, diffResult: null });
-              setSelectedVersions({ oldVersion: null, newVersion: null });
-            }}>
+            <Button
+              onClick={() => {
+                setCompareModal({
+                  visible: false,
+                  loading: false,
+                  oldVersion: null,
+                  newVersion: null,
+                  diffResult: null,
+                });
+                setSelectedVersions({ oldVersion: null, newVersion: null });
+              }}
+            >
               关闭
             </Button>
           </div>

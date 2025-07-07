@@ -28,7 +28,7 @@ const defaultInitialValue = [
  * @param {Array} delta - Yjs Delta格式
  * @returns {Array} Slate格式
  */
-const deltaToSlate = (delta) => {
+const deltaToSlate = delta => {
   if (!Array.isArray(delta) || delta.length === 0) {
     return defaultInitialValue;
   }
@@ -107,7 +107,9 @@ export function useCollaborativeEditor(documentId) {
 
   // 只保留唯一初始化入口：用后端 yjsState 初始化 Y.Doc
   useEffect(() => {
-    console.log('[useCollaborativeEditor] Y.Doc初始化useEffect触发', { documentId });
+    console.log('[useCollaborativeEditor] Y.Doc初始化useEffect触发', {
+      documentId,
+    });
 
     if (!documentId) return;
 
@@ -119,7 +121,9 @@ export function useCollaborativeEditor(documentId) {
 
     // 检查是否已经完成快照恢复，如果是则跳过初始化
     if (window.hasRestoredSnapshot) {
-      console.log('[useCollaborativeEditor] 检测到已完成快照恢复，跳过Y.Doc初始化');
+      console.log(
+        '[useCollaborativeEditor] 检测到已完成快照恢复，跳过Y.Doc初始化',
+      );
       return;
     }
 
@@ -143,7 +147,7 @@ export function useCollaborativeEditor(documentId) {
             yjsState = latestVersion?.yjsState;
             console.log('[Y.Doc Init] 从历史版本获取yjsState:', {
               versionId: latestVersion?.id,
-              yjsStateLength: yjsState?.length || 0
+              yjsStateLength: yjsState?.length || 0,
             });
           }
         }
@@ -220,7 +224,9 @@ export function useCollaborativeEditor(documentId) {
       setTimeout(() => {
         // 检查是否正在进行快照恢复，如果是则跳过Provider连接
         if (window.isRestoringSnapshot || window.hasRestoredSnapshot) {
-          console.log('[useCollaborativeEditor] 检测到快照恢复状态，跳过Provider自动连接');
+          console.log(
+            '[useCollaborativeEditor] 检测到快照恢复状态，跳过Provider自动连接',
+          );
           return;
         }
         provider.connect();
@@ -449,13 +455,17 @@ export function useCollaborativeEditor(documentId) {
     const setupConnection = async () => {
       // 检查是否正在进行快照恢复，如果是则跳过Provider连接
       if (window.isRestoringSnapshot) {
-        console.log('[useCollaborativeEditor] 检测到快照恢复中，跳过setupConnection中的Provider连接');
+        console.log(
+          '[useCollaborativeEditor] 检测到快照恢复中，跳过setupConnection中的Provider连接',
+        );
         return;
       }
 
       // 检查是否已经完成快照恢复，如果是则跳过Provider连接
       if (window.hasRestoredSnapshot) {
-        console.log('[useCollaborativeEditor] 检测到已完成快照恢复，跳过setupConnection中的Provider连接');
+        console.log(
+          '[useCollaborativeEditor] 检测到已完成快照恢复，跳过setupConnection中的Provider连接',
+        );
         return;
       }
 
@@ -480,13 +490,17 @@ export function useCollaborativeEditor(documentId) {
 
     // 检查是否正在进行快照恢复，如果是则跳过连接
     if (window.isRestoringSnapshot) {
-      console.log('[useCollaborativeEditor] 检测到快照恢复中，跳过YjsEditor连接');
+      console.log(
+        '[useCollaborativeEditor] 检测到快照恢复中，跳过YjsEditor连接',
+      );
       return;
     }
 
     // 检查是否已经完成快照恢复，如果是则跳过连接
     if (window.hasRestoredSnapshot) {
-      console.log('[useCollaborativeEditor] 检测到已完成快照恢复，跳过YjsEditor连接');
+      console.log(
+        '[useCollaborativeEditor] 检测到已完成快照恢复，跳过YjsEditor连接',
+      );
       return;
     }
 
@@ -506,14 +520,20 @@ export function useCollaborativeEditor(documentId) {
       if (!editor || valueInitialized.current) return;
 
       // 检查是否正在进行快照恢复，如果是则跳过初始化
-      if (window.isRestoringSnapshot) {
-        console.log('[useCollaborativeEditor] 检测到快照恢复中，跳过内容初始化');
+      if (
+        window.isRestoringSnapshot ||
+        window.hasRestoredSnapshot ||
+        window.justRestoredSnapshot
+      ) {
+        console.log('[useCollaborativeEditor] 快照恢复中，跳过内容初始化');
         return;
       }
 
       // 检查是否已经完成快照恢复，如果是则跳过初始化
       if (window.hasRestoredSnapshot) {
-        console.log('[useCollaborativeEditor] 检测到已完成快照恢复，跳过内容初始化');
+        console.log(
+          '[useCollaborativeEditor] 检测到已完成快照恢复，跳过内容初始化',
+        );
         return;
       }
 
@@ -759,21 +779,36 @@ export function useCollaborativeEditor(documentId) {
           if (yText) {
             // 直接使用toString()获取内容，避免使用可能不存在的toDelta方法
             const content = yText.toString();
-            console.log('[useCollaborativeEditor] 快照恢复后获取到内容:', content);
+            console.log(
+              '[useCollaborativeEditor] 快照恢复后获取到内容:',
+              content,
+            );
 
             // 将内容转换为Slate格式
-            const slateValue = content ? [{
-              type: 'paragraph',
-              children: [{ text: content }],
-            }] : defaultInitialValue;
-            console.log('[useCollaborativeEditor] 转换后的Slate值:', slateValue);
+            const slateValue = content
+              ? [
+                  {
+                    type: 'paragraph',
+                    children: [{ text: content }],
+                  },
+                ]
+              : defaultInitialValue;
+            console.log(
+              '[useCollaborativeEditor] 转换后的Slate值:',
+              slateValue,
+            );
             setValue(slateValue);
           } else {
-            console.warn('[useCollaborativeEditor] 无法获取Y.XmlText，使用默认值');
+            console.warn(
+              '[useCollaborativeEditor] 无法获取Y.XmlText，使用默认值',
+            );
             setValue(defaultInitialValue);
           }
         } catch (error) {
-          console.error('[useCollaborativeEditor] 快照恢复后刷新编辑器状态失败:', error);
+          console.error(
+            '[useCollaborativeEditor] 快照恢复后刷新编辑器状态失败:',
+            error,
+          );
           setValue(defaultInitialValue);
         }
 
@@ -793,7 +828,9 @@ export function useCollaborativeEditor(documentId) {
    */
   const forceRestoreYjsState = useCallback(
     yjsStateArr => {
-      console.warn('[useCollaborativeEditor] forceRestoreYjsState 已废弃，请使用 restoreFromSnapshot');
+      console.warn(
+        '[useCollaborativeEditor] forceRestoreYjsState 已废弃，请使用 restoreFromSnapshot',
+      );
       return restoreFromSnapshot(yjsStateArr);
     },
     [restoreFromSnapshot],
