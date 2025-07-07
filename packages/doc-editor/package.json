@@ -25,6 +25,15 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/byteGanYue/DocCollab.git",
+    "directory": "packages/doc-editor"
+  },
+  "homepage": "https://github.com/byteGanYue/DocCollab#readme",
+  "bugs": {
+    "url": "https://github.com/byteGanYue/DocCollab/issues"
+  },
   "dependencies": {
     "@hocuspocus/extension-database": "^3.1.7",
     "@hocuspocus/provider": "^3.1.7",
