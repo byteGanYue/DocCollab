@@ -954,6 +954,39 @@ const FolderMenu = () => {
   const [_loading, setLoading] = useState(false);
 
   /**
+   * 从菜单项key中提取文档ID
+   * @param {string} key - 菜单项的key
+   * @returns {string|null} 文档ID或null
+   */
+  const extractDocumentIdFromKey = key => {
+    if (!key) return null;
+
+    // 处理新格式: doc_${documentId}_${index}
+    if (key.startsWith('doc_')) {
+      const parts = key.split('_');
+      if (parts.length >= 2) {
+        return parts[1]; // 返回documentId部分
+      }
+    }
+
+    // 处理旧格式: doc${documentId}
+    if (key.startsWith('doc') && !key.startsWith('doc_')) {
+      return key.replace('doc', '');
+    }
+
+    // 处理协同文档格式: collab_user_{userId}_doc_{documentId}_{index}
+    if (key.includes('collab_user_') && key.includes('_doc_')) {
+      const parts = key.split('_');
+      const docIndex = parts.findIndex(part => part === 'doc');
+      if (docIndex !== -1 && parts.length > docIndex + 1) {
+        return parts[docIndex + 1]; // 返回documentId部分
+      }
+    }
+
+    return null;
+  };
+
+  /**
    * 根据当前路由计算应该高亮的菜单项
    * @returns {Array} 应该高亮的菜单项key数组
    */
@@ -969,15 +1002,29 @@ const FolderMenu = () => {
       return ['collaboration'];
     } else if (
       path.startsWith('/doc-editor/') ||
-      path.startsWith('/history-version/')
+      path.startsWith('/history-version/') ||
+      path.startsWith('/version-compare/') ||
+      path.startsWith('/archive-management/')
     ) {
-      // 文档编辑页面，检查是否是协同文档
+      // 文档相关页面（编辑、历史版本、版本对比、归档管理），检查是否是协同文档
       const urlParams = new URLSearchParams(location.search);
       const isCollaborative = urlParams.get('collaborative') === 'true';
 
       if (isCollaborative) {
-        // 协同文档编辑，需要找到对应的协同文档菜单项
-        const documentId = path.split('/doc-editor/')[1];
+        // 协同文档相关页面，需要找到对应的协同文档菜单项
+        let documentId = null;
+
+        // 从不同路径中提取documentId
+        if (path.startsWith('/doc-editor/')) {
+          documentId = path.split('/doc-editor/')[1];
+        } else if (path.startsWith('/history-version/')) {
+          documentId = path.split('/history-version/')[1];
+        } else if (path.startsWith('/version-compare/')) {
+          documentId = path.split('/version-compare/')[1];
+        } else if (path.startsWith('/archive-management/')) {
+          documentId = path.split('/archive-management/')[1];
+        }
+
         if (documentId) {
           // 在协同文档中查找匹配的文档
           const findCollaborativeDocumentInMenu = items => {
@@ -1008,10 +1055,20 @@ const FolderMenu = () => {
         // 如果没找到具体的协同文档项，保持协同文档菜单高亮
         return ['collaboration'];
       } else {
-        // 普通文档编辑，需要在菜单中找到对应的文档项
-        const documentId = path.startsWith('/doc-editor/')
-          ? path.split('/doc-editor/')[1]
-          : path.split('/history-version/')[1];
+        // 普通文档相关页面，需要在菜单中找到对应的文档项
+        let documentId = null;
+
+        // 从不同路径中提取documentId
+        if (path.startsWith('/doc-editor/')) {
+          documentId = path.split('/doc-editor/')[1];
+        } else if (path.startsWith('/history-version/')) {
+          documentId = path.split('/history-version/')[1];
+        } else if (path.startsWith('/version-compare/')) {
+          documentId = path.split('/version-compare/')[1];
+        } else if (path.startsWith('/archive-management/')) {
+          documentId = path.split('/archive-management/')[1];
+        }
+
         if (documentId) {
           // 尝试在菜单数据中找到对应的文档
           const findDocumentInMenu = items => {
@@ -1040,7 +1097,7 @@ const FolderMenu = () => {
           }
 
           // 如果没找到对应的文档菜单项，返回空数组而不是默认高亮首页
-          // 这样可以避免在文档编辑页面时首页被错误高亮
+          // 这样可以避免在文档相关页面时首页被错误高亮
           console.log('⚠️ 未找到对应的文档菜单项，documentId:', documentId);
           return [];
         }
@@ -2123,7 +2180,7 @@ const FolderMenu = () => {
             item?.documentId ||
             item?.backendData?.documentId ||
             item?.backendData?.autoDocumentId ||
-            key.replace('doc_', ''); // 从key中提取documentId
+            extractDocumentIdFromKey(key); // 从key中提取documentId
 
           if (documentId) {
             await documentAPI.deleteDocument(documentId);
@@ -2513,7 +2570,7 @@ const FolderMenu = () => {
             },
           ]
         : []),
-      // 只有文件才显示历史版本记录选项
+      // 只有文件才显示文档相关操作选项
       ...(isFile
         ? [
             {
@@ -2522,9 +2579,37 @@ const FolderMenu = () => {
               onClick: e => {
                 e.domEvent && e.domEvent.stopPropagation();
                 // 跳转到历史版本页面
-                const documentId = item.key.replace('doc_', '');
+                const documentId = extractDocumentIdFromKey(item.key);
                 if (documentId) {
                   navigate(`/history-version/${documentId}`);
+                } else {
+                  message.error('无法获取文档ID');
+                }
+              },
+            },
+            {
+              key: 'version-compare',
+              label: '版本对比',
+              onClick: e => {
+                e.domEvent && e.domEvent.stopPropagation();
+                // 跳转到版本对比页面
+                const documentId = extractDocumentIdFromKey(item.key);
+                if (documentId) {
+                  navigate(`/version-compare/${documentId}`);
+                } else {
+                  message.error('无法获取文档ID');
+                }
+              },
+            },
+            {
+              key: 'archive-management',
+              label: '归档管理',
+              onClick: e => {
+                e.domEvent && e.domEvent.stopPropagation();
+                // 跳转到归档管理页面
+                const documentId = extractDocumentIdFromKey(item.key);
+                if (documentId) {
+                  navigate(`/archive-management/${documentId}`);
                 } else {
                   message.error('无法获取文档ID');
                 }
