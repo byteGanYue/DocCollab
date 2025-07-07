@@ -20,10 +20,24 @@ const VersionDiff = ({
     const [activeTab, setActiveTab] = useState('diff');
     const [diffResult, setDiffResult] = useState(null);
 
+    // 安全解析为数组
+    function safeParseArray(strOrArr) {
+        if (Array.isArray(strOrArr)) return strOrArr;
+        if (typeof strOrArr === 'string') {
+            try {
+                const arr = JSON.parse(strOrArr);
+                return Array.isArray(arr) ? arr : [];
+            } catch {
+                return [];
+            }
+        }
+        return [];
+    }
+
     // 计算富文本差异
     useEffect(() => {
         if (oldContent && newContent) {
-            const result = calculateRichTextDiff(oldContent, newContent);
+            const result = calculateRichTextDiff(safeParseArray(oldContent), safeParseArray(newContent));
             setDiffResult(result);
         }
     }, [oldContent, newContent]);
@@ -34,20 +48,15 @@ const VersionDiff = ({
      * @param {string} newContent - 新内容
      * @returns {Object} 差异结果
      */
-    const calculateRichTextDiff = (oldContent, newContent) => {
+    const calculateRichTextDiff = (oldBlocks, newBlocks) => {
         try {
-            // 解析富文本内容
-            const oldData = typeof oldContent === 'string' ? JSON.parse(oldContent) : oldContent;
-            const newData = typeof newContent === 'string' ? JSON.parse(newContent) : newContent;
+            oldBlocks = Array.isArray(oldBlocks) ? oldBlocks : [];
+            newBlocks = Array.isArray(newBlocks) ? newBlocks : [];
 
             const differences = [];
             let addedBlocks = 0;
             let deletedBlocks = 0;
             let modifiedBlocks = 0;
-
-            // 比较块级元素
-            const oldBlocks = Array.isArray(oldData) ? oldData : [];
-            const newBlocks = Array.isArray(newData) ? newData : [];
 
             const maxLength = Math.max(oldBlocks.length, newBlocks.length);
 
@@ -112,8 +121,8 @@ const VersionDiff = ({
      * @returns {Object} 块差异
      */
     const compareBlock = (oldBlock, newBlock, index) => {
-        const oldChildren = oldBlock?.children || [];
-        const newChildren = newBlock?.children || [];
+        const oldChildren = Array.isArray(oldBlock?.children) ? oldBlock.children : [];
+        const newChildren = Array.isArray(newBlock?.children) ? newBlock.children : [];
         const childrenDiffs = diffChildren(oldChildren, newChildren);
         const hasChanges = childrenDiffs.some(d => d.diff);
         if (!hasChanges) {
@@ -137,6 +146,8 @@ const VersionDiff = ({
      * @returns {Array} 差异结果
      */
     function diffChildren(oldChildren, newChildren) {
+        oldChildren = Array.isArray(oldChildren) ? oldChildren : [];
+        newChildren = Array.isArray(newChildren) ? newChildren : [];
         const maxLen = Math.max(oldChildren.length, newChildren.length);
         const diffs = [];
         for (let i = 0; i < maxLen; i++) {
@@ -286,11 +297,11 @@ const VersionDiff = ({
                     <Text type="secondary">第 {lineNumber} 行</Text>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {childrenDiffs.map((child, idx) => (
+                    {Array.isArray(childrenDiffs) ? childrenDiffs.map((child, idx) => (
                         <span key={idx} style={{ position: 'relative', marginRight: 8 }}>
                             {renderChildDiff(child)}
                         </span>
-                    ))}
+                    )) : null}
                 </div>
             </div>
         );
@@ -409,11 +420,11 @@ const VersionDiff = ({
                                 <Text type="success">两个版本内容完全相同</Text>
                             </div>
                         ) : (
-                            diffResult.differences.map((diff, index) => (
+                            Array.isArray(diffResult.differences) ? diffResult.differences.map((diff, index) => (
                                 <div key={index} className={styles.diffItem}>
                                     {renderDiff(diff)}
                                 </div>
-                            ))
+                            )) : null
                         )}
                     </div>
                 </TabPane>

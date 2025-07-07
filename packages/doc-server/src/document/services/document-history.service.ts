@@ -27,6 +27,7 @@ export class DocumentHistoryService {
     create_username: string;
     update_username?: string;
     yjsState?: number[];
+    restoreFromVersionId?: number;
   }): Promise<DocumentHistoryEntity> {
     try {
       // 校验content不能为空
@@ -51,6 +52,7 @@ export class DocumentHistoryService {
         create_time: new Date(),
         update_time: new Date(),
         yjsState: documentData.yjsState,
+        restoreFromVersionId: documentData.restoreFromVersionId,
       });
 
       const savedRecord = await historyRecord.save();

@@ -60,7 +60,7 @@ export class DocumentService {
     private counterService: CounterService,
     private documentHistoryService: DocumentHistoryService,
     private recentVisitsService: RecentVisitsService,
-  ) {}
+  ) { }
 
   /**
    * 创建文档
@@ -399,6 +399,18 @@ export class DocumentService {
         throw new NotFoundException('文档不存在');
       }
 
+      // 回滚保护：如果文档刚被回滚（5秒内），拒绝旧内容覆盖
+      const now = Date.now();
+      const updateTime = document.update_time ? new Date(document.update_time).getTime() : 0;
+      if (now - updateTime < 5000) {
+        this.logger.warn('[回滚保护] 回滚后5秒内拒绝sync-yjs，防止旧内容覆盖', { documentId });
+        return {
+          success: false,
+          message: '回滚保护：回滚后5秒内拒绝同步，防止旧内容覆盖',
+          data: { documentId },
+        };
+      }
+
       // 更新文档内容和Yjs状态
       const updatedDocument = await this.documentModel
         .findOneAndUpdate(
@@ -455,7 +467,7 @@ export class DocumentService {
 
       const document = await this.documentModel
         .findOne({ documentId })
-        .select('yjsState lastYjsSyncTime lastSyncSource')
+        .select('yjsState lastYjsSyncTime lastSyncSource content')
         .lean();
 
       if (!document) {
@@ -470,6 +482,7 @@ export class DocumentService {
           yjsState: document.yjsState,
           lastYjsSyncTime: document.lastYjsSyncTime,
           lastSyncSource: document.lastSyncSource,
+          content: document.content,
         },
       };
 

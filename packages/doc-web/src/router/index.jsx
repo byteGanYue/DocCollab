@@ -11,6 +11,7 @@ import Welcome from '@/pages/Welcome';
 import LayoutComponent from '@/components/layout/layout';
 import EditorDemo from '@/pages/EditorDemo';
 import Folder from '@/pages/Folder';
+import VersionCompare from '../pages/VersionCompare';
 // import AuthGuard from '@/components/AuthGuard';
 
 const router = createBrowserRouter([
@@ -66,6 +67,10 @@ const router = createBrowserRouter([
       {
         path: '/test',
         element: <EditorDemo />,
+      },
+      {
+        path: '/version-compare/:documentId',
+        element: <VersionCompare />,
       },
     ],
   },

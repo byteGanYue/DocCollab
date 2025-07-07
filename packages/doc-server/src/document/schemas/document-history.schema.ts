@@ -27,6 +27,9 @@ export class DocumentHistoryEntity extends Document {
   @Prop({ type: [Number], default: [] })
   yjsState: number[];
 
+  @Prop({ type: Number, default: null })
+  restoreFromVersionId?: number; // 回溯来源版本号
+
   // 自动管理字段 (由 timestamps 选项生成)
   create_time: Date;
   update_time: Date;

@@ -8,9 +8,10 @@ import React, {
 import { EditorSDK } from '@byteganyue/editorsdk';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { documentAPI } from '@/utils/api';
-import { Button, Space } from 'antd';
+import { Button, Space, message } from 'antd';
 import { FileTextOutlined, HistoryOutlined } from '@ant-design/icons';
-
+import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
 /**
  * 文档编辑器页面组件
  * 使用唯一的documentId作为key，确保切换文档时完全重新创建编辑器实例
@@ -249,7 +250,7 @@ const DocEditor = () => {
   const [onBackHistoryProps, setOnBackHistoryProps] = useState({
     versionId: null,
     isShow: false,
-    onClick: () => {},
+    onClick: () => { },
   });
 
   // 历史版本自动创建计时器
@@ -305,6 +306,37 @@ const DocEditor = () => {
   const [readOnly, setReadOnly] = useState(false);
   const [historyContent, setHistoryContent] = useState(null);
   const [contentReady, setContentReady] = useState(false);
+
+  // Y.Doc和provider实例
+  const [yDocReady, setYDocReady] = useState(false);
+  useEffect(() => {
+    let isMounted = true;
+    async function initYDocAndProvider() {
+      if (!documentId || isTempDocument(documentId)) return;
+      // 1. 拉取数据库yjsState
+      try {
+        const res = await fetch(`/api/document/${documentId}/yjs-state`);
+        const data = await res.json();
+        let ydoc = new Y.Doc();
+        if (data.success && data.data && data.data.yjsState) {
+          Y.applyUpdate(ydoc, Uint8Array.from(data.data.yjsState));
+          console.log('[DocEditor] 用数据库yjsState初始化Y.Doc');
+        }
+        window.ydoc = ydoc;
+        window.Y = Y;
+        // 2. 初始化provider，传入ydoc
+        if (window.provider) {
+          window.provider.destroy && window.provider.destroy();
+        }
+        window.provider = new WebsocketProvider('ws://localhost:1234', String(documentId), ydoc);
+        if (isMounted) setYDocReady(true);
+      } catch (error) {
+        console.error('[DocEditor] 初始化Y.Doc/provider失败:', error);
+      }
+    }
+    initYDocAndProvider();
+    return () => { isMounted = false; };
+  }, [documentId]);
 
   // 初始化编辑器内容
   const initializeEditor = useCallback(() => {
@@ -419,7 +451,9 @@ const DocEditor = () => {
 
   // 点击版本回退按钮回调函数
   const handleBackHistory = useCallback(
+
     async versionId => {
+      console.log("[DocEditor] 版本回退API调用结果:")
       try {
         // 获取历史版本的yjsState
         const versionRes = await documentAPI.getDocumentVersion(
@@ -442,11 +476,24 @@ const DocEditor = () => {
 
         // 调用版本回退API（用于后端记录）
         const result = await documentAPI.restoreDocument(documentId, versionId);
+        console.log('[DocEditor] 版本回退API调用结果:', result);
         if (!result.success) {
           console.warn(
             '后端版本回退记录失败，但不影响前端回滚:',
             result.message,
           );
+        } else {
+          // 回滚成功弹出提示
+          console.log('[DocEditor] 回滚成功，文档已恢复到历史版本！');
+          messageApi.success('回滚成功，文档已恢复到历史版本！');
+          // 断开并重连 provider，强制拉取数据库最新内容
+          if (window.provider) {
+            window.provider.disconnect();
+            setTimeout(() => {
+              window.provider.connect();
+              console.log('[DocEditor] 回滚后已断开并重连provider，拉取数据库最新内容');
+            }, 400);
+          }
         }
 
         // 清除URL中的version参数
@@ -456,13 +503,8 @@ const DocEditor = () => {
         setOnBackHistoryProps({
           versionId: null,
           isShow: false,
-          onClick: () => {},
+          onClick: () => { },
         });
-
-        // 显示成功消息
-        if (window.antd && window.antd.message) {
-          window.antd.message.success('版本回滚成功！');
-        }
       } catch (error) {
         console.error(`[DocEditor] 版本回退出错:`, error);
         if (window.antd && window.antd.message) {
@@ -1299,7 +1341,7 @@ const DocEditor = () => {
       setOnBackHistoryProps({
         versionId: null,
         isShow: false,
-        onClick: () => {},
+        onClick: () => { },
       });
     }
   }, [currentVersionId, handleBackHistory]);
@@ -1414,126 +1456,105 @@ const DocEditor = () => {
     }
   }, [currentVersionId, documentId]);
 
+  const [messageApi, contextHolder] = message.useMessage();
+
   return (
-    <div className="doc-editor-page">
-      {/* 文档操作工具栏 */}
-      {!isTempDocument(documentId) && !readOnly && (
-        <div
-          style={{
-            padding: '12px 20px',
-            borderBottom: '1px solid #f0f0f0',
-            backgroundColor: '#fafafa',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <Space>
-            <Button
-              type="primary"
-              icon={<FileTextOutlined />}
-              onClick={() => navigate(`/archive-management/${documentId}`)}
-            >
-              归档管理
-            </Button>
-            <Button
-              icon={<HistoryOutlined />}
-              onClick={() => navigate(`/history-version/${documentId}`)}
-            >
-              历史版本
-            </Button>
-          </Space>
-        </div>
-      )}
+    <>
+      {contextHolder}
+      <div className="doc-editor-page">
+        {/* 文档操作工具栏 */}
+        {!isTempDocument(documentId) && !readOnly && (
+          <div
+            style={{
+              padding: '12px 20px',
+              borderBottom: '1px solid #f0f0f0',
+              backgroundColor: '#fafafa',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <Space>
+              <Button
+                type="primary"
+                icon={<FileTextOutlined />}
+                onClick={() => navigate(`/archive-management/${documentId}`)}
+              >
+                归档管理
+              </Button>
+              <Button
+                icon={<HistoryOutlined />}
+                onClick={() => navigate(`/history-version/${documentId}`)}
+              >
+                历史版本
+              </Button>
+            </Space>
+          </div>
+        )}
 
-      {/* 编辑器加载中提示 */}
-      {loading && (
-        <div style={{ padding: 20, color: '#888' }}>文档加载中...</div>
-      )}
-      {/* 只读历史快照预览 */}
-      {!loading && readOnly && historyContent && (
-        <EditorSDK
-          key={editorKey}
-          value={historyContent}
-          readOnly={true}
-          disableCollab={true}
-        />
-      )}
-      {/* 协同编辑模式 */}
-      {!loading && !readOnly && contentReady && (
-        <EditorSDK
-          key={editorKey}
-          documentId={documentId}
-          userId={userId}
-          value={editorValue}
-          onChange={handleEditorChange}
-          onBackHistoryProps={onBackHistoryProps}
+        {/* 编辑器加载中提示 */}
+        {loading && (
+          <div style={{ padding: 20, color: '#888' }}>文档加载中...</div>
+        )}
+        {/* 只读历史快照预览 */}
+        {!loading && readOnly && historyContent && (
+          <EditorSDK
+            key={editorKey}
+            value={historyContent}
+            readOnly={true}
+            disableCollab={true}
+          />
+        )}
+        {/* 协同编辑模式 */}
+        {!loading && !readOnly && contentReady && (
+          <EditorSDK
+            key={editorKey}
+            documentId={documentId}
+            userId={userId}
+            value={editorValue}
+            onChange={handleEditorChange}
+            onBackHistoryProps={onBackHistoryProps}
           // 快照恢复后仍然使用协同编辑模式，但确保显示正确的内容
-        />
-      )}
+          />
+        )}
 
-      {/* 调试信息 */}
-      {window.location.hostname === 'localhost' && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: 10,
-            right: 10,
-            background: '#f0f0f0',
-            padding: 10,
-            fontSize: 12,
-          }}
-        >
-          <div>
-            editorValue:{' '}
-            {editorValue
-              ? JSON.stringify(editorValue).substring(0, 100) + '...'
-              : 'undefined'}
+        {/* 调试信息
+        {window.location.hostname === 'localhost' && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: 10,
+              right: 10,
+              background: '#f0f0f0',
+              padding: 10,
+              fontSize: 12,
+            }}
+          >
+            <div>
+              editorValue:{' '}
+              {editorValue
+                ? JSON.stringify(editorValue).substring(0, 100) + '...'
+                : 'undefined'}
+            </div>
+            <div>contentReady: {contentReady.toString()}</div>
+            <div>loading: {loading.toString()}</div>
+            <div>
+              isRestoringSnapshot:{' '}
+              {window.isRestoringSnapshot?.toString() || 'undefined'}
+            </div>
+            <div>
+              hasRestoredSnapshot:{' '}
+              {window.hasRestoredSnapshot?.toString() || 'undefined'}
+            </div>
+            <div>documentId: {documentId}</div>
           </div>
-          <div>contentReady: {contentReady.toString()}</div>
-          <div>loading: {loading.toString()}</div>
-          <div>
-            isRestoringSnapshot:{' '}
-            {window.isRestoringSnapshot?.toString() || 'undefined'}
-          </div>
-          <div>
-            hasRestoredSnapshot:{' '}
-            {window.hasRestoredSnapshot?.toString() || 'undefined'}
-          </div>
-          <div>documentId: {documentId}</div>
-        </div>
-      )}
+        )} */}
 
-      {/* 调试信息 */}
-      {window.location.hostname === 'localhost' && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 10,
-            right: 10,
-            background: '#f0f0f0',
-            padding: 10,
-            fontSize: 12,
-            zIndex: 9999,
-            maxWidth: 300,
-          }}
-        >
-          <div>loading: {loading.toString()}</div>
-          <div>readOnly: {readOnly.toString()}</div>
-          <div>contentReady: {contentReady.toString()}</div>
-          <div>editorValue: {editorValue ? '有值' : '无值'}</div>
-          <div>
-            isRestoringSnapshot: {window.isRestoringSnapshot?.toString()}
-          </div>
-          <div>
-            hasRestoredSnapshot: {window.hasRestoredSnapshot?.toString()}
-          </div>
-        </div>
-      )}
-      {!loading && !contentReady && !readOnly && (
-        <div style={{ padding: 20, color: '#888' }}>内容同步中...</div>
-      )}
-    </div>
+        {!loading && !contentReady && !readOnly && (
+          <div style={{ padding: 20, color: '#888' }}>内容同步中...</div>
+        )}
+      </div>
+    </>
   );
 };
 

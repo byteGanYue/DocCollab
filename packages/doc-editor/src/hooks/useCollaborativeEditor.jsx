@@ -743,7 +743,7 @@ export function useCollaborativeEditor(documentId) {
    * @param {Uint8Array|Array} snapshot - 历史快照数据
    */
   const restoreFromSnapshot = useCallback(
-    snapshot => {
+    async snapshot => {
       if (!docRef.current || !editor) {
         console.error('Y.Doc 或编辑器未初始化');
         return;
@@ -751,8 +751,25 @@ export function useCollaborativeEditor(documentId) {
 
       try {
         console.log('[useCollaborativeEditor] 开始基于快照恢复文档状态');
+        
+        // 1. 清除所有本地持久化数据
+        if (window.indexedDB) {
+          await new Promise((resolve) => {
+            const req = window.indexedDB.deleteDatabase('y-indexeddb');
+            req.onsuccess = () => {
+              console.log('[useCollaborativeEditor] 成功清除IndexedDB缓存');
+              resolve();
+            };
+            req.onerror = (e) => {
+              console.warn('[useCollaborativeEditor] 清除IndexedDB失败:', e);
+              resolve();
+            };
+          });
+        }
 
-        // 1. 暂停协同更新，防止状态冲突
+        console.log('[useCollaborativeEditor] 开始应用快照数据');
+
+        // 2. 暂停协同更新，防止状态冲突
         if (YjsEditor.isYjsEditor(editor)) {
           YjsEditor.disconnect(editor);
           console.log('[useCollaborativeEditor] 已断开编辑器协同连接');
@@ -775,6 +792,8 @@ export function useCollaborativeEditor(documentId) {
 
         // 5. 强制刷新编辑器状态，确保与Yjs XmlText同步
         try {
+          // 设置版本标记防止旧数据覆盖
+          docRef.current.set('version', Date.now());
           const yText = docRef.current.get('content', Y.XmlText);
           if (yText) {
             // 直接使用toString()获取内容，避免使用可能不存在的toDelta方法

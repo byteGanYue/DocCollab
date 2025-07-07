@@ -453,7 +453,7 @@ export class DocumentController {
   @Post(':id/restore')
   @ApiOperation({
     summary: '根据文档ID恢复到指定历史版本',
-    description: '恢复文档到指定的历史版本，并删除该版本之后的所有版本记录',
+    description: '恢复文档到指定的历史版本，并保留所有历史记录',
   })
   @ApiParam({
     name: 'id',
@@ -477,15 +477,15 @@ export class DocumentController {
   })
   @ApiResponse({
     status: 200,
-    description: '版本恢复成功',
+    description: '版本恢复成功，已保留所有历史记录',
     schema: {
       example: {
         success: true,
-        message: '版本恢复成功，并已删除该版本后的所有历史记录',
+        message: '版本恢复成功，已保留所有历史记录',
         data: {
           documentId: 123,
           restoredToVersion: 2,
-          deletedVersionsCount: 3,
+          restoredFromVersion: 2,
         },
       },
     },
@@ -513,11 +513,11 @@ export class DocumentController {
       };
     }
 
-    // 使用目标版本的内容更新文档
+    // 用目标历史版本的yjsState直接覆盖主文档的yjsState
     const updateResult = await this.documentService.update(documentId, {
       documentName: targetVersion.documentName,
       content: targetVersion.content,
-      yjsState: targetVersion.yjsState,
+      yjsState: targetVersion.yjsState, // 关键字段
       update_username: targetVersion.create_username,
       // 注意: update_time 会通过 MongoDB 的 timestamps 选项自动更新为当前时间
     });
@@ -529,14 +529,9 @@ export class DocumentController {
         body.versionId,
       );
 
-      // 删除该版本之后的所有版本记录
-      const deleteResult =
-        await this.documentHistoryService.deleteVersionsAfter(
-          documentId,
-          body.versionId,
-        );
+      // 不再删除该版本之后的所有版本记录，保留所有历史
 
-      // 创建一个新的历史版本记录，反映当前状态
+      // 创建一个新的历史版本记录，反映当前状态，并标记回溯来源
       await this.documentHistoryService.addDocumentHistory({
         userId: targetVersion.userId,
         documentId: documentId,
@@ -544,16 +539,17 @@ export class DocumentController {
         content: targetVersion.content,
         create_username: targetVersion.create_username,
         update_username: targetVersion.create_username,
-        yjsState: targetVersion.yjsState,
+        yjsState: targetVersion.yjsState, // 关键字段
+        restoreFromVersionId: body.versionId, // 新增字段，标记回溯来源
       });
 
       return {
         success: true,
-        message: '版本恢复成功，并已删除该版本后的所有历史记录',
+        message: '版本恢复成功，已保留所有历史记录',
         data: {
           documentId,
           restoredToVersion: body.versionId,
-          deletedVersionsCount: deleteResult.deletedCount,
+          restoredFromVersion: body.versionId, // 新增返回
         },
       };
     }
